@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Literal
-
+from functools import lru_cache
 import pandas as pd
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "serving" / "daily_kpis.parquet"
@@ -20,6 +19,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+DATA_PATH = Path("data/daily_kpis.parquet")  # adjust if your file lives elsewhere
 
 
 def _load_daily() -> pd.DataFrame:
@@ -37,6 +38,16 @@ def _filter_range(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
     # inclusive range
     return df[(df["date"] >= start) & (df["date"] <= end)]
 
+
+@lru_cache(maxsize=1)
+def load_kpi_df() -> pd.DataFrame:
+    """Read the parquet file once and cache it in memory."""
+    df = pd.read_parquet(DATA_PATH)
+    # normalise date column (optional if your date column is already string)
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"]).dt.date
+        df = df.sort_values("date")
+    return df
 
 @app.get("/health")
 def health():
@@ -111,3 +122,39 @@ def acquisition_timeseries(
     ftds = [{"date": str(x), "value": 0} for x in d["date"]]
 
     return {"registrations": regs, "ftds": ftds}
+
+
+@app.get("/kpis/latest")
+def kpis_latest():
+    """Return the most recent row of KPIs."""
+    df = load_kpi_df()
+    if df.empty:
+        raise HTTPException(404, "KPI table is empty")
+    row = df.iloc[-1].to_dict()
+    # convert date and numpy types to JSON‑friendly
+    return {k: (str(v) if k == "date" else (v.item() if hasattr(v, "item") else v)) for k, v in row.items()}
+
+
+@app.get("/kpis/series")
+def kpis_series(
+    metric: str = Query(..., description="Column name (e.g. 'revenue')"),
+    days: int = Query(30, ge=1, le=400),
+):
+    """Return a time‑series for a single metric."""
+    df = load_kpi_df()
+    if metric not in df.columns:
+        raise HTTPException(400, f"Unknown metric '{metric}'. Available: {list(df.columns)}")
+    tail_df = df.tail(days)
+    points = [
+        {
+            "date": str(r["date"]),
+            "value": float(r[metric]) if pd.notna(r[metric]) else None,
+        }
+        for _, r in tail_df.iterrows()
+    ]
+    return {"metric": metric, "days": days, "points": points}
+    
+@app.get("/")
+def root():
+    return {"message": "OK. Try /health or /docs"}
+    
