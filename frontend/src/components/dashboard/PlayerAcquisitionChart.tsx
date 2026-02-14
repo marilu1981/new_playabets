@@ -13,7 +13,8 @@ import { playerAcquisitionData } from "@/data/dashboardData";
 const PlayerAcquisitionChart = () => (
   <div className="rounded-lg border border-border bg-card p-6 shadow-sm opacity-0 animate-fade-in" style={{ animationDelay: "400ms" }}>
     <h3 className="text-lg font-bold text-card-foreground mb-1">Player Acquisition</h3>
-    <p className="text-sm text-muted-foreground mb-6">Registrations vs FTDs over time</p>
+    <p className="text-sm text-muted-foreground mb-2">Registrations vs FTDs over time</p>
+    <p className="text-xs text-orange-600 font-semibold mb-4">⚠️ DUMMY DATA</p>
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={playerAcquisitionData}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 10%, 90%)" />

@@ -9,7 +9,6 @@ import PlayerAcquisitionChart from "@/components/dashboard/PlayerAcquisitionChar
 import SegmentPieChart from "@/components/dashboard/SegmentPieChart";
 import { getKpisLatest, getKpisSeries } from "@/api";
 import type { RevenueChartDatum } from "@/components/dashboard/RevenueChart";
-import RfmSegmentsDonut from "@/components/RfmSegmentsDonut";
 import RfmRollingTrends from "@/components/RfmRollingTrends";
 import IndexedRollingAverage from "@/components/IndexedRollingAverage";
 
@@ -40,7 +39,7 @@ const Index = () => {
   });
 
   const registrations = latest ? toNum(latest.registrations) : 0;
-  const ftds = latest ? toNum(latest.ftds) : 0;
+  const ftds = 450; // Dummy data
   const actives = latest ? toNum(latest.actives_sports ?? latest.actives) : 0;
 
   const revenueChartData: RevenueChartDatum[] | null =
@@ -56,9 +55,10 @@ const Index = () => {
           ngrSeries?.points?.forEach((p) => {
             byDate[p.date] = { ...byDate[p.date], date: p.date, ngr: p.value ?? undefined };
           });
-          return Object.values(byDate).sort(
-            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-          );
+          // Filter to start from Jan 31, 2026
+          return Object.values(byDate)
+            .filter(d => new Date(d.date) >= new Date('2026-01-31'))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
         })()
       : null;
 
@@ -105,7 +105,7 @@ const Index = () => {
                 delay={0}
               />
               <KpiCard
-                title="FTDs"
+                title="FTDs (Dummy Data)"
                 value={kpisLoading || kpisError ? 0 : ftds}
                 change={0}
                 trend="neutral"
@@ -143,15 +143,12 @@ const Index = () => {
           {/* RFM Analysis */}
           <section>
             <h2 className="text-base sm:text-lg font-bold text-foreground mb-4 sm:mb-5">RFM Analysis</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-              <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
-                <h3 className="text-base font-bold text-card-foreground mb-4">RFM Segments</h3>
-                <RfmSegmentsDonut />
-              </div>
-              <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
-                <h3 className="text-base font-bold text-card-foreground mb-4">Rolling RFM Trends (30d)</h3>
-                <RfmRollingTrends />
-              </div>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
+              <h3 className="text-base font-bold text-card-foreground mb-4">Daily Activity Trends (3d MA, Base 100)</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Indexed to first 6 days average • Jan 31, 2026 onwards
+              </p>
+              <RfmRollingTrends />
             </div>
           </section>
 
