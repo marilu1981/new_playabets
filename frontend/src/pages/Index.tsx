@@ -31,7 +31,7 @@ const Index = () => {
   });
   const { data: turnoverSeries } = useQuery({
     queryKey: ["kpis", "series", "turnover", 30],
-    queryFn: () => getKpisSeries("turnover", 30),
+    queryFn: () => getKpisSeries("turnover", 30).catch(() => ({ metric: "turnover", days: 30, points: [] })),
   });
   const { data: ngrSeries } = useQuery({
     queryKey: ["kpis", "series", "ngr", 30],
