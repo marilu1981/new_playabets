@@ -1,7 +1,9 @@
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
-DB_PATH = "watermarks.db"
+# Same path as incremental_users.py, set_safe_watermark.py, set_betslips_safe_watermark.py
+DB_PATH = "data/watermarks.db"
 
 DEFAULTS = [
     ("Dwh_en.view_users", "DateVersion", "1900-01-01 00:00:00"),
@@ -12,6 +14,7 @@ DEFAULTS = [
     ("Dwh_en.view_bonuscampaigns", "insertdate", "1900-01-01 00:00:00"),
 ]
 
+Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
 with sqlite3.connect(DB_PATH) as conn:
     cur = conn.cursor()
     cur.execute("""
