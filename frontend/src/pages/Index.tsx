@@ -11,6 +11,7 @@ import { getKpisLatest, getKpisSeries } from "@/api";
 import type { RevenueChartDatum } from "@/components/dashboard/RevenueChart";
 import RfmSegmentsDonut from "@/components/RfmSegmentsDonut";
 import RfmRollingTrends from "@/components/RfmRollingTrends";
+import IndexedRollingAverage from "@/components/IndexedRollingAverage";
 
 const toNum = (v: string | number | undefined): number =>
   typeof v === "number" && !Number.isNaN(v) ? v : typeof v === "string" ? Number(v) || 0 : 0;
@@ -123,6 +124,20 @@ const Index = () => {
                 {kpisLoading ? "Loading KPIs…" : kpisError ? "Could not load KPIs. Is the API running?" : null}
               </p>
             )}
+          </section>
+
+          {/* Indexed KPI Trends */}
+          <section>
+            <h2 className="text-base sm:text-lg font-bold text-foreground mb-4 sm:mb-5">Indexed KPI Trends</h2>
+            <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
+              <h3 className="text-base font-bold text-card-foreground mb-4">
+                3-Day Rolling Average (Base 100 Index)
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Indexed to first 6 days average • Jan 31, 2026 onwards
+              </p>
+              <IndexedRollingAverage />
+            </div>
           </section>
 
           {/* RFM Analysis */}

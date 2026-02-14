@@ -227,6 +227,35 @@ def rfm_users(
     return {"path": str(RFM_USERS_PATH), "users": d.to_dict(orient="records")}
 
 
+@app.get("/kpis/daily")
+def kpis_daily(
+    start: Optional[date] = Query(None, description="YYYY-MM-DD"),
+    end: Optional[date] = Query(None, description="YYYY-MM-DD"),
+    metrics: Optional[str] = Query(None, description="Comma-separated list of metrics"),
+):
+    """
+    Returns daily KPI rows from daily_kpis.parquet.
+    """
+    df = load_daily_df()
+    if df.empty:
+        return {"path": str(DATA_PATH), "rows": []}
+
+    d = df.copy()
+    if start and end and "date" in d.columns:
+        d = _filter_range(d, start, end)
+    
+    d = d.sort_values("date")
+    
+    if metrics:
+        wanted = [c.strip() for c in metrics.split(",") if c.strip()]
+        # Always include date
+        keep = ["date"] + [c for c in wanted if c in d.columns and c != "date"]
+        if keep:
+            d = d[keep]
+    
+    return {"path": str(DATA_PATH), "rows": d.to_dict(orient="records")}
+
+
 @app.post("/cache/clear")
 def cache_clear():
     _PARQUET_CACHE.clear()

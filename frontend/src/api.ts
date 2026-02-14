@@ -55,3 +55,28 @@ export async function fetchRollingKpis(params?: { limit?: number; start?: string
   const json = await res.json();
   return json.rows ?? [];
 }
+
+export interface DailyKpiRow {
+  date: string;
+  registrations: number;
+  settled_winnings: number;
+  win_rate: number;
+  ggr: number;
+  [key: string]: string | number | undefined;
+}
+
+export async function fetchDailyKpis(params?: { 
+  start?: string; 
+  end?: string; 
+  metrics?: string[];
+}): Promise<DailyKpiRow[]> {
+  const qs = new URLSearchParams();
+  if (params?.start) qs.set("start", params.start);
+  if (params?.end) qs.set("end", params.end);
+  if (params?.metrics) qs.set("metrics", params.metrics.join(","));
+  
+  const res = await fetch(`${BASE}/kpis/daily?${qs.toString()}`);
+  if (!res.ok) throw new Error(`kpis/daily failed: ${res.status}`);
+  const json = await res.json();
+  return json.rows ?? [];
+}
