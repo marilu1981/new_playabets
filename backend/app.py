@@ -174,8 +174,14 @@ def kpis_rolling(
         return {"path": str(RFM_ROLLING_PATH), "rows": []}
 
     d = df
-    if start and end and "date" in d.columns:
-        d = _filter_range(d, start, end).sort_values("date")
+    if start and "date" in d.columns:
+        # Filter by start date (and optionally end date)
+        if end:
+            d = _filter_range(d, start, end).sort_values("date")
+        else:
+            d = d[d["date"] >= start].sort_values("date")
+    elif "date" in d.columns:
+        d = d.sort_values("date").tail(limit)
     else:
         d = d.sort_values("date").tail(limit)
 
