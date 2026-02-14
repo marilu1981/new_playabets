@@ -53,17 +53,20 @@ export default function IndexedRollingAverage() {
       metrics: ["registrations", "settled_winnings", "win_rate", "ggr"]
     })
       .then((rows: DailyKpiRow[]) => {
-        if (rows.length === 0) {
+        // Client-side filter to ensure only data from Jan 31, 2026 onwards
+        const filteredRows = rows.filter(row => new Date(row.date) >= new Date('2026-01-31'));
+        
+        if (filteredRows.length === 0) {
           setErr("No data available");
           setLoading(false);
           return;
         }
 
         // Extract values for each metric
-        const registrations = rows.map(r => r.registrations || 0);
-        const settledWinnings = rows.map(r => r.settled_winnings || 0);
-        const winRate = rows.map(r => r.win_rate || 0);
-        const ggr = rows.map(r => r.ggr || 0);
+        const registrations = filteredRows.map(r => r.registrations || 0);
+        const settledWinnings = filteredRows.map(r => r.settled_winnings || 0);
+        const winRate = filteredRows.map(r => r.win_rate || 0);
+        const ggr = filteredRows.map(r => r.ggr || 0);
 
         // Calculate 3-day rolling averages
         const registrationsRolling = rollingAverage(registrations);
@@ -78,7 +81,7 @@ export default function IndexedRollingAverage() {
         const ggrIndexed = indexToBase100(ggrRolling);
 
         // Combine into chart data
-        const chartData: IndexedDataPoint[] = rows.map((row, i) => ({
+        const chartData: IndexedDataPoint[] = filteredRows.map((row, i) => ({
           date: row.date,
           registrations_index: Math.round(registrationsIndexed[i] * 100) / 100,
           settled_winnings_index: Math.round(settledWinningsIndexed[i] * 100) / 100,
