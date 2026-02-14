@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Menu } from "lucide-react";
 import HeaderNav from "@/components/HeaderNav";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
@@ -6,12 +7,57 @@ import KpiCard from "@/components/dashboard/KpiCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import PlayerAcquisitionChart from "@/components/dashboard/PlayerAcquisitionChart";
 import SegmentPieChart from "@/components/dashboard/SegmentPieChart";
-import { kpiData } from "@/data/dashboardData";
+import { getKpisLatest, getKpisSeries } from "@/api";
+import type { RevenueChartDatum } from "@/components/dashboard/RevenueChart";
+
+const toNum = (v: string | number | undefined): number =>
+  typeof v === "number" && !Number.isNaN(v) ? v : typeof v === "string" ? Number(v) || 0 : 0;
 
 const Index = () => {
   const [granularity, setGranularity] = useState("Weekly");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { data: latest, isLoading: kpisLoading, error: kpisError } = useQuery({
+    queryKey: ["kpis", "latest"],
+    queryFn: getKpisLatest,
+  });
+
+  const { data: ggrSeries } = useQuery({
+    queryKey: ["kpis", "series", "ggr", 30],
+    queryFn: () => getKpisSeries("ggr", 30),
+  });
+  const { data: turnoverSeries } = useQuery({
+    queryKey: ["kpis", "series", "turnover", 30],
+    queryFn: () => getKpisSeries("turnover", 30),
+  });
+  const { data: ngrSeries } = useQuery({
+    queryKey: ["kpis", "series", "ngr", 30],
+    queryFn: () => getKpisSeries("ngr", 30).catch(() => ({ metric: "ngr", days: 30, points: [] })),
+  });
+
+  const registrations = latest ? toNum(latest.registrations) : 0;
+  const ftds = latest ? toNum(latest.ftds) : 0;
+  const actives = latest ? toNum(latest.actives_sports ?? latest.actives) : 0;
+
+  const revenueChartData: RevenueChartDatum[] | null =
+    ggrSeries?.points?.length || turnoverSeries?.points?.length
+      ? (() => {
+          const byDate: Record<string, RevenueChartDatum> = {};
+          ggrSeries?.points?.forEach((p) => {
+            byDate[p.date] = { ...byDate[p.date], date: p.date, ggr: p.value ?? undefined };
+          });
+          turnoverSeries?.points?.forEach((p) => {
+            byDate[p.date] = { ...byDate[p.date], date: p.date, turnover: p.value ?? undefined };
+          });
+          ngrSeries?.points?.forEach((p) => {
+            byDate[p.date] = { ...byDate[p.date], date: p.date, ngr: p.value ?? undefined };
+          });
+          return Object.values(byDate).sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+        })()
+      : null;
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -50,32 +96,37 @@ const Index = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
               <KpiCard
                 title="Registrations"
-                value={kpiData.registrations.value}
-                change={kpiData.registrations.change}
-                trend={kpiData.registrations.trend}
+                value={kpisLoading || kpisError ? 0 : registrations}
+                change={0}
+                trend="neutral"
                 delay={0}
               />
               <KpiCard
                 title="FTDs"
-                value={kpiData.ftds.value}
-                change={kpiData.ftds.change}
-                trend={kpiData.ftds.trend}
+                value={kpisLoading || kpisError ? 0 : ftds}
+                change={0}
+                trend="neutral"
                 delay={100}
               />
               <KpiCard
                 title="Actives"
-                value={kpiData.actives.value}
-                change={kpiData.actives.change}
-                trend={kpiData.actives.trend}
+                value={kpisLoading || kpisError ? 0 : actives}
+                change={0}
+                trend="neutral"
                 delay={200}
               />
             </div>
+            {(kpisLoading || kpisError) && (
+              <p className="text-sm text-muted-foreground mt-2">
+                {kpisLoading ? "Loading KPIs…" : kpisError ? "Could not load KPIs. Is the API running?" : null}
+              </p>
+            )}
           </section>
 
           {/* Detailed Overview */}
           <section>
             <h2 className="text-base sm:text-lg font-bold text-foreground mb-4 sm:mb-5">Detailed Overview</h2>
-            <RevenueChart />
+            <RevenueChart data={revenueChartData} />
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5 mt-4 sm:mt-5">
               <div className="lg:col-span-3">

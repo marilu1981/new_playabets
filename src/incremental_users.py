@@ -15,6 +15,22 @@ PASSWORD = os.environ["DWH_PASS"]
 VIEW_NAME = "Dwh_en.view_users"
 CURSOR_COLUMN = "DateVersion"
 
+# Columns to select from view_users (cursor DateVersion is added separately)
+USER_COLUMNS = [
+    "userid",
+    "userstatus",
+    "testuser",
+    "usertype",
+    "lastlogin",
+    "countryid",
+    "country",
+    "city",
+    "zipcode",
+    "creationdate",
+    "dateversion",
+    "detaildateversion",
+]
+
 SQL_CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
     f"SERVER={SERVER},{PORT};"
@@ -39,9 +55,10 @@ with sqlite3.connect(WATERMARK_DB) as conn:
 
 print(f"Current watermark: {last_value}")
 
-#  Fetch incremental data
+#  Fetch incremental data (only selected columns)
+_cols = ", ".join(USER_COLUMNS)
 query = f"""
-SELECT {CURSOR_COLUMN} AS __cursor__, *
+SELECT {CURSOR_COLUMN} AS __cursor__, {_cols}
 FROM {VIEW_NAME}
 WHERE {CURSOR_COLUMN} > ?
 """

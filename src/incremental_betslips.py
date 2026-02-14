@@ -44,8 +44,12 @@ SELECT
     paymentdate,
     stake,
     winnings,
+    UserWinnings,
     betslipstatus,
-    outcometype
+    outcometype,
+    BetslipType,
+    CreditType
+    
 FROM {VIEW_NAME}
 WHERE {CURSOR_COLUMN} > ?
 """
