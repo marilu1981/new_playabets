@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    --background: 220 15% 96%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 82 100% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 10% 92%;
+    --secondary-foreground: 0 0% 15%;
+
+    --muted: 220 10% 94%;
+    --muted-foreground: 220 5% 46%;
+
+    --accent: 82 80% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 98% 38%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 42 100% 50%;
+    --warning-foreground: 0 0% 10%;
+
+    --border: 220 10% 90%;
+    --input: 220 10% 90%;
+    --ring: 82 100% 36%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 70%;
+    --sidebar-primary: 82 100% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 14%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 82 100% 36%;
+    --sidebar-muted: 0 0% 50%;
+
+    --chart-green: 82 100% 36%;
+    --chart-red: 0 98% 38%;
+    --chart-yellow: 42 100% 50%;
+    --chart-gray: 220 5% 46%;
+    --chart-dark: 0 0% 20%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
