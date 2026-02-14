@@ -9,6 +9,8 @@ import PlayerAcquisitionChart from "@/components/dashboard/PlayerAcquisitionChar
 import SegmentPieChart from "@/components/dashboard/SegmentPieChart";
 import { getKpisLatest, getKpisSeries } from "@/api";
 import type { RevenueChartDatum } from "@/components/dashboard/RevenueChart";
+import RfmSegmentsDonut from "@/components/RfmSegmentsDonut";
+import RfmRollingTrends from "@/components/RfmRollingTrends";
 
 const toNum = (v: string | number | undefined): number =>
   typeof v === "number" && !Number.isNaN(v) ? v : typeof v === "string" ? Number(v) || 0 : 0;
@@ -121,6 +123,21 @@ const Index = () => {
                 {kpisLoading ? "Loading KPIs…" : kpisError ? "Could not load KPIs. Is the API running?" : null}
               </p>
             )}
+          </section>
+
+          {/* RFM Analysis */}
+          <section>
+            <h2 className="text-base sm:text-lg font-bold text-foreground mb-4 sm:mb-5">RFM Analysis</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
+                <h3 className="text-base font-bold text-card-foreground mb-4">RFM Segments</h3>
+                <RfmSegmentsDonut />
+              </div>
+              <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
+                <h3 className="text-base font-bold text-card-foreground mb-4">Rolling RFM Trends (30d)</h3>
+                <RfmRollingTrends />
+              </div>
+            </div>
           </section>
 
           {/* Detailed Overview */}

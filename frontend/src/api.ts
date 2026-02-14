@@ -37,3 +37,21 @@ export async function getKpisSeries(
   if (!res.ok) throw new Error(`Failed to fetch KPI series: ${metric}`);
   return res.json();
 }
+
+export async function fetchRfmSegments() {
+  const res = await fetch(`${BASE}/rfm/segments`);
+  if (!res.ok) throw new Error(`rfm/segments failed: ${res.status}`);
+  const json = await res.json();
+  return json.segments ?? [];
+}
+
+export async function fetchRollingKpis(params?: { limit?: number; start?: string; end?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.start) qs.set("start", params.start);
+  if (params?.end) qs.set("end", params.end);
+  const res = await fetch(`${BASE}/kpis/rolling?${qs.toString()}`);
+  if (!res.ok) throw new Error(`kpis/rolling failed: ${res.status}`);
+  const json = await res.json();
+  return json.rows ?? [];
+}
