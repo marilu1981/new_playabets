@@ -28,7 +28,10 @@ const MetricsTable = ({ title, data }: MetricsTableProps) => {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-foreground">{title}</h3>
+        <div>
+          <h3 className="text-base font-bold text-foreground">{title}</h3>
+          <p className="text-xs text-orange-600 font-semibold mt-1">⚠️ DUMMY DATA</p>
+        </div>
         <Button
           size="sm"
           onClick={() => exportToExcel(data, title)}

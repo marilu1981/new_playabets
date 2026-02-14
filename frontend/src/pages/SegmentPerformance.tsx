@@ -5,7 +5,7 @@ import {
 } from "recharts";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import HeaderNav from "@/components/HeaderNav";
-import RfmSegmentsDonut from "@/components/RfmSegmentsDonut";
+
 import {
   segmentPerformanceData,
   registrationsBySegment,
@@ -46,26 +46,16 @@ const SegmentPerformance = () => {
         </header>
 
         <div className="px-4 sm:px-8 py-4 sm:py-6 space-y-6 sm:space-y-8">
-          {/* RFM Segments Donut */}
-          <section>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-1 h-6 rounded-full bg-primary" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">
-                RFM Segments Distribution
-              </h2>
-            </div>
-            <div className="rounded-lg border border-border bg-card p-4 sm:p-6 shadow-sm">
-              <RfmSegmentsDonut />
-            </div>
-          </section>
-
           {/* Segment Tiles */}
           <section>
-            <div className="flex items-center gap-2 mb-5">
-              <div className="w-1 h-6 rounded-full bg-primary" />
-              <h2 className="text-base sm:text-lg font-bold text-foreground">
-                Segment Performance
-              </h2>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 rounded-full bg-primary" />
+                <h2 className="text-base sm:text-lg font-bold text-foreground">
+                  Segment Performance
+                </h2>
+              </div>
+              <p className="text-xs text-orange-600 font-semibold">⚠️ DUMMY DATA</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {segmentPerformanceData.map((seg) => (
@@ -95,9 +85,10 @@ const SegmentPerformance = () => {
               <h3 className="text-base font-bold text-card-foreground mb-1">
                 Registrations by Segment
               </h3>
-              <p className="text-sm text-muted-foreground mb-6">
+              <p className="text-sm text-muted-foreground mb-2">
                 February 2026 breakdown
               </p>
+              <p className="text-xs text-orange-600 font-semibold mb-4">⚠️ DUMMY DATA</p>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={registrationsBySegment}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 10%, 90%)" />
@@ -125,9 +116,10 @@ const SegmentPerformance = () => {
               <h3 className="text-base font-bold text-card-foreground mb-1">
                 Total Deposits by Segment
               </h3>
-              <p className="text-sm text-muted-foreground mb-6">
+              <p className="text-sm text-muted-foreground mb-2">
                 February 2026 breakdown
               </p>
+              <p className="text-xs text-orange-600 font-semibold mb-4">⚠️ DUMMY DATA</p>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={depositsBySegment}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 10%, 90%)" />
