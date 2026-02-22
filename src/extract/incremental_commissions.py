@@ -19,9 +19,11 @@ Environment variables required:
     DWH_PASS  – SQL Server password
 """
 from __future__ import annotations
-import os, pyodbc, pandas as pd
+import os, pandas as pd
 from datetime import datetime, UTC
 from pathlib import Path
+from urllib.parse import quote_plus
+from sqlalchemy import create_engine, text
 
 SERVER   = "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com"
 PORT     = 1433
@@ -29,17 +31,20 @@ DATABASE = "isbets_bi"
 USERNAME = os.environ["DWH_USER"]
 PASSWORD = os.environ["DWH_PASS"]
 
-SQL_CONN_STR = (
-    "DRIVER={ODBC Driver 18 for SQL Server};"
-    f"SERVER={SERVER},{PORT};"
-    f"DATABASE={DATABASE};"
-    f"UID={USERNAME};"
-    f"PWD={PASSWORD};"
-    "Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
-)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-OUT_DIR      = PROJECT_ROOT / "data" / "raw" / "commissions"
+
+def _build_engine():
+    params = quote_plus(
+        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"SERVER={SERVER},{PORT};DATABASE={DATABASE};"
+        f"UID={USERNAME};PWD={PASSWORD};"
+        "Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
+    )
+    return create_engine(f"mssql+pyodbc:///?odbc_connect={params}", fast_executemany=True)
+
+
+OUT_DIR = PROJECT_ROOT / "data" / "raw" / "commissions"
 
 VIEWS = {
     "sport_direct": {
@@ -84,15 +89,16 @@ def main() -> None:
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     frames = []
 
-    with pyodbc.connect(SQL_CONN_STR) as conn:
-        for key, cfg in VIEWS.items():
-            cols_sql = ", ".join(cfg["cols"])
-            df = pd.read_sql(f"SELECT {cols_sql} FROM {cfg['view']}", conn)
-            df["_source"] = key
-            print(f"[commissions] {key}: {len(df)} rows")
-            # Full snapshot (overwrite)
-            df.to_parquet(OUT_DIR / f"{key}_full.parquet", index=False)
-            frames.append(df)
+    engine = _build_engine()
+    for key, cfg in VIEWS.items():
+        cols_sql = ", ".join(cfg["cols"])
+        with engine.connect() as conn:
+            df = pd.read_sql(text(f"SELECT {cols_sql} FROM {cfg['view']}"), conn)
+        df["_source"] = key
+        print(f"[commissions] {key}: {len(df)} rows")
+        # Full snapshot (overwrite)
+        df.to_parquet(OUT_DIR / f"{key}_full.parquet", index=False)
+        frames.append(df)
 
     # Combined timestamped snapshot for auditing
     if frames:
