@@ -33,9 +33,9 @@ export default function CasinoPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Casino Stake" value={`₦${formatCompact(casinoKPIs.totalStake)}`} subtitle="All providers" change={18.4} changeLabel="vs last month" icon={<DollarSign size={18} />} accent="gold" />
-        <KpiCard title="Total Winnings" value={`₦${formatCompact(casinoKPIs.totalWinnings)}`} subtitle="Paid to players" change={16.2} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="amber" />
-        <KpiCard title="Gross Profit" value={`₦${formatCompact(casinoKPIs.grossProfit)}`} subtitle="Stake minus winnings" change={22.1} changeLabel="vs last month" icon={<Gamepad2 size={18} />} accent="green" />
+        <KpiCard title="Total Casino Stake" value={`${formatCompact(casinoKPIs.totalStake)}`} subtitle="All providers" change={18.4} changeLabel="vs last month" icon={<DollarSign size={18} />} accent="gold" />
+        <KpiCard title="Total Winnings" value={`${formatCompact(casinoKPIs.totalWinnings)}`} subtitle="Paid to players" change={16.2} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="amber" />
+        <KpiCard title="Gross Profit" value={`${formatCompact(casinoKPIs.grossProfit)}`} subtitle="Stake minus winnings" change={22.1} changeLabel="vs last month" icon={<Gamepad2 size={18} />} accent="green" />
         <KpiCard title="Casino Margin" value={`${casinoKPIs.margin}%`} subtitle="House edge" change={0.4} changeLabel="vs last month" icon={<Percent size={18} />} accent="teal" />
       </div>
 
@@ -48,9 +48,9 @@ export default function CasinoPage() {
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={casinoProviders} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="provider" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
-              <Tooltip formatter={(v: number) => [`₦${formatCompact(v)}`, "Profit"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Profit"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
               <Bar dataKey="profit" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -65,7 +65,7 @@ export default function CasinoPage() {
               <Pie data={casinoProviders} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="stake" nameKey="provider" paddingAngle={2}>
                 {casinoProviders.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => `₦${formatCompact(v)}`} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => `${formatCompact(v)}`} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
           <div className="space-y-1.5 mt-2">
@@ -103,9 +103,9 @@ export default function CasinoPage() {
                   <td className="py-2.5 pr-4 text-white/80 font-medium">{p.provider}</td>
                   <td className="py-2.5 pr-4 text-white/50 text-xs">{p.casinoType}</td>
                   <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(p.bets)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">₦{formatCompact(p.stake)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">₦{formatCompact(p.winnings)}</td>
-                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>₦{formatCompact(p.profit)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{ formatCompact(p.stake)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{ formatCompact(p.winnings)}</td>
+                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>{ formatCompact(p.profit)}</td>
                   <td className="py-2.5 text-xs font-semibold" style={{ color: CHART_COLORS.green }}>
                     {(p.profit / p.stake * 100).toFixed(1)}%
                   </td>

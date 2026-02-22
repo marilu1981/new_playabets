@@ -32,8 +32,8 @@ export default function TransactionsPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Deposits" value={`₦${formatCompact(transactionSummary.totalDeposits)}`} subtitle="All time" change={11.2} changeLabel="vs last month" icon={<ArrowUpCircle size={18} />} accent="green" />
-        <KpiCard title="Total Withdrawals" value={`₦${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="All time" change={8.4} changeLabel="vs last month" icon={<ArrowDownCircle size={18} />} accent="amber" />
+        <KpiCard title="Total Deposits" value={`${formatCompact(transactionSummary.totalDeposits)}`} subtitle="All time" change={11.2} changeLabel="vs last month" icon={<ArrowUpCircle size={18} />} accent="green" />
+        <KpiCard title="Total Withdrawals" value={`${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="All time" change={8.4} changeLabel="vs last month" icon={<ArrowDownCircle size={18} />} accent="amber" />
         <KpiCard title="Pending" value={formatNumber(transactionSummary.pendingTransactions)} subtitle="Awaiting processing" icon={<Clock size={18} />} accent="red" />
         <KpiCard title="Accepted Today" value={formatNumber(transactionSummary.acceptedToday)} subtitle={`${transactionSummary.refusedToday} refused`} change={3.1} changeLabel="vs yesterday" icon={<CheckCircle size={18} />} accent="teal" />
       </div>
@@ -57,8 +57,8 @@ export default function TransactionsPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `₦${formatCompact(v)}`} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
               <Area type="monotone" dataKey="deposits" name="Deposits" stroke={CHART_COLORS.green} fill="url(#depGrad)" strokeWidth={2} dot={false} />
               <Area type="monotone" dataKey="withdrawals" name="Withdrawals" stroke={CHART_COLORS.amber} fill="url(#withGrad)" strokeWidth={2} dot={false} />
             </AreaChart>
@@ -73,8 +73,8 @@ export default function TransactionsPage() {
             <BarChart data={transactionTrend.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} tickFormatter={(v) => v.slice(8)} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `₦${formatCompact(v)}`} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
               <Bar dataKey="net" name="Net Flow" fill={CHART_COLORS.teal} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -108,8 +108,8 @@ export default function TransactionsPage() {
                     </span>
                   </td>
                   <td className="py-3 pr-6 text-white/50 font-mono text-xs">{formatCompact(t.count)}</td>
-                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>₦{formatCompact(t.amount)}</td>
-                  <td className="py-3 text-white/50 font-mono text-xs">₦{formatCompact(Math.round(t.amount / t.count))}</td>
+                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>{ formatCompact(t.amount)}</td>
+                  <td className="py-3 text-white/50 font-mono text-xs">{ formatCompact(Math.round(t.amount / t.count))}</td>
                 </tr>
               ))}
             </tbody>

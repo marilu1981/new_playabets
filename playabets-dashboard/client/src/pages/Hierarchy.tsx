@@ -135,8 +135,8 @@ export default function HierarchyPage() {
                   <td className="py-2.5 pr-6 text-white/40 text-xs font-mono">#{a.agentId}</td>
                   <td className="py-2.5 pr-6 text-white/80 font-medium">{a.username}</td>
                   <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{formatNumber(a.directUsers)}</td>
-                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">₦{formatCompact(a.stake)}</td>
-                  <td className="py-2.5 font-mono text-sm font-semibold" style={{color: CHART_COLORS.gold }}>₦{formatCompact(a.commissions)}</td>
+                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{ formatCompact(a.stake)}</td>
+                  <td className="py-2.5 font-mono text-sm font-semibold" style={{color: CHART_COLORS.gold }}>{ formatCompact(a.commissions)}</td>
                 </tr>
               ))}
             </tbody>
