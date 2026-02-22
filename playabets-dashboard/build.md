@@ -13,7 +13,7 @@ This is the internal analytics dashboard for **Playa Bets**, an African sports b
 
 ## Local Development Setup
 
-> **Important:** The repo contains two separate projects. The dashboard lives in `frontend/dashboard-client/` — **not** in `frontend/`. Run all dashboard commands from `frontend/dashboard-client/`.
+> **Important:** The dashboard is a fully self-contained project at `playabets-dashboard/` in the repo root. Run all commands from that directory — **not** from `frontend/` or `frontend/dashboard-client/`.
 
 ### Prerequisites
 
@@ -26,7 +26,7 @@ npm install -g pnpm
 
 ```bash
 # 1. Navigate to the correct directory
-cd frontend/dashboard-client
+cd playabets-dashboard
 
 # 2. Install dependencies
 pnpm install
@@ -51,6 +51,7 @@ pnpm dev
 |---|---|
 | `uvicorn app:app` | This is for the **Python backend** in `src/` or `backend/` — a separate project unrelated to the dashboard |
 | `npm run dev` from `frontend/` | This runs the **old Vite project**, not the dashboard |
+| `pnpm dev` from `frontend/dashboard-client/` | Missing `package.json` — always run from `playabets-dashboard/` |
 | `npm install` | Use `pnpm install` instead — the lockfile is pnpm format |
 
 ---
