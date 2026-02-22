@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Hierarchy & Roles Page
  * DWH Views: view_Hierarchy, view_UserRoles
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import { Network, Users, UserCheck, TrendingUp } from "lucide-react";
 import { hierarchySummary, topAgentCommissions } from "@/lib/mockData";
@@ -25,8 +27,10 @@ const hierarchyLevels = [
 ];
 
 export default function HierarchyPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   return (
-    <DashboardLayout title="Hierarchy & Roles" subtitle="Agent network structure and role assignments">
+    <DashboardLayout title="Hierarchy & Roles" subtitle="Agent network structure and role assignments"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Agents" value={formatNumber(hierarchySummary.totalAgents)} subtitle="All levels" icon={<Network size={18} />} accent="gold" />
@@ -38,7 +42,7 @@ export default function HierarchyPage() {
       {/* Hierarchy tree */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Hierarchy Structure</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Hierarchy Structure</h3>
           <p className="text-xs text-white/40 mb-6">view_Hierarchy — role levels</p>
           <div className="space-y-3">
             {hierarchyLevels.map((level, i) => (
@@ -58,7 +62,7 @@ export default function HierarchyPage() {
                     <div className="text-xs text-white/40">{level.description}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold font-mono" style={{ fontFamily: "'Space Mono', monospace", color: level.color }}>
+                    <div className="text-lg font-bold font-mono" style={{color: level.color }}>
                       {formatCompact(level.count)}
                     </div>
                     <div className="text-xs text-white/30">accounts</div>
@@ -71,7 +75,7 @@ export default function HierarchyPage() {
 
         {/* Role permissions overview */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Role Permissions Matrix</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Role Permissions Matrix</h3>
           <p className="text-xs text-white/40 mb-4">view_UserRoles — access levels</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -114,7 +118,7 @@ export default function HierarchyPage() {
 
       {/* Top agents table */}
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Top Agents by Network Size</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">Top Agents by Network Size</h3>
         <p className="text-xs text-white/40 mb-4">view_Hierarchy — agents with most direct users</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -128,11 +132,11 @@ export default function HierarchyPage() {
             <tbody>
               {topAgentCommissions.map((a) => (
                 <tr key={a.agentId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-6 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>#{a.agentId}</td>
+                  <td className="py-2.5 pr-6 text-white/40 text-xs font-mono">#{a.agentId}</td>
                   <td className="py-2.5 pr-6 text-white/80 font-medium">{a.username}</td>
-                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatNumber(a.directUsers)}</td>
-                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>₦{formatCompact(a.stake)}</td>
-                  <td className="py-2.5 font-mono text-sm font-semibold" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>₦{formatCompact(a.commissions)}</td>
+                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{formatNumber(a.directUsers)}</td>
+                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">₦{formatCompact(a.stake)}</td>
+                  <td className="py-2.5 font-mono text-sm font-semibold" style={{color: CHART_COLORS.gold }}>₦{formatCompact(a.commissions)}</td>
                 </tr>
               ))}
             </tbody>

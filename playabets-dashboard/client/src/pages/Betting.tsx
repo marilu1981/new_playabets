@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Betting & Events Page
  * DWH Views: view_Betslips, view_Bets, view_EventProgram
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -29,10 +31,12 @@ const CHART_COLORS = {
 const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
 
 export default function BettingPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const margin = ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1);
 
   return (
-    <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program">
+    <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
@@ -45,7 +49,7 @@ export default function BettingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* By Status */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>By Status</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">By Status</h3>
           <p className="text-xs text-white/40 mb-4">view_Betslips — BetslipStatusId</p>
           <div className="space-y-2">
             {betslipsByStatus.map((s) => {
@@ -54,7 +58,7 @@ export default function BettingPage() {
                 <div key={s.status}>
                   <div className="flex justify-between text-xs mb-1">
                     <StatusBadge status={s.status} />
-                    <span className="text-white/60 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(s.count)}</span>
+                    <span className="text-white/60 font-mono">{formatCompact(s.count)}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CHART_COLORS.gold }} />
@@ -67,7 +71,7 @@ export default function BettingPage() {
 
         {/* By Type (Normal/Live/Mixed) */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>By Betslip Type</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">By Betslip Type</h3>
           <p className="text-xs text-white/40 mb-4">Normal / Live / Mixed</p>
           <ResponsiveContainer width="100%" height={150}>
             <PieChart>
@@ -84,7 +88,7 @@ export default function BettingPage() {
                   <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i] }} />
                   <span className="text-white/50">{t.type}</span>
                 </div>
-                <span className="text-white/70 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(t.count)}</span>
+                <span className="text-white/70 font-mono">{formatCompact(t.count)}</span>
               </div>
             ))}
           </div>
@@ -92,7 +96,7 @@ export default function BettingPage() {
 
         {/* By Bet Type (Single/Multiple) */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>By Bet Type</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">By Bet Type</h3>
           <p className="text-xs text-white/40 mb-4">Single / Multiple / Combined</p>
           <div className="space-y-3">
             {betsByType.map((b, i) => {
@@ -102,7 +106,7 @@ export default function BettingPage() {
                 <div key={b.betType}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-white/60">{b.betType}</span>
-                    <span className="text-white/80 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>
+                    <span className="text-white/80 font-mono">
                       {formatCompact(b.count)} ({pct}%)
                     </span>
                   </div>
@@ -120,7 +124,7 @@ export default function BettingPage() {
       {/* Top Sports */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Top Sports by Stake</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Top Sports by Stake</h3>
           <p className="text-xs text-white/40 mb-4">Total stake by sport</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topSports.slice(0, 7)} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 80 }}>
@@ -134,7 +138,7 @@ export default function BettingPage() {
         </div>
 
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Sport Revenue Table</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Sport Revenue Table</h3>
           <p className="text-xs text-white/40 mb-4">Bets, stake, and gross revenue per sport</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -149,9 +153,9 @@ export default function BettingPage() {
                 {topSports.map((s) => (
                   <tr key={s.sport} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                     <td className="py-2 pr-3 text-white/80 font-medium">{s.sport}</td>
-                    <td className="py-2 pr-3 text-white/50 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(s.bets)}</td>
-                    <td className="py-2 pr-3 text-white/50 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>₦{formatCompact(s.stake)}</td>
-                    <td className="py-2 pr-3 font-mono" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>₦{formatCompact(s.revenue)}</td>
+                    <td className="py-2 pr-3 text-white/50 font-mono">{formatCompact(s.bets)}</td>
+                    <td className="py-2 pr-3 text-white/50 font-mono">₦{formatCompact(s.stake)}</td>
+                    <td className="py-2 pr-3 font-mono" style={{color: CHART_COLORS.gold }}>₦{formatCompact(s.revenue)}</td>
                     <td className="py-2">
                       <span className="text-xs" style={{ color: CHART_COLORS.green }}>
                         {(s.revenue / s.stake * 100).toFixed(1)}%
@@ -167,7 +171,7 @@ export default function BettingPage() {
 
       {/* Event Program */}
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Event Program</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">Event Program</h3>
         <p className="text-xs text-white/40 mb-4">view_EventProgram — upcoming and live events</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -181,12 +185,12 @@ export default function BettingPage() {
             <tbody>
               {upcomingEvents.map((e) => (
                 <tr key={e.eventId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>#{e.eventId}</td>
+                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono">#{e.eventId}</td>
                   <td className="py-2.5 pr-4 text-white/60 text-xs">{e.sport}</td>
                   <td className="py-2.5 pr-4 text-white/80 font-medium">{e.event}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{e.startDate}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{e.startDate}</td>
                   <td className="py-2.5 pr-4"><StatusBadge status={e.status} dot /></td>
-                  <td className="py-2.5 text-right font-mono text-xs" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>{formatNumber(e.openBets)}</td>
+                  <td className="py-2.5 text-right font-mono text-xs" style={{color: CHART_COLORS.gold }}>{formatNumber(e.openBets)}</td>
                 </tr>
               ))}
             </tbody>

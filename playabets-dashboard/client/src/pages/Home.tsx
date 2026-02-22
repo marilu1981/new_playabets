@@ -54,8 +54,8 @@ const CARD_BG: React.CSSProperties = {
   background: "oklch(0.19 0.04 155)",
   border: "1px solid oklch(1 0 0 / 6%)",
 };
-const FONT_SERIF: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
-const FONT_MONO: React.CSSProperties  = { fontFamily: "'Space Mono', monospace" };
+const FONT_SERIF: React.CSSProperties = {};
+const FONT_MONO: React.CSSProperties  = {};
 
 const TT_STYLE: React.CSSProperties = {
   background: "oklch(0.22 0.04 155)",

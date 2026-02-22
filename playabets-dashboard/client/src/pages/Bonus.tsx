@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Bonus & Campaigns Page
  * DWH Views: view_BonusCampaigns, view_BonusBalances, view_Freebets
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import { Gift, Users, Percent, Ticket } from "lucide-react";
@@ -20,10 +22,12 @@ const CHART_COLORS = {
 };
 
 export default function BonusPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const freebetUsageRate = (bonusKPIs.freebetsUsed / bonusKPIs.freebetsIssued * 100).toFixed(1);
 
   return (
-    <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances">
+    <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Active Campaigns" value={bonusKPIs.activeCampaigns} subtitle="Running now" icon={<Gift size={18} />} accent="gold" />
@@ -35,7 +39,7 @@ export default function BonusPage() {
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Freebet Funnel</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Freebet Funnel</h3>
           <p className="text-xs text-white/40 mb-4">Issued → Used → Expired</p>
           <div className="space-y-4">
             {[
@@ -47,7 +51,7 @@ export default function BonusPage() {
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1.5">
                   <span className="text-white/60">{f.label}</span>
-                  <span className="font-mono" style={{ fontFamily: "'Space Mono', monospace", color: f.color }}>
+                  <span className="font-mono" style={{color: f.color }}>
                     {formatCompact(f.value)} ({f.pct.toFixed(1)}%)
                   </span>
                 </div>
@@ -61,7 +65,7 @@ export default function BonusPage() {
 
         {/* Campaign stats */}
         <div className="lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Campaign Performance</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Campaign Performance</h3>
           <p className="text-xs text-white/40 mb-4">view_BonusCampaigns — recent campaigns</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -75,15 +79,15 @@ export default function BonusPage() {
               <tbody>
                 {bonusCampaigns.map((c) => (
                   <tr key={c.campaignId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                    <td className="py-2.5 pr-4 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>#{c.campaignId}</td>
+                    <td className="py-2.5 pr-4 text-white/40 text-xs font-mono">#{c.campaignId}</td>
                     <td className="py-2.5 pr-4 text-white/80 font-medium text-sm max-w-[180px] truncate">{c.name}</td>
                     <td className="py-2.5 pr-4 text-white/50 text-xs">{c.bonusType}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={c.status} dot /></td>
-                    <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(c.usersEnrolled)}</td>
-                    <td className="py-2.5 pr-4 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>₦{formatCompact(c.totalPaid)}</td>
+                    <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(c.usersEnrolled)}</td>
+                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>₦{formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
                       <span className="text-xs font-mono font-semibold" style={{
-                        fontFamily: "'Space Mono', monospace",
+                       
                         color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,
                       }}>
                         {c.roi >= 0 ? "+" : ""}{c.roi.toFixed(1)}%
@@ -97,13 +101,6 @@ export default function BonusPage() {
         </div>
       </div>
 
-      {/* Info note */}
-      <div className="rounded-xl p-4" style={{ background: "oklch(0.72 0.14 85 / 8%)", border: "1px solid oklch(0.72 0.14 85 / 20%)" }}>
-        <p className="text-xs" style={{ color: "oklch(0.82 0.12 85)" }}>
-          <strong>DWH Note:</strong> Bonus data is sourced from <code>view_BonusCampaigns</code>, <code>view_BonusBalances</code>, and <code>view_Freebets</code> in the isbets_bi schema.
-          Campaign ROI is calculated as (Revenue from campaign users − Bonus cost) / Bonus cost × 100.
-        </p>
-      </div>
     </DashboardLayout>
   );
 }

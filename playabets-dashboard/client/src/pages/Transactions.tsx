@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Transactions Page
  * DWH Views: view_Transactions, view_TransactionTypes
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -24,8 +26,10 @@ const CHART_COLORS = {
 };
 
 export default function TransactionsPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   return (
-    <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows">
+    <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Deposits" value={`₦${formatCompact(transactionSummary.totalDeposits)}`} subtitle="All time" change={11.2} changeLabel="vs last month" icon={<ArrowUpCircle size={18} />} accent="green" />
@@ -37,7 +41,7 @@ export default function TransactionsPage() {
       {/* Transaction trend */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Deposits vs Withdrawals</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Deposits vs Withdrawals</h3>
           <p className="text-xs text-white/40 mb-4">Last 30 days daily flow</p>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={transactionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -63,7 +67,7 @@ export default function TransactionsPage() {
 
         {/* Net flow */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Net Cash Flow</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Net Cash Flow</h3>
           <p className="text-xs text-white/40 mb-4">Daily net (Deposits - Withdrawals)</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={transactionTrend.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -79,7 +83,7 @@ export default function TransactionsPage() {
 
       {/* Transaction by reason */}
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Transactions by Reason</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">Transactions by Reason</h3>
         <p className="text-xs text-white/40 mb-4">view_Transactions — TransactionReasonId breakdown</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -103,9 +107,9 @@ export default function TransactionsPage() {
                       {t.type}
                     </span>
                   </td>
-                  <td className="py-3 pr-6 text-white/50 font-mono text-xs" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(t.count)}</td>
-                  <td className="py-3 pr-6 font-mono text-xs" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>₦{formatCompact(t.amount)}</td>
-                  <td className="py-3 text-white/50 font-mono text-xs" style={{ fontFamily: "'Space Mono', monospace" }}>₦{formatCompact(Math.round(t.amount / t.count))}</td>
+                  <td className="py-3 pr-6 text-white/50 font-mono text-xs">{formatCompact(t.count)}</td>
+                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>₦{formatCompact(t.amount)}</td>
+                  <td className="py-3 text-white/50 font-mono text-xs">₦{formatCompact(Math.round(t.amount / t.count))}</td>
                 </tr>
               ))}
             </tbody>

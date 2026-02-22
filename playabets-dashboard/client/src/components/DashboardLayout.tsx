@@ -246,7 +246,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
             {title && (
               <h1
                 className="text-lg font-bold text-white leading-tight truncate"
-                style={{ fontFamily: "'Playfair Display', serif" }}
+               
               >
                 {title}
               </h1>

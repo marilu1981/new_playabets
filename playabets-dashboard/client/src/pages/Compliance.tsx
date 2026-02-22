@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Compliance & Audit Page
  * DWH Views: view_UsersSelfexclusions, view_ImportStatus, view_AuditLog
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import { ShieldCheck, AlertTriangle, UserX, Clock } from "lucide-react";
@@ -20,8 +22,10 @@ const CHART_COLORS = {
 };
 
 export default function CompliancePage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   return (
-    <DashboardLayout title="Compliance & Audit" subtitle="Responsible gaming, KYC, AML alerts, and import status">
+    <DashboardLayout title="Compliance & Audit" subtitle="Responsible gaming, KYC, AML alerts, and import status"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Active Self-Exclusions" value={complianceKPIs.selfExclusionsActive} subtitle="Responsible gaming" change={3.2} changeLabel="vs last month" icon={<UserX size={18} />} accent="red" />
@@ -34,7 +38,7 @@ export default function CompliancePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Self-exclusion by period */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Self-Exclusion by Period</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion by Period</h3>
           <p className="text-xs text-white/40 mb-4">view_UsersSelfexclusions — active exclusions</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
@@ -43,7 +47,7 @@ export default function CompliancePage() {
               { label: "Completed", value: selfExclusionSummary.completed, color: CHART_COLORS.green },
             ].map((s) => (
               <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.22 0.04 155)" }}>
-                <div className="text-xl font-bold mb-1" style={{ fontFamily: "'Space Mono', monospace", color: s.color }}>{s.value}</div>
+                <div className="text-xl font-bold mb-1" style={{color: s.color }}>{s.value}</div>
                 <div className="text-xs text-white/40">{s.label}</div>
               </div>
             ))}
@@ -55,7 +59,7 @@ export default function CompliancePage() {
                 <div className="flex-1 mx-3 h-1.5 rounded-full bg-white/5 overflow-hidden">
                   <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionSummary.total) * 100}%`, background: CHART_COLORS.red }} />
                 </div>
-                <span className="text-xs text-white/60 font-mono w-6 text-right" style={{ fontFamily: "'Space Mono', monospace" }}>{p.count}</span>
+                <span className="text-xs text-white/60 font-mono w-6 text-right">{p.count}</span>
               </div>
             ))}
           </div>
@@ -63,7 +67,7 @@ export default function CompliancePage() {
 
         {/* AML / Compliance flags */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Compliance Flags</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Compliance Flags</h3>
           <p className="text-xs text-white/40 mb-4">AML alerts and flagged transactions</p>
           <div className="space-y-3">
             {[
@@ -77,7 +81,7 @@ export default function CompliancePage() {
                   <div className="text-sm text-white/80 font-medium">{f.label}</div>
                   <div className="text-xs mt-0.5" style={{ color: f.color }}>Severity: {f.severity}</div>
                 </div>
-                <div className="text-xl font-bold font-mono" style={{ fontFamily: "'Space Mono', monospace", color: f.color }}>
+                <div className="text-xl font-bold font-mono" style={{color: f.color }}>
                   {formatNumber(f.value)}
                 </div>
               </div>
@@ -88,7 +92,7 @@ export default function CompliancePage() {
 
       {/* DWH Import Status */}
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>DWH Import Status</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">DWH Import Status</h3>
         <p className="text-xs text-white/40 mb-4">view_ImportStatus — ETL pipeline health</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -106,11 +110,11 @@ export default function CompliancePage() {
                   <td className="py-2.5 pr-4">
                     <StatusBadge status={s.status} dot />
                   </td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.lastRun.split(" ")[1]}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.duration}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.executions24h}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{s.lastRun.split(" ")[1]}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{s.duration}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{s.executions24h}</td>
                   <td className="py-2.5 text-xs font-mono font-semibold" style={{
-                    fontFamily: "'Space Mono', monospace",
+                   
                     color: s.successes24h === s.executions24h ? CHART_COLORS.green : CHART_COLORS.amber,
                   }}>
                     {s.successes24h}/{s.executions24h}
