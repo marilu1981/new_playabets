@@ -18,15 +18,79 @@ After extraction, run the KPI transforms:
 
 Usage:
   Connect to VPN first, then:
-    python run_small_extracts.py              # runs 1-5
-    python run_small_extracts.py --all        # runs 1-6 (includes betslips)
-    python run_small_extracts.py --transform  # runs 1-5 + KPI transforms
+    python run_small_extracts.py                  # runs 1-5
+    python run_small_extracts.py --all            # runs 1-6 (includes betslips)
+    python run_small_extracts.py --transform      # runs 1-5 + KPI transforms
+    python run_small_extracts.py --show-watermarks  # print current watermark values
+    python run_small_extracts.py --reset-watermarks # reset ALL watermarks to 90 days ago
 """
 from __future__ import annotations
 
+import os
+import sqlite3
 import sys
 import time
 import traceback
+from datetime import datetime, timedelta, UTC
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
+
+ALL_VIEWS = [
+    "Dwh_en.view_SportDirectCommissions",
+    "Dwh_en.view_SportNetworkCommissions",
+    "Dwh_en.view_CasinoDirectCommissions",
+    "Dwh_en.view_CasinoNetworkCommissions",
+    "Dwh_en.view_BonusCampaigns",
+    "Dwh_en.view_BonusFreebets",
+    "Dwh_en.view_BonusBonuses",
+    "Dwh_en.view_users",
+    "Dwh_en.view_Casino",
+    "Dwh_en.view_Transactions",
+    "Dwh_en.view_BetSlips",
+]
+
+
+def _days_ago(days: int) -> str:
+    return (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def show_watermarks():
+    """Print current watermark values for all known views."""
+    if not Path(WATERMARK_DB).exists():
+        print("watermarks.db not found — no extracts have run yet.")
+        return
+    conn = sqlite3.connect(WATERMARK_DB)
+    rows = conn.execute("SELECT view_name, last_value, updated_at FROM watermarks ORDER BY view_name").fetchall()
+    conn.close()
+    print(f"\n{'View':<45} {'Watermark':<26} {'Updated'}")
+    print("-" * 95)
+    for view_name, last_value, updated_at in rows:
+        print(f"{view_name:<45} {last_value:<26} {updated_at}")
+    print()
+
+
+def reset_watermarks(days: int = 90):
+    """Reset ALL watermarks to N days ago (default 90)."""
+    cutoff = _days_ago(days)
+    Path(WATERMARK_DB).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(WATERMARK_DB)
+    cur = conn.cursor()
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS watermarks "
+        "(view_name TEXT PRIMARY KEY, last_value TEXT NOT NULL, updated_at TEXT NOT NULL)"
+    )
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    for view in ALL_VIEWS:
+        cur.execute(
+            "INSERT INTO watermarks (view_name, last_value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(view_name) DO UPDATE SET last_value=excluded.last_value, updated_at=excluded.updated_at",
+            (view, cutoff, now),
+        )
+    conn.commit()
+    conn.close()
+    print(f"\n  ✓ All {len(ALL_VIEWS)} watermarks reset to {cutoff} ({days} days ago)\n")
 
 # ── Which modules to run ─────────────────────────────────────────────────────
 SMALL_EXTRACTS = [
@@ -68,6 +132,16 @@ def run_module(label: str, module_path: str) -> bool:
 
 
 def main():
+    # Utility commands — run and exit without connecting to DWH
+    if "--show-watermarks" in sys.argv:
+        show_watermarks()
+        return
+    if "--reset-watermarks" in sys.argv:
+        days = int(os.environ.get("INITIAL_LOAD_DAYS", "90"))
+        reset_watermarks(days)
+        show_watermarks()
+        return
+
     run_all    = "--all" in sys.argv
     run_transforms = "--transform" in sys.argv
 
