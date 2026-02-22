@@ -55,6 +55,17 @@ ALL_VIEWS = [
     "Dwh_en.view_casino",
     "Dwh_en.view_payments",
     "Dwh_en.view_betslips",
+    # Legacy mixed-case names from old code — reset these too so stale rows are cleared
+    "Dwh_en.view_BonusBonuses",
+    "Dwh_en.view_BonusCampaigns",
+    "Dwh_en.view_BonusFreebets",
+    "Dwh_en.view_Casino",
+    "Dwh_en.view_BetSlips",
+    "Dwh_en.view_Transactions",
+    "Dwh_en.view_SportDirectCommissions",
+    "Dwh_en.view_SportNetworkCommissions",
+    "Dwh_en.view_CasinoDirectCommissions",
+    "Dwh_en.view_CasinoNetworkCommissions",
 ]
 
 
