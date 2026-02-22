@@ -19,10 +19,11 @@ Usage examples:
   python run_small_extracts.py --all                    # run all including betslips
   python run_small_extracts.py --transform              # run all + KPI transforms
   python run_small_extracts.py users --transform        # run users + KPI transforms
-  python run_small_extracts.py --show-watermarks              # print current watermarks
-  python run_small_extracts.py --reset-watermarks             # reset ALL to 90 days ago
-  python run_small_extracts.py --reset-watermarks transactions # reset only transactions
-  python run_small_extracts.py --reset-watermarks casino       # reset only casino
+  python run_small_extracts.py --show-watermarks               # print current watermarks
+  python run_small_extracts.py --set-watermarks-today          # set stale rows to today
+  python run_small_extracts.py --reset-watermarks              # reset ALL to 90 days ago
+  python run_small_extracts.py --reset-watermarks transactions  # reset only transactions
+  python run_small_extracts.py --reset-watermarks casino        # reset only casino
 
 Environment variables:
   DWH_USER            — SQL Server login (required for extract runs)
@@ -164,6 +165,27 @@ def reset_module_watermarks(module: str, days: int = 90):
     print()
 
 
+def set_watermarks_today():
+    """Set all stale (pre-2026) watermarks to today, leaving recent ones untouched."""
+    if not Path(WATERMARK_DB).exists():
+        print("watermarks.db not found.")
+        return
+    today = datetime.now(UTC).strftime("%Y-%m-%d 00:00:00")
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    conn = sqlite3.connect(WATERMARK_DB)
+    cur = conn.cursor()
+    # Only update rows where the watermark is before 2026-01-01
+    cur.execute(
+        "UPDATE watermarks SET last_value=?, updated_at=? WHERE last_value < '2026-01-01'",
+        (today, now),
+    )
+    updated = cur.rowcount
+    conn.commit()
+    conn.close()
+    print(f"\n  ✓ {updated} stale watermark(s) set to {today}")
+    print("  (rows already at 2026+ were left unchanged)\n")
+
+
 def reset_watermarks(days: int = 90):
     """Reset ALL watermarks to N days ago (default 90)."""
     cutoff = _days_ago(days)
@@ -223,6 +245,10 @@ def parse_args():
 
     # Utility commands — no DWH connection needed
     if "--show-watermarks" in args:
+        show_watermarks()
+        sys.exit(0)
+    if "--set-watermarks-today" in args:
+        set_watermarks_today()
         show_watermarks()
         sys.exit(0)
     if "--reset-watermarks" in args:
