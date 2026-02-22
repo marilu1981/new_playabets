@@ -19,8 +19,10 @@ Usage examples:
   python run_small_extracts.py --all                    # run all including betslips
   python run_small_extracts.py --transform              # run all + KPI transforms
   python run_small_extracts.py users --transform        # run users + KPI transforms
-  python run_small_extracts.py --show-watermarks        # print current watermarks
-  python run_small_extracts.py --reset-watermarks       # reset all to 90 days ago
+  python run_small_extracts.py --show-watermarks              # print current watermarks
+  python run_small_extracts.py --reset-watermarks             # reset ALL to 90 days ago
+  python run_small_extracts.py --reset-watermarks transactions # reset only transactions
+  python run_small_extracts.py --reset-watermarks casino       # reset only casino
 
 Environment variables:
   DWH_USER            — SQL Server login (required for extract runs)
@@ -57,6 +59,27 @@ TRANSFORM_MODULES: dict[str, str] = {
 
 # Default run order when no specific modules are given (excludes betslips)
 DEFAULT_ORDER = ["commissions", "bonus", "users", "casino", "transactions"]
+
+# Maps each module name to the view names it writes watermarks for
+MODULE_VIEWS: dict[str, list[str]] = {
+    "commissions":  [
+        "Dwh_en.view_sportdirectcommissions",
+        "Dwh_en.view_sportnetworkcommissions",
+        "Dwh_en.view_casinodirectcommissions",
+        "Dwh_en.view_casinonetworkcommissions",
+        "Dwh_en.view_pokerdirectcommissions",
+        "Dwh_en.view_pokernetworkcommissions",
+    ],
+    "bonus":        [
+        "Dwh_en.view_bonusbonuses",
+        "Dwh_en.view_bonuscampaigns",
+        "Dwh_en.view_bonusfreebets",
+    ],
+    "users":        ["Dwh_en.view_users"],
+    "casino":       ["Dwh_en.view_casino"],
+    "transactions": ["Dwh_en.view_transactions"],
+    "betslips":     ["Dwh_en.view_betslips"],
+}
 
 # ── Watermark management ──────────────────────────────────────────────────────
 ALL_VIEWS = [
@@ -109,6 +132,35 @@ def show_watermarks():
     print("-" * 95)
     for view_name, last_value, updated_at in rows:
         print(f"{view_name:<45} {last_value:<26} {updated_at}")
+    print()
+
+
+def reset_module_watermarks(module: str, days: int = 90):
+    """Reset watermarks for a single module's views only."""
+    if module not in MODULE_VIEWS:
+        print(f"Unknown module '{module}'. Available: {list(MODULE_VIEWS.keys())}")
+        sys.exit(1)
+    views = MODULE_VIEWS[module]
+    cutoff = _days_ago(days)
+    Path(WATERMARK_DB).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(WATERMARK_DB)
+    cur = conn.cursor()
+    cur.execute(
+        "CREATE TABLE IF NOT EXISTS watermarks "
+        "(view_name TEXT PRIMARY KEY, last_value TEXT NOT NULL, updated_at TEXT NOT NULL)"
+    )
+    now = datetime.now(UTC).isoformat(timespec="seconds")
+    for view in views:
+        cur.execute(
+            "INSERT INTO watermarks (view_name, last_value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(view_name) DO UPDATE SET last_value=excluded.last_value, updated_at=excluded.updated_at",
+            (view, cutoff, now),
+        )
+    conn.commit()
+    conn.close()
+    print(f"\n  ✓ {module} watermark(s) reset to {cutoff} ({days} days ago)")
+    for v in views:
+        print(f"    {v}")
     print()
 
 
@@ -175,7 +227,13 @@ def parse_args():
         sys.exit(0)
     if "--reset-watermarks" in args:
         days = int(os.environ.get("INITIAL_LOAD_DAYS", "90"))
-        reset_watermarks(days)
+        idx = args.index("--reset-watermarks")
+        # Check if a module name follows the flag
+        if idx + 1 < len(args) and not args[idx + 1].startswith("--"):
+            module = args[idx + 1]
+            reset_module_watermarks(module, days)
+        else:
+            reset_watermarks(days)
         show_watermarks()
         sys.exit(0)
 
