@@ -61,10 +61,35 @@ def build_engine():
 
 # ── Watermark helpers ─────────────────────────────────────────────────────────
 
+def _migrate_watermarks_schema(cur, conn) -> None:
+    """
+    Migrate the watermarks table from the legacy 4-column schema
+    (view_name, cursor_column, last_value, updated_at) to the current
+    3-column schema (view_name, last_value, updated_at).
+    Runs silently if the table already has the correct schema.
+    """
+    cur.execute("PRAGMA table_info(watermarks)")
+    columns = {row[1] for row in cur.fetchall()}
+    if "cursor_column" in columns:
+        # Rename old table, create new one, copy data, drop old
+        cur.execute("ALTER TABLE watermarks RENAME TO watermarks_old")
+        cur.execute(
+            "CREATE TABLE watermarks "
+            "(view_name TEXT PRIMARY KEY, last_value TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+        cur.execute(
+            "INSERT INTO watermarks (view_name, last_value, updated_at) "
+            "SELECT view_name, last_value, updated_at FROM watermarks_old"
+        )
+        cur.execute("DROP TABLE watermarks_old")
+        conn.commit()
+
+
 def get_watermark(watermark_db, view_name: str, default: str = "1970-01-01 00:00:00") -> str:
     """
     Return the current high-watermark for `view_name`.
     Creates the watermarks table and inserts a default row if needed.
+    Automatically migrates the legacy 4-column schema if present.
 
     Note: watermark_db is cast to str explicitly because sqlite3.connect()
     on Windows does not always accept pathlib.Path objects reliably.
@@ -75,12 +100,15 @@ def get_watermark(watermark_db, view_name: str, default: str = "1970-01-01 00:00
 
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
-        # Ensure table exists
+        # Ensure table exists with current schema
         cur.execute(
             "CREATE TABLE IF NOT EXISTS watermarks "
             "(view_name TEXT PRIMARY KEY, last_value TEXT NOT NULL, updated_at TEXT NOT NULL)"
         )
         conn.commit()
+
+        # Migrate legacy schema if needed (adds cursor_column removal)
+        _migrate_watermarks_schema(cur, conn)
 
         # Check if the row already exists
         cur.execute("SELECT last_value FROM watermarks WHERE view_name = ?", (view_name,))
