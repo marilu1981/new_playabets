@@ -65,32 +65,43 @@ def get_watermark(watermark_db, view_name: str, default: str = "1970-01-01 00:00
     """
     Return the current high-watermark for `view_name`.
     Creates the watermarks table and inserts a default row if needed.
+
+    Note: watermark_db is cast to str explicitly because sqlite3.connect()
+    on Windows does not always accept pathlib.Path objects reliably.
     """
-    watermark_db.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(watermark_db) as conn:
+    import pathlib
+    db_path = str(pathlib.Path(watermark_db).resolve())
+    pathlib.Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+
+    with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
+        # Ensure table exists
         cur.execute(
             "CREATE TABLE IF NOT EXISTS watermarks "
             "(view_name TEXT PRIMARY KEY, last_value TEXT NOT NULL, updated_at TEXT NOT NULL)"
         )
+        conn.commit()
+
+        # Check if the row already exists
+        cur.execute("SELECT last_value FROM watermarks WHERE view_name = ?", (view_name,))
+        row = cur.fetchone()
+        if row is not None:
+            return row[0]
+
+        # Row does not exist — insert the default
         cur.execute(
-            "INSERT OR IGNORE INTO watermarks (view_name, last_value, updated_at) VALUES (?, ?, ?)",
+            "INSERT INTO watermarks (view_name, last_value, updated_at) VALUES (?, ?, ?)",
             (view_name, default, datetime.now(UTC).isoformat(timespec="seconds")),
         )
         conn.commit()
-        cur.execute("SELECT last_value FROM watermarks WHERE view_name = ?", (view_name,))
-        row = cur.fetchone()
-        if row is None:
-            raise RuntimeError(
-                f"Watermark row for '{view_name}' not found even after INSERT OR IGNORE. "
-                "Check that the watermarks.db path is correct."
-            )
-        return row[0]
+        return default
 
 
 def set_watermark(watermark_db, view_name: str, value: str) -> None:
     """Update the high-watermark for `view_name`."""
-    with sqlite3.connect(watermark_db) as conn:
+    import pathlib
+    db_path = str(pathlib.Path(watermark_db).resolve())
+    with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
         cur.execute(
             "UPDATE watermarks SET last_value = ?, updated_at = ? WHERE view_name = ?",
