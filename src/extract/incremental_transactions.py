@@ -1,7 +1,15 @@
 """
 incremental_transactions.py
 ----------------------------
-Pulls new/updated rows from Dwh_en.view_Transactions incrementally via DateVersion.
+Pulls new/updated rows from Dwh_en.view_transactions incrementally via DateVersion.
+
+View columns (from DWH Technical Documentation v19):
+  TransactionID, UserID, SubjectID, ReasonID,
+  TransactionManagementStatusID, TransactionManagementStatus,
+  Amount, Date, BalanceAtLastTransaction,
+  TransactionAmountTypeID, TransactionAmountType,
+  CurrencyID, CurrencyExchangeID, Description, Notes,
+  ManagerID, ManagerUsername, DateVersion
 
 Run from the project root:
     python -m src.extract.incremental_transactions
@@ -19,13 +27,16 @@ from sqlalchemy import text
 
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-VIEW_NAME     = "Dwh_en.view_payments"
+VIEW_NAME     = "Dwh_en.view_transactions"
 CURSOR_COLUMN = "DateVersion"
 
 COLUMNS = [
-    "TransactionID", "UserID", "TransactionAmountTypeID", "TransactionAmountType",
-    "TransactionStatusID", "TransactionStatus", "Amount", "CurrencyID",
-    "CurrencyExchangeID", "Description", "DateVersion", "DetailDateVersion",
+    "TransactionID", "UserID", "SubjectID", "ReasonID",
+    "TransactionManagementStatusID", "TransactionManagementStatus",
+    "Amount", "Date", "BalanceAtLastTransaction",
+    "TransactionAmountTypeID", "TransactionAmountType",
+    "CurrencyID", "CurrencyExchangeID", "Description", "Notes",
+    "ManagerID", "ManagerUsername", "DateVersion",
 ]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -39,11 +50,12 @@ def main() -> None:
     print(f"[transactions] Current watermark: {last_value}")
 
     cols_sql = ", ".join(COLUMNS)
-    query = text(f"""
-        SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql}
-        FROM {VIEW_NAME}
-        WHERE {CURSOR_COLUMN} > :last_value
-    """)
+    query = text(
+        f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
+        f"FROM {VIEW_NAME} "
+        f"WHERE {CURSOR_COLUMN} > :last_value "
+        f"ORDER BY {CURSOR_COLUMN}"
+    )
 
     engine = build_engine()
     with engine.connect() as conn:
@@ -58,7 +70,6 @@ def main() -> None:
     out_file = OUT_DIR / f"transactions_increment_{ts}.parquet"
     df.to_parquet(out_file, index=False)
     print(f"[transactions] Saved to {out_file}")
-
     set_watermark(WATERMARK_DB, VIEW_NAME, str(df["__cursor__"].max()))
     print(f"[transactions] Updated watermark to: {df['__cursor__'].max()}")
 
