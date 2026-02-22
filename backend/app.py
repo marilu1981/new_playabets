@@ -98,17 +98,23 @@ def load_daily_df() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Playa Bets Local API", version="0.2")
 
+# ---------------------------------------------------------------------------
+# CORS — only used when the frontend is NOT behind the same-origin reverse proxy.
+# In production (Azure Static Web Apps + Container Apps), the reverse proxy
+# handles routing so CORS is never triggered. This config is for local dev only.
+# ---------------------------------------------------------------------------
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",   # Vite dev server
+    "http://127.0.0.1:3000",
+    # Add production domain here when deploying, e.g.:
+    # "https://dashboard.playabets.com",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8080",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=False,          # No cookies — we use Authorization header
+    allow_methods=["GET", "OPTIONS"],  # Read-only API
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 
