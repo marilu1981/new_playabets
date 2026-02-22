@@ -1,28 +1,31 @@
 """
 run_small_extracts.py
 ----------------------
-Convenience script to run the smallest/fastest extracts first so you can
-get real data into the dashboard quickly.
+Run one, several, or all extract modules.
 
-Run order (smallest → largest):
-  1. Commissions   — 4 full-refresh views, typically hundreds of rows
-  2. Bonus         — Campaigns + Freebets (full-refresh) + BonusBonuses (incremental)
-  3. Users         — incremental via DateVersion
-  4. Casino        — incremental via InsertDate
-  5. Transactions  — incremental via DateVersion (can be large on first run)
-  6. Betslips      — largest, run separately when ready
+Available modules:
+  commissions   — 4 commission views (full-refresh)
+  bonus         — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
+  users         — view_users (incremental via DateVersion)
+  casino        — view_casino (incremental via InsertDate)
+  transactions  — view_bonustransactions (incremental via DateVersion)
+  betslips      — view_betslips (incremental via DateVersion, LARGE)
 
-After extraction, run the KPI transforms:
-  python -m src.kpis.build_daily_kpis
-  python -m src.kpis.build_domain_kpis
+Usage examples:
+  python run_small_extracts.py                          # runs all except betslips
+  python run_small_extracts.py users                    # run only users
+  python run_small_extracts.py bonus casino             # run bonus then casino
+  python run_small_extracts.py users casino betslips    # run 3 specific modules
+  python run_small_extracts.py --all                    # run all including betslips
+  python run_small_extracts.py --transform              # run all + KPI transforms
+  python run_small_extracts.py users --transform        # run users + KPI transforms
+  python run_small_extracts.py --show-watermarks        # print current watermarks
+  python run_small_extracts.py --reset-watermarks       # reset all to 90 days ago
 
-Usage:
-  Connect to VPN first, then:
-    python run_small_extracts.py                  # runs 1-5
-    python run_small_extracts.py --all            # runs 1-6 (includes betslips)
-    python run_small_extracts.py --transform      # runs 1-5 + KPI transforms
-    python run_small_extracts.py --show-watermarks  # print current watermark values
-    python run_small_extracts.py --reset-watermarks # reset ALL watermarks to 90 days ago
+Environment variables:
+  DWH_USER            — SQL Server login (required for extract runs)
+  DWH_PASS            — SQL Server password (required for extract runs)
+  INITIAL_LOAD_DAYS   — Days to look back on first run (default: 90)
 """
 from __future__ import annotations
 
@@ -37,6 +40,25 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
 
+# ── Module registry ───────────────────────────────────────────────────────────
+MODULES: dict[str, str] = {
+    "commissions":  "src.extract.incremental_commissions",
+    "bonus":        "src.extract.incremental_bonus",
+    "users":        "src.extract.incremental_users",
+    "casino":       "src.extract.incremental_casino",
+    "transactions": "src.extract.incremental_transactions",
+    "betslips":     "src.extract.incremental_betslips",
+}
+
+TRANSFORM_MODULES: dict[str, str] = {
+    "daily_kpis":  "src.kpis.build_daily_kpis",
+    "domain_kpis": "src.kpis.build_domain_kpis",
+}
+
+# Default run order when no specific modules are given (excludes betslips)
+DEFAULT_ORDER = ["commissions", "bonus", "users", "casino", "transactions"]
+
+# ── Watermark management ──────────────────────────────────────────────────────
 ALL_VIEWS = [
     # Commissions
     "Dwh_en.view_sportdirectcommissions",
@@ -55,7 +77,7 @@ ALL_VIEWS = [
     "Dwh_en.view_casino",
     "Dwh_en.view_payments",
     "Dwh_en.view_betslips",
-    # Legacy mixed-case names from old code — reset these too so stale rows are cleared
+    # Legacy mixed-case names from old code — reset these too
     "Dwh_en.view_BonusBonuses",
     "Dwh_en.view_BonusCampaigns",
     "Dwh_en.view_BonusFreebets",
@@ -79,7 +101,9 @@ def show_watermarks():
         print("watermarks.db not found — no extracts have run yet.")
         return
     conn = sqlite3.connect(WATERMARK_DB)
-    rows = conn.execute("SELECT view_name, last_value, updated_at FROM watermarks ORDER BY view_name").fetchall()
+    rows = conn.execute(
+        "SELECT view_name, last_value, updated_at FROM watermarks ORDER BY view_name"
+    ).fetchall()
     conn.close()
     print(f"\n{'View':<45} {'Watermark':<26} {'Updated'}")
     print("-" * 95)
@@ -109,25 +133,8 @@ def reset_watermarks(days: int = 90):
     conn.close()
     print(f"\n  ✓ All {len(ALL_VIEWS)} watermarks reset to {cutoff} ({days} days ago)\n")
 
-# ── Which modules to run ─────────────────────────────────────────────────────
-SMALL_EXTRACTS = [
-    ("commissions", "src.extract.incremental_commissions"),
-    ("bonus",       "src.extract.incremental_bonus"),
-    ("users",       "src.extract.incremental_users"),
-    ("casino",      "src.extract.incremental_casino"),
-    ("transactions","src.extract.incremental_transactions"),
-]
 
-LARGE_EXTRACTS = [
-    ("betslips",    "src.extract.incremental_betslips"),
-]
-
-TRANSFORM_MODULES = [
-    ("daily_kpis",   "src.kpis.build_daily_kpis"),
-    ("domain_kpis",  "src.kpis.build_domain_kpis"),
-]
-
-
+# ── Module runner ─────────────────────────────────────────────────────────────
 def run_module(label: str, module_path: str) -> bool:
     """Import and run a module's main() function. Returns True on success."""
     print(f"\n{'='*60}")
@@ -148,31 +155,65 @@ def run_module(label: str, module_path: str) -> bool:
         return False
 
 
-def main():
-    # Utility commands — run and exit without connecting to DWH
-    if "--show-watermarks" in sys.argv:
+# ── Argument parsing ──────────────────────────────────────────────────────────
+def parse_args():
+    """
+    Returns (modules_to_run: list[str], run_transforms: bool)
+
+    Logic:
+    - If --show-watermarks or --reset-watermarks: handle and exit
+    - Positional args that match module names → run those specific modules
+    - --all → run all modules including betslips
+    - No positional args → run DEFAULT_ORDER (all except betslips)
+    - --transform → append transform modules to the run list
+    """
+    args = sys.argv[1:]
+
+    # Utility commands — no DWH connection needed
+    if "--show-watermarks" in args:
         show_watermarks()
-        return
-    if "--reset-watermarks" in sys.argv:
+        sys.exit(0)
+    if "--reset-watermarks" in args:
         days = int(os.environ.get("INITIAL_LOAD_DAYS", "90"))
         reset_watermarks(days)
         show_watermarks()
-        return
+        sys.exit(0)
 
-    run_all    = "--all" in sys.argv
-    run_transforms = "--transform" in sys.argv
+    run_transforms = "--transform" in args
+    run_all = "--all" in args
 
-    modules = SMALL_EXTRACTS.copy()
+    # Collect positional module names (anything that matches a known module)
+    flags = {"--all", "--transform"}
+    requested = [a for a in args if a not in flags]
+    unknown = [a for a in requested if a not in MODULES]
+    if unknown:
+        print(f"\nUnknown module(s): {unknown}")
+        print(f"Available: {list(MODULES.keys())}")
+        sys.exit(1)
+
     if run_all:
-        modules += LARGE_EXTRACTS
+        modules = list(MODULES.keys())
+    elif requested:
+        modules = requested
+    else:
+        modules = DEFAULT_ORDER
+
+    return modules, run_transforms
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    modules_to_run, run_transforms = parse_args()
+
+    run_list = [(name, MODULES[name]) for name in modules_to_run]
     if run_transforms:
-        modules += TRANSFORM_MODULES
+        run_list += list(TRANSFORM_MODULES.items())
 
     print(f"\nPlaya Bets — Extract Pipeline")
-    print(f"Running {len(modules)} module(s): {[m[0] for m in modules]}\n")
+    print(f"Running {len(run_list)} module(s): {[m[0] for m in run_list]}\n")
 
     results = {}
-    for label, path in modules:
+    for label, path in run_list:
         results[label] = run_module(label, path)
 
     # ── Summary ───────────────────────────────────────────────────────────────
@@ -190,11 +231,8 @@ def main():
     else:
         print(f"\n  All {len(results)} module(s) completed successfully.")
         if not run_transforms:
-            print("\n  Next step — run KPI transforms:")
+            print("\n  Tip — run KPI transforms when ready:")
             print("    python run_small_extracts.py --transform")
-            print("  Or run transforms manually:")
-            print("    python -m src.kpis.build_daily_kpis")
-            print("    python -m src.kpis.build_domain_kpis")
 
 
 if __name__ == "__main__":
