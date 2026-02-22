@@ -1,3 +1,4 @@
+import { useState } from "react";
 /**
  * PLAYA BETS — Casino & Games Page
  * DWH Views: view_CasinoBets, view_CasinoGames, view_VirtualGames
@@ -5,6 +6,7 @@
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -25,8 +27,10 @@ const CHART_COLORS = {
 const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.amber, CHART_COLORS.red, "oklch(0.60 0.12 270)"];
 
 export default function CasinoPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   return (
-    <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue">
+    <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Casino Stake" value={`₦${formatCompact(casinoKPIs.totalStake)}`} subtitle="All providers" change={18.4} changeLabel="vs last month" icon={<DollarSign size={18} />} accent="gold" />
@@ -39,7 +43,7 @@ export default function CasinoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Provider bar chart */}
         <div className="lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Revenue by Provider</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
           <p className="text-xs text-white/40 mb-4">Gross profit per casino provider</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={casinoProviders} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
@@ -54,7 +58,7 @@ export default function CasinoPage() {
 
         {/* Provider share pie */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Stake Share</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
           <p className="text-xs text-white/40 mb-4">By provider</p>
           <ResponsiveContainer width="100%" height={150}>
             <PieChart>
@@ -71,7 +75,7 @@ export default function CasinoPage() {
                   <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                   <span className="text-white/50 truncate max-w-[100px]">{p.provider}</span>
                 </div>
-                <span className="text-white/60 font-mono text-xs" style={{ fontFamily: "'Space Mono', monospace" }}>
+                <span className="text-white/60 font-mono text-xs">
                   {(p.stake / casinoKPIs.totalStake * 100).toFixed(0)}%
                 </span>
               </div>
@@ -82,7 +86,7 @@ export default function CasinoPage() {
 
       {/* Provider table */}
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Provider Detail</h3>
+        <h3 className="text-sm font-semibold text-white mb-1">Provider Detail</h3>
         <p className="text-xs text-white/40 mb-4">view_CasinoBets — all providers</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -98,10 +102,10 @@ export default function CasinoPage() {
                 <tr key={p.provider} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                   <td className="py-2.5 pr-4 text-white/80 font-medium">{p.provider}</td>
                   <td className="py-2.5 pr-4 text-white/50 text-xs">{p.casinoType}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{formatCompact(p.bets)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>₦{formatCompact(p.stake)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>₦{formatCompact(p.winnings)}</td>
-                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{ fontFamily: "'Space Mono', monospace", color: CHART_COLORS.gold }}>₦{formatCompact(p.profit)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(p.bets)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">₦{formatCompact(p.stake)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">₦{formatCompact(p.winnings)}</td>
+                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>₦{formatCompact(p.profit)}</td>
                   <td className="py-2.5 text-xs font-semibold" style={{ color: CHART_COLORS.green }}>
                     {(p.profit / p.stake * 100).toFixed(1)}%
                   </td>

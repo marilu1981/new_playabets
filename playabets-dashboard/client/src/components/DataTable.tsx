@@ -73,7 +73,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                       col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
                       col.mono && "font-mono text-xs"
                     )}
-                    style={col.mono ? { fontFamily: "'Space Mono', monospace" } : {}}
+                    style={{}}
                   >
                     {col.render
                       ? col.render(row)

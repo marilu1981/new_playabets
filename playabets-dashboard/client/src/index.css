@@ -2,7 +2,7 @@
  * PLAYA BETS ANALYTICS DASHBOARD — "Savanna Gold" Design System
  * Design Movement: Premium African Sports Analytics
  * Color Philosophy: Deep forest green (#1A3A2A) + warm gold (#D4A017) + off-white (#F7F3EE)
- * Typography: Playfair Display (headers) + DM Sans (body/nav) + Space Mono (data values)
+ * Typography: DM Sans throughout — consistent, clean, highly readable at all sizes
  * Layout: Fixed 240px sidebar + main content area with responsive grid
  */
 
@@ -116,11 +116,15 @@
     @apply bg-background text-foreground;
     font-family: 'DM Sans', sans-serif;
   }
-  h1, h2, h3 {
-    font-family: 'Playfair Display', serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
   .font-data {
-    font-family: 'Space Mono', monospace;
+    font-family: 'DM Sans', sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -215,7 +219,7 @@
 
   /* Data value styling */
   .data-value {
-    font-family: 'Space Mono', monospace;
+
     font-size: 0.875rem;
   }
 

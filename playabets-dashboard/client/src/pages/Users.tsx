@@ -7,9 +7,9 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
+import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line,
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
@@ -17,6 +17,7 @@ import {
   recentSessions, selfExclusionSummary,
 } from "@/lib/mockData";
 import { formatNumber, formatCompact } from "@/lib/formatters";
+import { useState } from "react";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -26,8 +27,14 @@ const CHART_COLORS = {
 };
 
 export default function UsersPage() {
+  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+
   return (
-    <DashboardLayout title="Users & Players" subtitle="Player lifecycle, sessions, and responsible gaming">
+    <DashboardLayout
+      title="Users & Players"
+      subtitle="Player lifecycle, sessions, and responsible gaming"
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
+    >
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Users" value={formatCompact(overviewKPIs.totalUsers)} subtitle="All time registrations" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" />
@@ -40,7 +47,7 @@ export default function UsersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Registrations trend */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>User Registrations</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">User Registrations</h3>
           <p className="text-xs text-white/40 mb-4">Last 12 months — new vs churned</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={userRegistrations} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -56,7 +63,7 @@ export default function UsersPage() {
 
         {/* Currency breakdown */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Users by Currency</h3>
+          <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
           <p className="text-xs text-white/40 mb-4">African market distribution</p>
           <div className="space-y-3">
             {usersByCurrency.map((c, i) => {
@@ -66,7 +73,7 @@ export default function UsersPage() {
                 <div key={c.currency}>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-white/60">{c.currency}</span>
-                    <span className="text-white/80 font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>
+                    <span className="text-white/80 font-medium">
                       {formatNumber(c.users)} ({pct}%)
                     </span>
                   </div>
@@ -84,7 +91,7 @@ export default function UsersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* User status breakdown */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>User Status Breakdown</h3>
+          <h3 className="text-sm font-semibold text-white mb-4">User Status Breakdown</h3>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
               const pct = (u.count / overviewKPIs.totalUsers * 100).toFixed(1);
@@ -100,7 +107,7 @@ export default function UsersPage() {
                       }}
                     />
                   </div>
-                  <span className="text-xs text-white/60 font-mono w-16 text-right" style={{ fontFamily: "'Space Mono', monospace" }}>
+                  <span className="text-xs text-white/60 font-medium w-16 text-right">
                     {formatNumber(u.count)}
                   </span>
                 </div>
@@ -111,8 +118,8 @@ export default function UsersPage() {
 
         {/* Self-exclusion breakdown */}
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Self-Exclusion Summary</h3>
-          <p className="text-xs text-white/40 mb-4">Responsible gaming — view_UsersSelfexclusions</p>
+          <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
+          <p className="text-xs text-white/40 mb-4">Responsible gaming overview</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },
@@ -120,7 +127,7 @@ export default function UsersPage() {
               { label: "Completed", value: selfExclusionSummary.completed, color: CHART_COLORS.green },
             ].map((s) => (
               <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.22 0.04 155)" }}>
-                <div className="text-xl font-bold mb-1" style={{ fontFamily: "'Space Mono', monospace", color: s.color }}>{s.value}</div>
+                <div className="text-xl font-bold mb-1" style={{ color: s.color }}>{s.value}</div>
                 <div className="text-xs text-white/40">{s.label}</div>
               </div>
             ))}
@@ -133,7 +140,7 @@ export default function UsersPage() {
                   <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionSummary.total) * 100}%`, background: CHART_COLORS.red }} />
                   </div>
-                  <span className="text-white/60 w-6 text-right font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{p.count}</span>
+                  <span className="text-white/60 w-6 text-right font-medium">{p.count}</span>
                 </div>
               </div>
             ))}
@@ -145,8 +152,7 @@ export default function UsersPage() {
       <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
         <div className="flex items-center gap-2 mb-4">
           <Clock size={16} style={{ color: "oklch(0.72 0.14 85)" }} />
-          <h3 className="text-sm font-semibold text-white" style={{ fontFamily: "'Playfair Display', serif" }}>Recent Sessions</h3>
-          <span className="text-xs text-white/30">— view_UserSessions</span>
+          <h3 className="text-sm font-semibold text-white">Recent Sessions</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -160,11 +166,11 @@ export default function UsersPage() {
             <tbody>
               {recentSessions.map((s) => (
                 <tr key={s.sessionId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>#{s.sessionId}</td>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.userId}</td>
+                  <td className="py-2.5 pr-4 text-white/40 text-xs font-medium">#{s.sessionId}</td>
+                  <td className="py-2.5 pr-4 text-white/40 text-xs font-medium">{s.userId}</td>
                   <td className="py-2.5 pr-4 text-white/80 text-sm">{s.username}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.loginDate.split(" ")[1]}</td>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono" style={{ fontFamily: "'Space Mono', monospace" }}>{s.ip}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs">{s.loginDate.split(" ")[1]}</td>
+                  <td className="py-2.5 pr-4 text-white/40 text-xs">{s.ip}</td>
                   <td className="py-2.5 pr-4 text-white/60 text-xs">{s.app}</td>
                   <td className="py-2.5"><StatusBadge status={s.state} dot /></td>
                 </tr>

@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS — KPI Card Component
- * Savanna Gold design: dark card with gold top accent, Space Mono data values
+ * * Savanna Gold design: dark card with gold top accent, DM Sans throughout
  */
 
 import { cn } from "@/lib/utils";
@@ -62,7 +62,7 @@ export default function KpiCard({
           </div>
           <div
             className="text-2xl font-bold text-white leading-none mb-1"
-            style={{ fontFamily: "'Space Mono', monospace" }}
+           
           >
             {value}
           </div>
