@@ -18,9 +18,9 @@ from sqlalchemy import text
 
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-BONUSES_VIEW   = "Dwh_en.view_BonusBonuses"
-CAMPAIGNS_VIEW = "Dwh_en.view_BonusCampaigns"
-FREEBETS_VIEW  = "Dwh_en.view_BonusFreebets"
+BONUSES_VIEW   = "Dwh_en.view_bonusbonuses"
+CAMPAIGNS_VIEW = "Dwh_en.view_bonuscampaigns"
+FREEBETS_VIEW  = "Dwh_en.view_bonusfreebets"
 CURSOR_COLUMN  = "DateVersion"
 
 BONUSES_COLUMNS = [

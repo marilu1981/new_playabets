@@ -20,7 +20,7 @@ OUT_DIR      = PROJECT_ROOT / "data" / "raw" / "commissions"
 
 VIEWS = {
     "sport_direct": {
-        "view": "Dwh_en.view_SportDirectCommissions",
+        "view": "Dwh_en.view_sportdirectcommissions",
         "cols": [
             "CommissionID", "UserID", "Stake", "Winnings", "Commissions",
             "CreationDate", "DateStart", "DateEnd",
@@ -28,7 +28,7 @@ VIEWS = {
         ],
     },
     "sport_network": {
-        "view": "Dwh_en.view_SportNetworkCommissions",
+        "view": "Dwh_en.view_sportnetworkcommissions",
         "cols": [
             "CommissionID", "UserID", "Stake", "Winnings",
             "PaidBS", "PaidNetwork", "Commissions",
@@ -37,7 +37,7 @@ VIEWS = {
         ],
     },
     "casino_direct": {
-        "view": "Dwh_en.view_CasinoDirectCommissions",
+        "view": "Dwh_en.view_casinodirectcommissions",
         "cols": [
             "CommissionID", "UserID", "Stake", "Winnings", "Commissions",
             "CreationDate", "DateStart", "DateEnd",
@@ -45,7 +45,7 @@ VIEWS = {
         ],
     },
     "casino_network": {
-        "view": "Dwh_en.view_CasinoNetworkCommissions",
+        "view": "Dwh_en.view_casinonetworkcommissions",
         "cols": [
             "CommissionID", "UserID", "Played", "Winnings",
             "PaidBS", "PaidNetwork", "Commissions",
