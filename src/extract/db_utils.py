@@ -18,10 +18,24 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 
 import pyodbc
 from sqlalchemy import create_engine
+
+
+def _default_watermark() -> str:
+    """
+    Return the default start date for the first incremental pull.
+    Defaults to 90 days ago.  Override by setting INITIAL_LOAD_DAYS env var.
+
+    Example:
+        set INITIAL_LOAD_DAYS=30   # pull only last 30 days on first run
+        set INITIAL_LOAD_DAYS=180  # pull last 6 months on first run
+    """
+    days = int(os.environ.get("INITIAL_LOAD_DAYS", "90"))
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    return cutoff.strftime("%Y-%m-%d %H:%M:%S")
 
 # ── Connection config (read from env) ────────────────────────────────────────
 SERVER   = "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com"
@@ -85,7 +99,7 @@ def _migrate_watermarks_schema(cur, conn) -> None:
         conn.commit()
 
 
-def get_watermark(watermark_db, view_name: str, default: str = "1970-01-01 00:00:00") -> str:
+def get_watermark(watermark_db, view_name: str, default: str | None = None) -> str:
     """
     Return the current high-watermark for `view_name`.
     Creates the watermarks table and inserts a default row if needed.
@@ -94,6 +108,9 @@ def get_watermark(watermark_db, view_name: str, default: str = "1970-01-01 00:00
     Note: watermark_db is cast to str explicitly because sqlite3.connect()
     on Windows does not always accept pathlib.Path objects reliably.
     """
+    if default is None:
+        default = _default_watermark()
+
     import pathlib
     db_path = str(pathlib.Path(watermark_db).resolve())
     pathlib.Path(db_path).parent.mkdir(parents=True, exist_ok=True)
