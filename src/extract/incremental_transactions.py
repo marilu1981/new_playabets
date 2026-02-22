@@ -19,7 +19,7 @@ from sqlalchemy import text
 
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-VIEW_NAME     = "Dwh_en.view_Transactions"
+VIEW_NAME     = "Dwh_en.view_payments"
 CURSOR_COLUMN = "DateVersion"
 
 COLUMNS = [

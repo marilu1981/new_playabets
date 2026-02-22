@@ -132,9 +132,9 @@ def get_watermark(watermark_db, view_name: str, default: str | None = None) -> s
         row = cur.fetchone()
         if row is not None:
             existing = row[0]
-            # If the stored value is the old 1970 sentinel, replace it with
-            # the proper default (90 days ago) so we don't pull all history.
-            if existing.startswith("1970"):
+            # If the stored value is an old sentinel (1900 or 1970), replace
+            # it with the proper default (90 days ago) so we don't pull all history.
+            if existing.startswith("1970") or existing.startswith("1900"):
                 cur.execute(
                     "UPDATE watermarks SET last_value = ?, updated_at = ? WHERE view_name = ?",
                     (default, datetime.now(UTC).isoformat(timespec="seconds"), view_name),

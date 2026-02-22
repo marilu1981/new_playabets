@@ -38,17 +38,23 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
 
 ALL_VIEWS = [
-    "Dwh_en.view_SportDirectCommissions",
-    "Dwh_en.view_SportNetworkCommissions",
-    "Dwh_en.view_CasinoDirectCommissions",
-    "Dwh_en.view_CasinoNetworkCommissions",
-    "Dwh_en.view_BonusCampaigns",
-    "Dwh_en.view_BonusFreebets",
-    "Dwh_en.view_BonusBonuses",
+    # Commissions
+    "Dwh_en.view_sportdirectcommissions",
+    "Dwh_en.view_sportnetworkcommissions",
+    "Dwh_en.view_casinodirectcommissions",
+    "Dwh_en.view_casinonetworkcommissions",
+    "Dwh_en.view_pokerdirectcommissions",
+    "Dwh_en.view_pokernetworkcommissions",
+    # Bonus
+    "Dwh_en.view_bonuscampaigns",
+    "Dwh_en.view_bonusfreebets",
+    "Dwh_en.view_bonusbonuses",
+    "Dwh_en.view_bonustransactions",
+    # Core
     "Dwh_en.view_users",
-    "Dwh_en.view_Casino",
-    "Dwh_en.view_Transactions",
-    "Dwh_en.view_BetSlips",
+    "Dwh_en.view_casino",
+    "Dwh_en.view_payments",
+    "Dwh_en.view_betslips",
 ]
 
 
