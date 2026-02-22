@@ -36,8 +36,8 @@ export default function CommissionsPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Commissions" value={`₦${formatCompact(commissionSummary.totalPaid)}`} subtitle="All products" change={6.2} changeLabel="vs last month" icon={<Award size={18} />} accent="gold" />
-        <KpiCard title="Sport Commissions" value={`₦${formatCompact(commissionSummary.sportDirect + commissionSummary.sportNetwork)}`} subtitle="Direct + Network" icon={<DollarSign size={18} />} accent="teal" />
+        <KpiCard title="Total Commissions" value={`${formatCompact(commissionSummary.totalPaid)}`} subtitle="All products" change={6.2} changeLabel="vs last month" icon={<Award size={18} />} accent="gold" />
+        <KpiCard title="Sport Commissions" value={`${formatCompact(commissionSummary.sportDirect + commissionSummary.sportNetwork)}`} subtitle="Direct + Network" icon={<DollarSign size={18} />} accent="teal" />
         <KpiCard title="Total Agents" value={formatNumber(hierarchySummary.totalAgents)} subtitle={`${hierarchySummary.masterAgents} master agents`} icon={<Users size={18} />} accent="green" />
         <KpiCard title="Avg Users / Agent" value={hierarchySummary.avgUsersPerAgent.toFixed(1)} subtitle="Direct users" icon={<Network size={18} />} accent="amber" />
       </div>
@@ -52,8 +52,8 @@ export default function CommissionsPage() {
             <BarChart data={commissionBreakdown} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="category" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip formatter={(v: number) => [`₦${formatCompact(v)}`, "Commission"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Commission"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
               <Bar dataKey="amount" fill={CHART_COLORS.gold} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -77,7 +77,7 @@ export default function CommissionsPage() {
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-white/60">{item.label}</span>
                     <span className="font-mono" style={{color: item.color }}>
-                      ₦{formatCompact(item.value)} ({pct}%)
+                      {formatCompact(item.value)} ({pct}%)
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -109,9 +109,9 @@ export default function CommissionsPage() {
                   <td className="py-2.5 pr-6 text-white/40 text-xs font-mono">#{a.agentId}</td>
                   <td className="py-2.5 pr-6 text-white/80 font-medium">{a.username}</td>
                   <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{formatNumber(a.directUsers)}</td>
-                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">₦{formatCompact(a.stake)}</td>
+                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{ formatCompact(a.stake)}</td>
                   <td className="py-2.5 font-mono text-sm font-semibold" style={{color: CHART_COLORS.gold }}>
-                    ₦{formatCompact(a.commissions)}
+                    {formatCompact(a.commissions)}
                   </td>
                 </tr>
               ))}

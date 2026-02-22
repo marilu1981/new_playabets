@@ -40,8 +40,8 @@ export default function BettingPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
-        <KpiCard title="Total Stake" value={`₦${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips" change={9.4} changeLabel="vs last month" icon={<Zap size={18} />} accent="teal" />
-        <KpiCard title="Total Winnings" value={`₦${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" change={8.1} changeLabel="vs last month" icon={<Activity size={18} />} accent="amber" />
+        <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips" change={9.4} changeLabel="vs last month" icon={<Zap size={18} />} accent="teal" />
+        <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" change={8.1} changeLabel="vs last month" icon={<Activity size={18} />} accent="amber" />
         <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" change={0.8} changeLabel="vs last month" icon={<Target size={18} />} accent="green" />
       </div>
 
@@ -113,7 +113,7 @@ export default function BettingPage() {
                   <div className="h-2 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: colors[i] }} />
                   </div>
-                  <div className="text-xs text-white/30 mt-0.5">Stake: ₦{formatCompact(b.stake)}</div>
+                  <div className="text-xs text-white/30 mt-0.5">Stake: {formatCompact(b.stake)}</div>
                 </div>
               );
             })}
@@ -129,9 +129,9 @@ export default function BettingPage() {
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topSports.slice(0, 7)} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 80 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="sport" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip formatter={(v: number) => [`₦${formatCompact(v)}`, "Stake"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Stake"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
               <Bar dataKey="stake" fill={CHART_COLORS.teal} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -154,8 +154,8 @@ export default function BettingPage() {
                   <tr key={s.sport} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                     <td className="py-2 pr-3 text-white/80 font-medium">{s.sport}</td>
                     <td className="py-2 pr-3 text-white/50 font-mono">{formatCompact(s.bets)}</td>
-                    <td className="py-2 pr-3 text-white/50 font-mono">₦{formatCompact(s.stake)}</td>
-                    <td className="py-2 pr-3 font-mono" style={{color: CHART_COLORS.gold }}>₦{formatCompact(s.revenue)}</td>
+                    <td className="py-2 pr-3 text-white/50 font-mono">{ formatCompact(s.stake)}</td>
+                    <td className="py-2 pr-3 font-mono" style={{color: CHART_COLORS.gold }}>{ formatCompact(s.revenue)}</td>
                     <td className="py-2">
                       <span className="text-xs" style={{ color: CHART_COLORS.green }}>
                         {(s.revenue / s.stake * 100).toFixed(1)}%

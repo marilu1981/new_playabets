@@ -31,9 +31,9 @@ export default function BonusPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Active Campaigns" value={bonusKPIs.activeCampaigns} subtitle="Running now" icon={<Gift size={18} />} accent="gold" />
-        <KpiCard title="Total Bonus Balance" value={`₦${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle="Across all users" change={-4.2} changeLabel="vs last month" icon={<Percent size={18} />} accent="amber" />
+        <KpiCard title="Total Bonus Balance" value={`${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle="Across all users" change={-4.2} changeLabel="vs last month" icon={<Percent size={18} />} accent="amber" />
         <KpiCard title="Freebets Issued" value={formatCompact(bonusKPIs.freebetsIssued)} subtitle={`${freebetUsageRate}% usage rate`} icon={<Ticket size={18} />} accent="teal" />
-        <KpiCard title="Avg Bonus / User" value={`₦${bonusKPIs.avgBonusPerUser.toFixed(1)}`} subtitle="Per active user" change={2.1} changeLabel="vs last month" icon={<Users size={18} />} accent="green" />
+        <KpiCard title="Avg Bonus / User" value={`${bonusKPIs.avgBonusPerUser.toFixed(1)}`} subtitle="Per active user" change={2.1} changeLabel="vs last month" icon={<Users size={18} />} accent="green" />
       </div>
 
       {/* Freebet funnel */}
@@ -84,7 +84,7 @@ export default function BonusPage() {
                     <td className="py-2.5 pr-4 text-white/50 text-xs">{c.bonusType}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={c.status} dot /></td>
                     <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(c.usersEnrolled)}</td>
-                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>₦{formatCompact(c.totalPaid)}</td>
+                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{ formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
                       <span className="text-xs font-mono font-semibold" style={{
                        

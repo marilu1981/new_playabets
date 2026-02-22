@@ -93,7 +93,7 @@ function pctChange(current: number, previous: number): number {
 
 function fmtMetric(val: number, row: MetricRow): string {
   if (row.isPercent)  return `${val.toFixed(1)}%`;
-  if (row.isCurrency) return `₦${formatCompact(val)}`;
+  if (row.isCurrency) return `${formatCompact(val)}`;
   return formatCompact(val);
 }
 
@@ -171,30 +171,30 @@ export default function Home() {
         <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Unique active players"
           change={8.4} changeLabel="vs last month"
           icon={<Activity size={18} />} accent="green" />
-        <KpiCard title="Total Deposits" value={`₦${formatCompact(transactionSummary.totalDeposits)}`} subtitle="Gross deposits"
+        <KpiCard title="Total Deposits" value={`${formatCompact(transactionSummary.totalDeposits)}`} subtitle="Gross deposits"
           change={6.2} changeLabel="vs last month"
           icon={<DollarSign size={18} />} accent="amber" />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 2 ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-        <KpiCard title="Total Withdrawals" value={`₦${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="Paid out"
+        <KpiCard title="Total Withdrawals" value={`${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="Paid out"
           change={-3.8} changeLabel="vs last month"
           icon={<ArrowUpRight size={18} />} accent="red" />
-        <KpiCard title="Total Turnover" value={`₦${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips"
+        <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips"
           change={12.1} changeLabel="vs last month"
           icon={<TrendingUp size={18} />} accent="teal" />
-        <KpiCard title="GGR" value={`₦${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`${margin}% margin`}
+        <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`${margin}% margin`}
           change={5.3} changeLabel="vs last month"
           icon={<BarChart2 size={18} />} accent="gold" />
-        <KpiCard title="Bonus Spent" value={`₦${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle={`${bonusKPIs.activeCampaigns} active campaigns`}
+        <KpiCard title="Bonus Spent" value={`${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle={`${bonusKPIs.activeCampaigns} active campaigns`}
           change={-2.1} changeLabel="vs last month"
           icon={<Gift size={18} />} accent="amber" />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 3 ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <KpiCard title="NGR" value={`₦${formatCompact(Math.round(overviewKPIs.grossRevenue * 0.82))}`} subtitle="Net Gaming Revenue"
+        <KpiCard title="NGR" value={`${formatCompact(Math.round(overviewKPIs.grossRevenue * 0.82))}`} subtitle="Net Gaming Revenue"
           change={4.1} changeLabel="vs last month"
           icon={<Percent size={18} />} accent="green" />
         <KpiCard title="V_FTDs" value={formatCompact(lastMonth.vftds)} subtitle="Verified FTDs"
@@ -233,8 +233,8 @@ export default function Home() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
             <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => [`₦${formatCompact(v)}`, revMetric.toUpperCase()]} />
+            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => [`${formatCompact(v)}`, revMetric.toUpperCase()]} />
             <Area type="monotone" dataKey={revMetric} name={revMetric.toUpperCase()}
               stroke={revMetric === "ggr" ? CHART_COLORS.gold : revMetric === "ngr" ? CHART_COLORS.green : CHART_COLORS.teal}
               fill="url(#revGrad)" strokeWidth={2} dot={false} />
@@ -351,8 +351,8 @@ export default function Home() {
             <BarChart data={depositWithdrawalFlow} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
               <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `₦${formatCompact(v)}`} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Bar dataKey="deposits"    name="Deposits"    fill={CHART_COLORS.green} radius={[2, 2, 0, 0]} />
               <Bar dataKey="withdrawals" name="Withdrawals" fill={CHART_COLORS.red}   radius={[2, 2, 0, 0]} />
@@ -469,8 +469,8 @@ export default function Home() {
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={40} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => name === "GGR" ? `₦${formatCompact(v)}` : formatCompact(v)} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => name === "GGR" ? `${formatCompact(v)}` : formatCompact(v)} />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Bar yAxisId="left"  dataKey="players" name="Players" fill={CHART_COLORS.teal}  radius={[2, 2, 0, 0]} />
               <Bar yAxisId="right" dataKey="ggr"     name="GGR"     fill={CHART_COLORS.gold}  radius={[2, 2, 0, 0]} />
@@ -523,8 +523,8 @@ export default function Home() {
             <BarChart data={trendBySegment} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
               <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `₦${formatCompact(v)}`} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Bar dataKey="VIP"  fill={CHART_COLORS.gold}  stackId="a" radius={[0,0,0,0]} />
               <Bar dataKey="PVIP" fill={CHART_COLORS.teal}  stackId="a" radius={[0,0,0,0]} />
@@ -547,8 +547,8 @@ export default function Home() {
             <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `₦${formatCompact(v)}`} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Line type="monotone" dataKey="value" name="Daily GGR" stroke={CHART_COLORS.gold}  strokeWidth={1.5} dot={false} strokeOpacity={0.6} />
               <Line type="monotone" dataKey="ma7"   name="7-day MA"  stroke={CHART_COLORS.teal}  strokeWidth={2.5} dot={false} />
@@ -579,7 +579,7 @@ export default function Home() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
               <Tooltip contentStyle={TT_STYLE} />
               <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
               <Area type="monotone" dataKey="revenue" name="Revenue" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2}   dot={false} />
@@ -627,9 +627,9 @@ export default function Home() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={topSports.slice(0, 6)} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 70 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `₦${formatCompact(v)}`} axisLine={false} tickLine={false} />
+              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="sport" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
-              <Tooltip formatter={(v: number) => [`₦${formatCompact(v)}`, "Revenue"]} contentStyle={TT_STYLE} />
+              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Revenue"]} contentStyle={TT_STYLE} />
               <Bar dataKey="revenue" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -683,7 +683,7 @@ export default function Home() {
             onClick={() => {
               const csv = ["Date,Brand,Segment,Territory,Value,% Change",
                 ...detailedBreakdown.map((r) =>
-                  `${r.date},${r.brand},${r.segment},${r.territory},₦${formatCompact(r.value)},${r.pctChange >= 0 ? "+" : ""}${r.pctChange}%`
+                  `${r.date},${r.brand},${r.segment},${r.territory},${formatCompact(r.value)},${r.pctChange >= 0 ? "+" : ""}${r.pctChange}%`
                 )
               ].join("\n");
               const blob = new Blob([csv], { type: "text/csv" });
@@ -720,7 +720,7 @@ export default function Home() {
                     }}>{row.segment}</span>
                   </td>
                   <td className="py-2.5 pr-6 text-white/60 text-xs">{row.territory}</td>
-                  <td className="py-2.5 pr-6 text-white text-xs font-mono" style={FONT_MONO}>₦{formatCompact(row.value)}</td>
+                  <td className="py-2.5 pr-6 text-white text-xs font-mono" style={FONT_MONO}>{ formatCompact(row.value)}</td>
                   <td className="py-2.5 text-xs font-semibold font-mono" style={{ ...FONT_MONO, color: row.pctChange >= 0 ? CHART_COLORS.green : CHART_COLORS.red }}>
                     {row.pctChange >= 0 ? "+" : ""}{row.pctChange}%
                   </td>
