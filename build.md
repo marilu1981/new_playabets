@@ -1,6 +1,6 @@
 # Playa Bets Analytics Dashboard — Build Log
 
-> Last updated: 2026-02-22
+> Last updated: 2026-02-22 (Session 4)
 
 ---
 
@@ -111,6 +111,19 @@ playabets-dashboard/          ← React frontend (Vite + Tailwind 4)
   - `/cache/clear`
 - Created `scheduler.py` — 2-hourly pipeline runner (configurable via env vars)
 
+### Session 4 — SQLAlchemy Migration + Quick-Start Extract Script
+- **Migrated all 6 extract scripts** from raw `pyodbc` to `SQLAlchemy` (`mssql+pyodbc` dialect)
+  - Removes the `UserWarning: pandas only supports SQLAlchemy connectable` warning
+  - Parameterised queries now use named `:param` syntax (safer, more readable)
+  - `PROJECT_ROOT` depth corrected from `parents[3]` → `parents[2]` in all scripts
+  - `incremental_users.py` refactored from module-level execution into a proper `main()` function
+  - All scripts now auto-create the `watermarks` table if it doesn't exist (no manual init needed)
+- **Created `run_small_extracts.py`** — single convenience script to run extracts in order of size:
+  - `python run_small_extracts.py` — runs Commissions → Bonus → Users → Casino → Transactions
+  - `python run_small_extracts.py --all` — also runs Betslips (largest)
+  - `python run_small_extracts.py --transform` — runs extracts + KPI transforms in one pass
+  - Prints a summary table at the end showing which modules passed/failed
+
 ### Session 3 — Filter Wiring
 - Created `useFilteredData.ts` hook — applies `DashboardFilters` to all mock data series using `useMemo`
 - Wired hook into `Home.tsx` — all 14 chart data sources now respond to filter changes
@@ -202,13 +215,22 @@ print('watermarks.db initialized')
 # Connect to your VPN first, then:
 cd playabets
 
-# Run a single extract + transform cycle:
-python -m src.extract.incremental_users
-python -m src.extract.incremental_betslips
-python -m src.extract.incremental_transactions
-python -m src.extract.incremental_bonus
-python -m src.extract.incremental_casino
-python -m src.extract.incremental_commissions
+# RECOMMENDED — run smallest extracts first to get data quickly:
+python run_small_extracts.py
+
+# With KPI transforms in one pass:
+python run_small_extracts.py --transform
+
+# Include betslips (largest table — leave for last):
+python run_small_extracts.py --all --transform
+
+# OR run individual modules:
+python -m src.extract.incremental_commissions   # fastest — full-refresh, small tables
+python -m src.extract.incremental_bonus         # campaigns + freebets + bonuses
+python -m src.extract.incremental_users         # incremental via DateVersion
+python -m src.extract.incremental_casino        # incremental via InsertDate
+python -m src.extract.incremental_transactions  # incremental via DateVersion
+python -m src.extract.incremental_betslips      # largest — run last
 python -m src.kpis.build_daily_kpis
 python -m src.kpis.build_domain_kpis
 
@@ -280,6 +302,8 @@ Then replace mock data calls in each page component with the corresponding API h
 - [ ] Wire `api.ts` hooks into each page (replace mock data with real API calls)
 - [ ] Apply `useFilteredData` hook to remaining pages (Sports, Casino, Transactions, Bonus, Commissions, RFM)
 - [ ] Add `build_domain_kpis.py` to the scheduler's TRANSFORM_MODULES list (already done)
+- [x] Migrate all extract scripts from pyodbc to SQLAlchemy (removes pandas warning)
+- [x] Create `run_small_extracts.py` convenience script
 - [ ] Test extract scripts against real DWH once VPN is available
 - [ ] Add FTD (First-Time Depositor) logic to `transactions_kpi.py` (requires joining with Users view)
 - [ ] Add NGR calculation (GGR − bonus_credited) to `build_daily_kpis.py`
