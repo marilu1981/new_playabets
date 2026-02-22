@@ -41,3 +41,5 @@ frontend/*.ntvs*
 frontend/*.njsproj
 frontend/*.sln
 frontend/*.sw?
+playabets-dashboard/node_modules
+playabets-dashboard/dist
