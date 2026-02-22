@@ -131,7 +131,18 @@ def get_watermark(watermark_db, view_name: str, default: str | None = None) -> s
         cur.execute("SELECT last_value FROM watermarks WHERE view_name = ?", (view_name,))
         row = cur.fetchone()
         if row is not None:
-            return row[0]
+            existing = row[0]
+            # If the stored value is the old 1970 sentinel, replace it with
+            # the proper default (90 days ago) so we don't pull all history.
+            if existing.startswith("1970"):
+                cur.execute(
+                    "UPDATE watermarks SET last_value = ?, updated_at = ? WHERE view_name = ?",
+                    (default, datetime.now(UTC).isoformat(timespec="seconds"), view_name),
+                )
+                conn.commit()
+                print(f"[db_utils] Reset stale 1970 watermark for '{view_name}' -> {default}")
+                return default
+            return existing
 
         # Row does not exist — insert the default
         cur.execute(
