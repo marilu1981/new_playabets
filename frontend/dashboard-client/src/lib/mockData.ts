@@ -246,6 +246,77 @@ export const hierarchySummary = {
   avgUsersPerAgent: 50.3,
 };
 
+// ─── Player Acquisition (Registrations vs FTDs) ─────────────────────────────
+export const playerAcquisition = Array.from({ length: 12 }, (_, i) => {
+  const months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb"];
+  const regs = [3_420, 3_810, 4_120, 3_980, 4_540, 5_210, 4_890, 5_640, 6_120, 7_840, 6_920, 5_480][i];
+  const ftds = Math.round(regs * (0.38 + Math.random() * 0.08));
+  return { month: months[i], registrations: regs, ftds, vftds: Math.round(ftds * 0.12), topFtds: Math.round(ftds * 0.04) };
+});
+
+// ─── GGR / NGR / Turnover Trend ───────────────────────────────────────────────
+export const revenueMetricsTrend = Array.from({ length: 30 }, (_, i) => {
+  const date = new Date(2026, 1, i + 1);
+  const turnover = Math.round(300_000 + Math.sin(i / 4) * 60_000 + Math.random() * 40_000);
+  const ggr = Math.round(turnover * (0.13 + Math.random() * 0.04));
+  const bonusCost = Math.round(ggr * (0.18 + Math.random() * 0.05));
+  const ngr = ggr - bonusCost;
+  return { date: date.toISOString().split("T")[0], turnover, ggr, ngr };
+});
+
+// ─── Segment Distribution (Actives) ──────────────────────────────────────────
+export const segmentDistribution = [
+  { segment: "Mass", count: 22_840, pct: 59.5, color: "oklch(0.62 0.17 145)" },
+  { segment: "Mix", count: 9_420, pct: 24.5, color: "oklch(0.72 0.14 85)" },
+  { segment: "PVIP", count: 4_210, pct: 11.0, color: "oklch(0.65 0.15 195)" },
+  { segment: "VIP", count: 1_942, pct: 5.0, color: "oklch(0.72 0.17 60)" },
+];
+
+// ─── Deposit vs Withdrawal Flow ───────────────────────────────────────────────
+export const depositWithdrawalFlow = Array.from({ length: 12 }, (_, i) => {
+  const months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb"];
+  const deposits = Math.round(900_000 + Math.random() * 400_000);
+  const withdrawals = Math.round(deposits * (0.68 + Math.random() * 0.12));
+  return { month: months[i], deposits, withdrawals, net: deposits - withdrawals };
+});
+
+// ─── Conversion Rate Trend ────────────────────────────────────────────────────
+export const conversionRateTrend = Array.from({ length: 30 }, (_, i) => {
+  const date = new Date(2026, 1, i + 1);
+  return { date: date.toISOString().split("T")[0], rate: parseFloat((38 + Math.sin(i / 5) * 4 + Math.random() * 3).toFixed(1)) };
+});
+
+// ─── Summary Metrics Table ────────────────────────────────────────────────────
+export const summaryMetrics = {
+  overview: [
+    { metric: "Registrations", current: 5_480, previous: 6_920, ytd: 57_220 },
+    { metric: "FTDs", current: 2_142, previous: 2_740, ytd: 22_480 },
+    { metric: "V_FTDs", current: 257, previous: 329, ytd: 2_698 },
+    { metric: "Top_FTDs", current: 86, previous: 110, ytd: 899 },
+    { metric: "Conversion Rate", current: 39.1, previous: 39.6, ytd: 39.3, isPercent: true },
+    { metric: "Actives", current: 38_412, previous: 35_480, ytd: 38_412 },
+    { metric: "Total GGR", current: 1_378_900, previous: 1_308_200, ytd: 9_842_100, isCurrency: true },
+    { metric: "NGR", current: 1_130_698, previous: 1_072_724, ytd: 8_070_522, isCurrency: true },
+    { metric: "Profit %", current: 14.5, previous: 13.8, ytd: 14.1, isPercent: true },
+  ],
+  sportDetails: [
+    { metric: "Sport Bets", current: 2_847_391, previous: 2_540_000, ytd: 24_200_000 },
+    { metric: "Sport Stake", current: 9_482_100, previous: 8_840_000, ytd: 78_400_000, isCurrency: true },
+    { metric: "Sport Winnings", current: 8_103_200, previous: 7_580_000, ytd: 67_200_000, isCurrency: true },
+    { metric: "Sport GGR", current: 1_378_900, previous: 1_260_000, ytd: 11_200_000, isCurrency: true },
+    { metric: "Sport Margin", current: 14.5, previous: 14.2, ytd: 14.3, isPercent: true },
+    { metric: "Avg Stake/Bet", current: 3.33, previous: 3.48, ytd: 3.24, isCurrency: true },
+  ],
+  casinoDetails: [
+    { metric: "Casino Bets", current: 870_000, previous: 735_000, ytd: 7_420_000 },
+    { metric: "Casino Stake", current: 8_699_100, previous: 7_350_000, ytd: 74_200_000, isCurrency: true },
+    { metric: "Casino Winnings", current: 7_480_763, previous: 6_321_000, ytd: 63_800_000, isCurrency: true },
+    { metric: "Casino GGR", current: 1_218_337, previous: 1_029_000, ytd: 10_400_000, isCurrency: true },
+    { metric: "Casino Margin", current: 14.0, previous: 14.0, ytd: 14.0, isPercent: true },
+    { metric: "RTP %", current: 86.0, previous: 86.0, ytd: 86.0, isPercent: true },
+  ],
+};
+
 // ─── Event Program ────────────────────────────────────────────────────────────
 export const upcomingEvents = [
   { eventId: 48291, sport: "Soccer", event: "Arsenal vs Chelsea", startDate: "2026-02-22 15:00:00", status: "Enabled", openBets: 8_420 },
@@ -254,3 +325,62 @@ export const upcomingEvents = [
   { eventId: 48288, sport: "Tennis", event: "Djokovic vs Alcaraz", startDate: "2026-02-22 14:00:00", status: "Enabled", openBets: 3_840 },
   { eventId: 48287, sport: "Horse Racing", event: "Cheltenham Gold Cup", startDate: "2026-02-22 13:30:00", status: "Enabled", openBets: 2_140 },
 ];
+
+// ─── Geographic Distribution (Territory / Country) ────────────────────────────
+export const geographicDistribution = [
+  { name: "Nigeria",  territory: "West Africa",     players: 68_420, ggr: 842_100, pct: 47.9 },
+  { name: "Ghana",    territory: "West Africa",     players: 24_180, ggr: 298_400, pct: 16.9 },
+  { name: "Kenya",    territory: "East Africa",     players: 22_840, ggr: 281_200, pct: 16.0 },
+  { name: "Uganda",   territory: "East Africa",     players: 14_920, ggr: 183_800, pct: 10.4 },
+  { name: "Zambia",   territory: "Southern Africa", players: 12_470, ggr: 153_400, pct: 8.7 },
+];
+
+// ─── Traffic Source Breakdown ─────────────────────────────────────────────────
+export const trafficSourceBreakdown = [
+  { source: "Organic",   count: 48_200, pct: 33.8, color: "oklch(0.62 0.17 145)" },
+  { source: "Paid",      count: 34_100, pct: 23.9, color: "oklch(0.72 0.14 85)"  },
+  { source: "Affiliate", count: 28_400, pct: 19.9, color: "oklch(0.65 0.15 195)" },
+  { source: "Direct",    count: 22_800, pct: 16.0, color: "oklch(0.72 0.17 60)"  },
+  { source: "Social",    count: 8_830,  pct: 6.2,  color: "oklch(0.55 0.22 25)"  },
+];
+
+// ─── Trend by Segment (GGR per segment, monthly) ─────────────────────────────
+export const trendBySegment = Array.from({ length: 12 }, (_, i) => {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return {
+    month: months[i],
+    VIP:   Math.round(380_000 + Math.sin(i / 2) * 40_000 + Math.random() * 20_000),
+    PVIP:  Math.round(210_000 + Math.sin(i / 2.5) * 25_000 + Math.random() * 15_000),
+    Mass:  Math.round(520_000 + Math.sin(i / 3) * 60_000 + Math.random() * 30_000),
+    Mix:   Math.round(140_000 + Math.sin(i / 4) * 18_000 + Math.random() * 10_000),
+  };
+});
+
+// ─── Daily Trend with 7-day Moving Average ────────────────────────────────────
+const rawDailyValues = Array.from({ length: 30 }, (_, i) => {
+  const base = 45_000 + Math.sin(i / 4) * 10_000;
+  return Math.round(base + (Math.random() - 0.5) * 12_000);
+});
+
+export const dailyTrendWithMA = rawDailyValues.map((val, i) => {
+  const date = new Date(2026, 1, i + 1).toISOString().split("T")[0];
+  const slice = rawDailyValues.slice(Math.max(0, i - 6), i + 1);
+  const ma7 = Math.round(slice.reduce((a, b) => a + b, 0) / slice.length);
+  return { date, value: val, ma7 };
+});
+
+// ─── Detailed Breakdown Table ─────────────────────────────────────────────────
+const brands    = ["PlayaBets NG", "PlayaBets GH", "PlayaBets KE", "PlayaBets UG", "PlayaBets ZM"];
+const segments  = ["VIP", "PVIP", "Mass", "Mix"];
+const territories = ["West Africa", "East Africa", "Southern Africa"];
+
+export const detailedBreakdown = Array.from({ length: 20 }, (_, i) => {
+  const date = new Date(2026, 1, i + 1).toISOString().split("T")[0];
+  const brand     = brands[i % brands.length];
+  const segment   = segments[i % segments.length];
+  const territory = territories[i % territories.length];
+  const value     = Math.round(40_000 + Math.random() * 120_000);
+  const prev      = Math.round(value * (0.85 + Math.random() * 0.3));
+  const pctChange = parseFloat(((value - prev) / prev * 100).toFixed(1));
+  return { date, brand, segment, territory, value, pctChange };
+});

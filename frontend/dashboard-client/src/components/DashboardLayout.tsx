@@ -26,13 +26,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Brand asset CDN URLs
+const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/pbuUURJRZjCKidPW.webp";
+const ICON_HOME_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/yTIiRqYmTtWpCAUn.webp";
+const ICON_MENU_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/NECQouaMlxDKVVSb.webp";
+const ICON_CASINO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/auPImKIFmTCssqJk.webp";
+const ICON_AVIATOR_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/DhSUshpvZmpTpzks.webp";
+const ICON_LOTTO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/NfZtMAIBTwiiYSra.webp";
+
 const SIDEBAR_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-1_1771727906000_na1fn_cGxheWFiZXRzLXNpZGViYXItYmc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTFfMTc3MTcyNzkwNjAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMWE5wWkdWaVlYSXRZbWMucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=pA3ZsPLcJLMkqkREcWT7Rd9tENWAsrsx9Ru083kHTN4aFF5tN2T7jqaVZPKjBsWtApcwGBmct60iicQph7tC~NmVWsY3VQZDWMhIvCRTc~JzKnbOKqStYxb4aNbVbnwi2aD3OkcOl8RoOb7N-WPikZ618dX699qOzcBxJvcV2w-yFcegNZnzWfp5yyDkRRZaOcL5q244vfRhWpDV-ge-IOl-E-wg80lUuDO-fsvkoTMRVfjMeZQsVApScGPyFz102jRAD3H8fHiZRQ1mMmnyLxy25Lfxib4AfxFAiG8zS6H-wh9RbIPOUE~QPf2FgmELJWYVznZUEetqzaP869oijA__";
 
-const navGroups = [
+// Nav item type supports either a lucide icon or an image URL
+type NavItem = { path: string; label: string; icon?: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>; imgIcon?: string };
+
+const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Overview",
     items: [
-      { path: "/", label: "Dashboard", icon: LayoutDashboard },
+      { path: "/", label: "Dashboard", imgIcon: ICON_HOME_URL },
     ],
   },
   {
@@ -47,7 +58,7 @@ const navGroups = [
     label: "Products",
     items: [
       { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
-      { path: "/casino", label: "Casino & Games", icon: Gamepad2 },
+      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
       { path: "/commissions", label: "Commissions", icon: Award },
     ],
   },
@@ -64,9 +75,10 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   title?: string;
   subtitle?: string;
+  filtersBar?: React.ReactNode;
 }
 
-export default function DashboardLayout({ children, title, subtitle }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, title, subtitle, filtersBar }: DashboardLayoutProps) {
   const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -107,19 +119,26 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
         />
 
         {/* Logo area */}
-        <div className="relative flex items-center gap-3 px-4 py-5 border-b border-white/5">
-          <div
-            className="flex-shrink-0 w-8 h-8 rounded flex items-center justify-center text-sm font-bold"
-            style={{ background: "oklch(0.72 0.14 85)", color: "oklch(0.12 0.04 155)" }}
-          >
-            PB
-          </div>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-white leading-tight" style={{ fontFamily: "'Playfair Display', serif" }}>
-                PLAYA <span style={{ color: "oklch(0.72 0.14 85)" }}>BETS</span>
-              </div>
-              <div className="text-xs text-white/40 leading-tight">Analytics Platform</div>
+        <div className="relative flex items-center gap-2 px-3 py-4 border-b border-white/5">
+          {collapsed ? (
+            // Collapsed: show just the lion icon from the logo
+            <div className="flex-1 flex items-center justify-center">
+              <img
+                src={LOGO_URL}
+                alt="Playa Bets"
+                className="h-7 w-auto object-contain"
+                style={{ filter: "invert(1) brightness(1.1)" }}
+              />
+            </div>
+          ) : (
+            // Expanded: show full logo — invert makes dark logo visible on dark sidebar
+            <div className="flex-1 min-w-0 flex items-center">
+              <img
+                src={LOGO_URL}
+                alt="Playa Bets"
+                className="h-9 w-auto object-contain max-w-[160px]"
+                style={{ filter: "invert(1) brightness(1.1)" }}
+              />
             </div>
           )}
           <button
@@ -153,14 +172,27 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
                             : "text-white/50 hover:text-white/80 hover:bg-white/5"
                         )}
                       >
-                        <Icon
-                          size={16}
-                          className={cn(
-                            "flex-shrink-0 transition-colors",
-                            isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
-                          )}
-                          style={isActive ? { color: "oklch(0.72 0.14 85)" } : {}}
-                        />
+                        {item.imgIcon ? (
+                          <img
+                            src={item.imgIcon}
+                            alt={item.label}
+                            className="flex-shrink-0 w-4 h-4 object-contain"
+                            style={{
+                              opacity: isActive ? 1 : 0.45,
+                              filter: isActive ? "brightness(1.3) saturate(1.2)" : "brightness(0.8)",
+                              transition: "opacity 0.15s, filter 0.15s",
+                            }}
+                          />
+                        ) : Icon ? (
+                          <Icon
+                            size={16}
+                            className={cn(
+                              "flex-shrink-0 transition-colors",
+                              isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
+                            )}
+                            style={isActive ? { color: "oklch(0.72 0.14 85)" } : {}}
+                          />
+                        ) : null}
                         {!collapsed && (
                           <span className="truncate font-medium">{item.label}</span>
                         )}
@@ -202,7 +234,11 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             className="lg:hidden text-white/50 hover:text-white/80"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileOpen ? (
+              <X size={20} />
+            ) : (
+              <img src={ICON_MENU_URL} alt="Menu" className="w-5 h-5 object-contain" style={{ filter: "invert(1) opacity(0.6)" }} />
+            )}
           </button>
 
           {/* Page title */}
@@ -244,6 +280,9 @@ export default function DashboardLayout({ children, title, subtitle }: Dashboard
             </button>
           </div>
         </header>
+
+        {/* Filters bar slot — rendered between header and page content */}
+        {filtersBar && filtersBar}
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">
