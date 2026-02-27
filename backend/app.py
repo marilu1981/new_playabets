@@ -46,8 +46,23 @@ from fastapi.middleware.cors import CORSMiddleware
 # Paths
 # ---------------------------------------------------------------------------
 _ROOT = Path(__file__).resolve().parents[1]
-_SERVING = _ROOT / "data" / "serving"
-_RAW     = _ROOT / "data" / "raw"
+
+
+def _first_existing_path(*paths: Path) -> Path:
+    for path in paths:
+        if path.exists():
+            return path
+    return paths[0]
+
+
+_SERVING = _first_existing_path(
+    _ROOT / "data" / "serving",
+    _ROOT / "backend" / "data" / "serving",
+)
+_RAW = _first_existing_path(
+    _ROOT / "data" / "raw",
+    _ROOT / "backend" / "data" / "raw",
+)
 
 DATA_PATH        = _SERVING / "daily_kpis.parquet"
 RFM_USERS_PATH   = _SERVING / "rfm_users.parquet"
@@ -60,8 +75,14 @@ CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
 COMMISSIONS_DAILY_PATH = _SERVING / "commissions_daily.parquet"
 
 # Raw bonus reference files (full-refresh, written by incremental_bonus.py)
-CAMPAIGNS_PATH = _RAW / "bonus" / "campaigns_full.parquet"
-FREEBETS_PATH  = _RAW / "bonus" / "freebets_full.parquet"
+CAMPAIGNS_PATH = _first_existing_path(
+    _RAW / "bonus" / "campaigns_full.parquet",
+    _RAW / "bonus" / "campaigns_latest.parquet",
+)
+FREEBETS_PATH = _first_existing_path(
+    _RAW / "bonus" / "freebets_full.parquet",
+    _RAW / "bonus" / "freebets_latest.parquet",
+)
 
 # Raw commission snapshots
 SPORT_DIRECT_PATH    = _RAW / "commissions" / "sport_direct_full.parquet"
