@@ -47,3 +47,7 @@ backend/__pycache__/
 backend/docs/
 backend/assets/
 '@ | Set-Content .gitignore
+
+docs/_tmp_dwh.zip
+docs/_tmp_dwh_docx/
+docs/_tmp_*/

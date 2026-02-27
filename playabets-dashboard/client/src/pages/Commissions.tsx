@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Commissions Page
  * DWH Views: view_CommissionsSport, view_CommissionsCasino, view_CommissionsPoker
@@ -10,8 +10,17 @@ import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/To
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Award, Users, DollarSign, Network } from "lucide-react";
-import { commissionSummary, topAgentCommissions, hierarchySummary } from "@/lib/mockData";
+import {
+  commissionSummary as baseCommissionSummary,
+  topAgentCommissions as baseTopAgentCommissions,
+  hierarchySummary as baseHierarchySummary,
+} from "@/lib/mockData";
 import { formatCompact, formatNumber } from "@/lib/formatters";
+import {
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -20,17 +29,37 @@ const CHART_COLORS = {
   amber: "oklch(0.72 0.17 60)",
 };
 
-const commissionBreakdown = [
-  { category: "Sport Direct", amount: commissionSummary.sportDirect },
-  { category: "Sport Network", amount: commissionSummary.sportNetwork },
-  { category: "Casino Direct", amount: commissionSummary.casinoDirect },
-  { category: "Casino Network", amount: commissionSummary.casinoNetwork },
-  { category: "Poker Direct", amount: commissionSummary.pokerDirect },
-  { category: "Poker Network", amount: commissionSummary.pokerNetwork },
-];
-
 export default function CommissionsPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const commissionSummary = useMemo(
+    () => scaleObjectNumericFields(baseCommissionSummary, multiplier),
+    [multiplier],
+  );
+  const hierarchySummary = useMemo(
+    () => scaleObjectNumericFields(baseHierarchySummary, multiplier),
+    [multiplier],
+  );
+  const topAgentCommissions = useMemo(
+    () =>
+      scaleArrayNumericFields(baseTopAgentCommissions, multiplier, [
+        "agentId",
+        "username",
+      ]),
+    [multiplier],
+  );
+  const commissionBreakdown = useMemo(
+    () => [
+      { category: "Sport Direct", amount: commissionSummary.sportDirect },
+      { category: "Sport Network", amount: commissionSummary.sportNetwork },
+      { category: "Casino Direct", amount: commissionSummary.casinoDirect },
+      { category: "Casino Network", amount: commissionSummary.casinoNetwork },
+      { category: "Poker Direct", amount: commissionSummary.pokerDirect },
+      { category: "Poker Network", amount: commissionSummary.pokerNetwork },
+    ],
+    [commissionSummary],
+  );
+  const totalPaidSafe = Math.max(1, commissionSummary.totalPaid);
   return (
     <DashboardLayout title="Commissions" subtitle="Agent commissions across sport, casino, and poker"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
@@ -71,7 +100,7 @@ export default function CommissionsPage() {
               { label: "Poker — Direct", value: commissionSummary.pokerDirect, color: "oklch(0.65 0.15 270)" },
               { label: "Poker — Network", value: commissionSummary.pokerNetwork, color: "oklch(0.65 0.15 310)" },
             ].map((item) => {
-              const pct = (item.value / commissionSummary.totalPaid * 100).toFixed(1);
+              const pct = (item.value / totalPaidSafe * 100).toFixed(1);
               return (
                 <div key={item.label}>
                   <div className="flex justify-between text-xs mb-1">

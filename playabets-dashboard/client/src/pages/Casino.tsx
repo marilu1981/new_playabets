@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Casino & Games Page
  * DWH Views: view_CasinoBets, view_CasinoGames, view_VirtualGames
@@ -13,8 +13,13 @@ import {
   PieChart, Pie, Cell,
 } from "recharts";
 import { Gamepad2, DollarSign, TrendingUp, Percent } from "lucide-react";
-import { casinoProviders, casinoKPIs } from "@/lib/mockData";
+import { casinoProviders as baseCasinoProviders, casinoKPIs as baseCasinoKPIs } from "@/lib/mockData";
 import { formatCompact, formatNumber } from "@/lib/formatters";
+import {
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -28,6 +33,27 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CH
 
 export default function CasinoPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const casinoProviders = useMemo(
+    () =>
+      scaleArrayNumericFields(baseCasinoProviders, multiplier, ["provider", "casinoType"]),
+    [multiplier],
+  );
+  const casinoKPIs = useMemo(() => {
+    const scaled = scaleObjectNumericFields(baseCasinoKPIs, multiplier);
+    const totalStake = casinoProviders.reduce((sum, row) => sum + row.stake, 0);
+    const totalWinnings = casinoProviders.reduce((sum, row) => sum + row.winnings, 0);
+    const grossProfit = totalStake - totalWinnings;
+    const margin = totalStake > 0 ? Number(((grossProfit / totalStake) * 100).toFixed(1)) : 0;
+    return {
+      ...scaled,
+      totalStake,
+      totalWinnings,
+      grossProfit,
+      margin,
+    };
+  }, [casinoProviders, multiplier]);
+  const totalStakeSafe = Math.max(1, casinoKPIs.totalStake);
   return (
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
@@ -76,7 +102,7 @@ export default function CasinoPage() {
                   <span className="text-white/50 truncate max-w-[100px]">{p.provider}</span>
                 </div>
                 <span className="text-white/60 font-mono text-xs">
-                  {(p.stake / casinoKPIs.totalStake * 100).toFixed(0)}%
+                  {(p.stake / totalStakeSafe * 100).toFixed(0)}%
                 </span>
               </div>
             ))}

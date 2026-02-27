@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Hierarchy & Roles Page
  * DWH Views: view_Hierarchy, view_UserRoles
@@ -9,8 +9,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import { Network, Users, UserCheck, TrendingUp } from "lucide-react";
-import { hierarchySummary, topAgentCommissions } from "@/lib/mockData";
+import {
+  hierarchySummary as baseHierarchySummary,
+  topAgentCommissions as baseTopAgentCommissions,
+} from "@/lib/mockData";
 import { formatNumber, formatCompact } from "@/lib/formatters";
+import {
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -19,15 +27,26 @@ const CHART_COLORS = {
   amber: "oklch(0.72 0.17 60)",
 };
 
-const hierarchyLevels = [
-  { level: "Operator", count: 1, description: "Platform owner — full access", color: CHART_COLORS.gold },
-  { level: "Master Agent", count: hierarchySummary.masterAgents, description: "Top-level agents with sub-agent networks", color: CHART_COLORS.teal },
-  { level: "Sub-Agent", count: hierarchySummary.subAgents, description: "Direct player-facing agents", color: CHART_COLORS.green },
-  { level: "Player", count: hierarchySummary.totalUsers, description: "End users / bettors", color: CHART_COLORS.amber },
-];
-
 export default function HierarchyPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const hierarchySummary = useMemo(
+    () => scaleObjectNumericFields(baseHierarchySummary, multiplier),
+    [multiplier],
+  );
+  const topAgentCommissions = useMemo(
+    () => scaleArrayNumericFields(baseTopAgentCommissions, multiplier, ["agentId", "username"]),
+    [multiplier],
+  );
+  const hierarchyLevels = useMemo(
+    () => [
+      { level: "Operator", count: 1, description: "Platform owner - full access", color: CHART_COLORS.gold },
+      { level: "Master Agent", count: hierarchySummary.masterAgents, description: "Top-level agents with sub-agent networks", color: CHART_COLORS.teal },
+      { level: "Sub-Agent", count: hierarchySummary.subAgents, description: "Direct player-facing agents", color: CHART_COLORS.green },
+      { level: "Player", count: hierarchySummary.totalUsers, description: "End users / bettors", color: CHART_COLORS.amber },
+    ],
+    [hierarchySummary.masterAgents, hierarchySummary.subAgents, hierarchySummary.totalUsers],
+  );
   return (
     <DashboardLayout title="Hierarchy & Roles" subtitle="Agent network structure and role assignments"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>

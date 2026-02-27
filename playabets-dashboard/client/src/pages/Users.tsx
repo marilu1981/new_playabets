@@ -13,11 +13,21 @@ import {
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
-  overviewKPIs, usersByStatus, userRegistrations, usersByCurrency,
-  recentSessions, selfExclusionSummary,
+  overviewKPIs as baseOverviewKPIs,
+  usersByStatus as baseUsersByStatus,
+  userRegistrations as baseUserRegistrations,
+  usersByCurrency as baseUsersByCurrency,
+  recentSessions as baseRecentSessions,
+  selfExclusionSummary as baseSelfExclusionSummary,
 } from "@/lib/mockData";
 import { formatNumber, formatCompact } from "@/lib/formatters";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  filterByDateRange,
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleNumber,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -28,6 +38,64 @@ const CHART_COLORS = {
 
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const fallbackYear = useMemo(() => {
+    const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
+    return Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear();
+  }, [filters.dateTo]);
+
+  const usersByStatus = useMemo(
+    () => scaleArrayNumericFields(baseUsersByStatus, multiplier, ["status", "statusId"]),
+    [multiplier],
+  );
+  const usersByCurrency = useMemo(
+    () => scaleArrayNumericFields(baseUsersByCurrency, multiplier, ["currency", "currencyId"]),
+    [multiplier],
+  );
+  const userRegistrations = useMemo(
+    () =>
+      scaleArrayNumericFields(
+        filterByDateRange(baseUserRegistrations, filters, (row) => row.month, { fallbackYear }),
+        multiplier,
+        ["month"],
+      ),
+    [filters, fallbackYear, multiplier],
+  );
+  const recentSessions = useMemo(
+    () => filterByDateRange(baseRecentSessions, filters, (row) => row.loginDate),
+    [filters],
+  );
+  const selfExclusionSummary = useMemo(() => {
+    const scaledByPeriod = baseSelfExclusionSummary.byPeriod.map((row) => ({
+      ...row,
+      count: scaleNumber(row.count, multiplier),
+    }));
+    const inProgress = scaleNumber(baseSelfExclusionSummary.inProgress, multiplier);
+    const pending = scaleNumber(baseSelfExclusionSummary.pending, multiplier);
+    const completed = scaleNumber(baseSelfExclusionSummary.completed, multiplier);
+    const total = inProgress + pending + completed;
+    return {
+      ...baseSelfExclusionSummary,
+      inProgress,
+      pending,
+      completed,
+      total,
+      byPeriod: scaledByPeriod,
+    };
+  }, [multiplier]);
+  const overviewKPIs = useMemo(() => {
+    const totalUsers = usersByStatus.reduce((sum, row) => sum + row.count, 0);
+    const activeUsers = usersByStatus.find((row) => row.status === "Enabled")?.count ?? 0;
+    return {
+      ...baseOverviewKPIs,
+      totalUsers,
+      activeUsers,
+    };
+  }, [usersByStatus]);
+  const totalUsersSafe = Math.max(1, overviewKPIs.totalUsers);
+  const frozenUsers = usersByStatus.find((u) => u.status === "Frozen")?.count ?? 0;
+  const disabledUsers = usersByStatus.find((u) => u.status === "Disabled")?.count ?? 0;
+  const selfExclusionTotalSafe = Math.max(1, selfExclusionSummary.total);
 
   return (
     <DashboardLayout
@@ -39,7 +107,7 @@ export default function UsersPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Users" value={formatCompact(overviewKPIs.totalUsers)} subtitle="All time registrations" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" />
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" />
-        <KpiCard title="Frozen / Disabled" value={formatCompact(usersByStatus.find(u => u.status === "Frozen")!.count + usersByStatus.find(u => u.status === "Disabled")!.count)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" />
+        <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" />
         <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle={`${selfExclusionSummary.inProgress} in progress`} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" />
       </div>
 
@@ -67,7 +135,7 @@ export default function UsersPage() {
           <p className="text-xs text-white/40 mb-4">African market distribution</p>
           <div className="space-y-3">
             {usersByCurrency.map((c, i) => {
-              const pct = (c.users / overviewKPIs.totalUsers * 100).toFixed(1);
+              const pct = (c.users / totalUsersSafe * 100).toFixed(1);
               const colors = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.red, "oklch(0.72 0.17 60)"];
               return (
                 <div key={c.currency}>
@@ -94,7 +162,7 @@ export default function UsersPage() {
           <h3 className="text-sm font-semibold text-white mb-4">User Status Breakdown</h3>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
-              const pct = (u.count / overviewKPIs.totalUsers * 100).toFixed(1);
+              const pct = (u.count / totalUsersSafe * 100).toFixed(1);
               return (
                 <div key={u.status} className="flex items-center gap-3">
                   <StatusBadge status={u.status} dot className="w-28 justify-start flex-shrink-0" />
@@ -138,7 +206,7 @@ export default function UsersPage() {
                 <span className="text-white/50">{p.period}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionSummary.total) * 100}%`, background: CHART_COLORS.red }} />
+                    <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionTotalSafe) * 100}%`, background: CHART_COLORS.red }} />
                   </div>
                   <span className="text-white/60 w-6 text-right font-medium">{p.count}</span>
                 </div>

@@ -308,7 +308,7 @@ export default function TopFiltersBar({ filters, onChange }: TopFiltersBarProps)
             </select>
           </Field>
 
-          <Field label="Affiliate">
+          <Field label="Affiliate (Pending)">
             <select
               value={filters.affiliateId}
               onChange={(e) => set("affiliateId", e.target.value)}
@@ -354,7 +354,7 @@ export default function TopFiltersBar({ filters, onChange }: TopFiltersBarProps)
             </select>
           </Field>
 
-          <Field label="Customer Status">
+          <Field label="Customer Status (Pending)">
             <select
               value={filters.customerStatus}
               onChange={(e) => set("customerStatus", e.target.value)}
@@ -383,7 +383,7 @@ export default function TopFiltersBar({ filters, onChange }: TopFiltersBarProps)
             </select>
           </Field>
 
-          <Field label="Outlier Filter">
+          <Field label="Outlier Filter (Pending)">
             <select
               value={filters.outlierFilter}
               onChange={(e) => set("outlierFilter", e.target.value)}

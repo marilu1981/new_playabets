@@ -28,11 +28,18 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
         context="Casino",
     )
 
-    user_id    = cols["userid"]
-    date_c     = cols["placementdate"]
-    stake      = cols["stake"]
-    winnings   = cols["winnings"]
-    bets_col   = ccol.get("betsnumber")
+    user_id = cols["userid"]
+    date_c = cols["placementdate"]
+    stake = cols["stake"]
+    winnings = cols["winnings"]
+    bets_col = ccol.get("betsnumber")
+
+    # Increments may overlap between runs; keep latest row per CasinoID.
+    casino_id_col = ccol.get("casinoid")
+    if casino_id_col:
+        order_col = ccol.get("__cursor__") or ccol.get("insertdate") or date_c
+        casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
+        casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
 
     casino["stake_num"]    = to_num(casino[stake], default=0.0)
     casino["winnings_num"] = to_num(casino[winnings], default=0.0)
@@ -72,7 +79,13 @@ def compute_casino_by_provider(casino: pd.DataFrame) -> pd.DataFrame:
     if not provider_col:
         return pd.DataFrame(columns=["provider_name", "stake", "winnings", "ggr", "bets"])
 
-    casino["stake_num"]    = to_num(casino[ccol["stake"]], default=0.0)
+    casino_id_col = ccol.get("casinoid")
+    if casino_id_col:
+        order_col = ccol.get("__cursor__") or ccol.get("insertdate") or ccol.get("placementdate")
+        casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
+        casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
+
+    casino["stake_num"] = to_num(casino[ccol["stake"]], default=0.0)
     casino["winnings_num"] = to_num(casino[ccol["winnings"]], default=0.0)
 
     agg: dict = {
@@ -101,7 +114,13 @@ def compute_casino_by_type(casino: pd.DataFrame) -> pd.DataFrame:
     if not type_col:
         return pd.DataFrame(columns=["casino_type", "stake", "winnings", "ggr"])
 
-    casino["stake_num"]    = to_num(casino[ccol["stake"]], default=0.0)
+    casino_id_col = ccol.get("casinoid")
+    if casino_id_col:
+        order_col = ccol.get("__cursor__") or ccol.get("insertdate") or ccol.get("placementdate")
+        casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
+        casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
+
+    casino["stake_num"] = to_num(casino[ccol["stake"]], default=0.0)
     casino["winnings_num"] = to_num(casino[ccol["winnings"]], default=0.0)
 
     out = (

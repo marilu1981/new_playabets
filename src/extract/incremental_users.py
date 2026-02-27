@@ -2,13 +2,15 @@
 incremental_users.py
 ---------------------
 Pulls new/updated rows from Dwh_en.view_users incrementally via DateVersion.
+Also enriches each exported user row with current balance fields from
+Dwh_en.view_balances.
 
 Run from the project root:
     python -m src.extract.incremental_users
 
 Environment variables required:
-    DWH_USER  – SQL Server login
-    DWH_PASS  – SQL Server password
+    DWH_USER  - SQL Server login
+    DWH_PASS  - SQL Server password
 """
 from __future__ import annotations
 
@@ -19,33 +21,36 @@ from sqlalchemy import text
 
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-VIEW_NAME     = "Dwh_en.view_users"
+VIEW_NAME = "Dwh_en.view_users"
+BALANCES_VIEW = "Dwh_en.view_balances"
 CURSOR_COLUMN = "DateVersion"
 
-COLUMNS = [
-    "userid",
-    "userstatus",
-    "testuser",
-    "usertype",
-    "userprofileid",
-    "userprofile",
-    "lastlogin",
-    "countryid",
-    "country",
-    "city",
-    "zipcode",
-    "creationdate",
-    "dateversion",
-    "detaildateversion",
+# Keep stable, lowercase output column names for downstream transforms.
+SELECT_COLUMNS = [
+    "u.userid AS userid",
+    "u.userstatus AS userstatus",
+    "u.testuser AS testuser",
+    "u.usertype AS usertype",
+    "u.userprofileid AS userprofileid",
+    "u.userprofile AS userprofile",
+    "u.lastlogin AS lastlogin",
+    "u.province AS province",
+    "u.countryid AS countryid",
+    "u.country AS country",
+    "u.city AS city",
+    "u.zipcode AS zipcode",
+    "u.creationdate AS creationdate",
+    "u.dateversion AS dateversion",
+    "u.detaildateversion AS detaildateversion",
+    "b.balance AS balance",
+    "b.credit AS credit",
+    "b.lasttransactiondate AS lasttransactiondate",
 ]
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 WATERMARK_DB = PROJECT_ROOT / "data" / "watermarks.db"
-OUT_DIR      = PROJECT_ROOT / "data" / "raw" / "users"
+OUT_DIR = PROJECT_ROOT / "data" / "raw" / "users"
 
-# ---------------------------------------------------------------------------
-# MAIN
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,12 +58,18 @@ def main() -> None:
     last_value = get_watermark(WATERMARK_DB, VIEW_NAME)
     print(f"[users] Current watermark: {last_value}")
 
-    cols_sql = ", ".join(COLUMNS)
-    query = text(f"""
-        SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql}
-        FROM {VIEW_NAME}
-        WHERE {CURSOR_COLUMN} > :last_value
-    """)
+    cols_sql = ", ".join(SELECT_COLUMNS)
+    query = text(
+        f"""
+        SELECT
+            u.{CURSOR_COLUMN} AS __cursor__,
+            {cols_sql}
+        FROM {VIEW_NAME} u
+        LEFT JOIN {BALANCES_VIEW} b
+            ON b.UserID = u.UserID
+        WHERE u.{CURSOR_COLUMN} > :last_value
+        """
+    )
 
     engine = build_engine()
     with engine.connect() as conn:
@@ -68,6 +79,22 @@ def main() -> None:
     if df.empty:
         print("[users] No new data.")
         return
+
+    creation_col = next((c for c in df.columns if c.lower() == "creationdate"), None)
+    if creation_col:
+        creation_dt = pd.to_datetime(df[creation_col], errors="coerce")
+        print(
+            "[users] creationdate non-null=%d, min=%s, max=%s"
+            % (
+                int(creation_dt.notna().sum()),
+                str(creation_dt.min()),
+                str(creation_dt.max()),
+            )
+        )
+
+    user_col = next((c for c in df.columns if c.lower() == "userid"), None)
+    if user_col:
+        print(f"[users] unique userids in batch: {int(df[user_col].nunique(dropna=True))}")
 
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     out_file = OUT_DIR / f"users_increment_{ts}.parquet"
