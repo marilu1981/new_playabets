@@ -50,6 +50,7 @@ MODULES: dict[str, str] = {
     "users":        "src.extract.incremental_users",
     "casino":       "src.extract.incremental_casino",
     "transactions": "src.extract.incremental_transactions",
+    "first_deposits": "src.extract.incremental_first_deposits",
     "betslips":     "src.extract.incremental_betslips",
 }
 
@@ -59,7 +60,7 @@ TRANSFORM_MODULES: dict[str, str] = {
 }
 
 # Default run order when no specific modules are given (excludes betslips)
-DEFAULT_ORDER = ["commissions", "bonus", "users", "casino", "transactions"]
+DEFAULT_ORDER = ["commissions", "bonus", "users", "casino", "transactions", "first_deposits"]
 
 # Maps each module name to the view names it writes watermarks for
 MODULE_VIEWS: dict[str, list[str]] = {
@@ -79,6 +80,7 @@ MODULE_VIEWS: dict[str, list[str]] = {
     "users":        ["Dwh_en.view_users"],
     "casino":       ["Dwh_en.view_casino"],
     "transactions": ["Dwh_en.view_transactions"],
+    "first_deposits": ["Stats.Transazioni_DepositiUtente"],
     "betslips":     ["Dwh_en.view_betslips"],
 }
 
@@ -100,6 +102,7 @@ ALL_VIEWS = [
     "Dwh_en.view_users",
     "Dwh_en.view_casino",
     "Dwh_en.view_payments",
+    "Stats.Transazioni_DepositiUtente",
     "Dwh_en.view_betslips",
     # Legacy mixed-case names from old code — reset these too
     "Dwh_en.view_BonusBonuses",

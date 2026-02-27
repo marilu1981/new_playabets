@@ -199,9 +199,9 @@ export function getFilterMultiplier(filters: DashboardFilters): number {
 export function scaleNumber(value: number, multiplier: number): number {
   const scaled = value * multiplier;
   if (Number.isInteger(value)) {
-    return Math.max(0, Math.round(scaled));
+    return Math.round(scaled);
   }
-  return Math.max(0, Number(scaled.toFixed(2)));
+  return Number(scaled.toFixed(2));
 }
 
 export function scaleObjectNumericFields<T extends Record<string, unknown>>(

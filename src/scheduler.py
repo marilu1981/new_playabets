@@ -50,6 +50,7 @@ EXTRACT_MODULES = [
     "src.extract.incremental_users",
     "src.extract.incremental_betslips",
     "src.extract.incremental_transactions",
+    "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",
     "src.extract.incremental_commissions",

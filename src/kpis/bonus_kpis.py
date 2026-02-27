@@ -12,10 +12,47 @@ import pandas as pd
 from .io_utils import normalize_cols, ensure_cols, to_date, to_num
 
 
-def compute_bonus_daily(bonuses: pd.DataFrame) -> pd.DataFrame:
-    """Daily bonus crediting metrics from view_BonusBonuses."""
+def _first_deposit_campaign_ids(campaigns: pd.DataFrame) -> set[int]:
+    """
+    Infer first-deposit campaigns from BonusType text.
+    Heuristic:
+      - contains 'first' and 'deposit' in BonusType
+    """
+    if campaigns.empty:
+        return set()
+
+    camps, ccol = normalize_cols(campaigns)
+    if "campaignid" not in ccol:
+        return set()
+
+    campaign_id = ccol["campaignid"]
+    bonus_type_col = ccol.get("bonustype")
+    if not bonus_type_col:
+        return set()
+
+    bt = camps[bonus_type_col].fillna("").astype(str).str.lower()
+    mask = bt.str.contains("first", na=False) & bt.str.contains("deposit", na=False)
+    if not mask.any():
+        return set()
+
+    ids = pd.to_numeric(camps.loc[mask, campaign_id], errors="coerce").dropna().astype(int)
+    return set(ids.tolist())
+
+
+def compute_bonus_daily(bonuses: pd.DataFrame, campaigns: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Daily bonus crediting metrics from view_BonusBonuses (+ first-deposit proxy from BonusType)."""
     if bonuses.empty:
-        return pd.DataFrame(columns=["date", "bonus_credited", "bonus_count", "unique_bonus_users"])
+        return pd.DataFrame(
+            columns=[
+                "date",
+                "bonus_credited",
+                "bonus_count",
+                "unique_bonus_users",
+                "first_deposit_bonus_count",
+                "first_deposit_bonus_users",
+                "first_deposit_bonus_amount",
+            ]
+        )
 
     bonuses, bcol = normalize_cols(bonuses)
     cols = ensure_cols(
@@ -52,9 +89,35 @@ def compute_bonus_daily(bonuses: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
         .rename(columns={"bonus_date": "date"})
     )
+
+    # First-deposit proxy:
+    # derive daily users/amount from campaigns where BonusType implies first deposit.
+    first_dep = pd.DataFrame(columns=["date", "first_deposit_bonus_count", "first_deposit_bonus_users", "first_deposit_bonus_amount"])
+    if campaigns is not None and not campaigns.empty and "campaignid" in cols:
+        campaign_col = cols["campaignid"]
+        first_dep_ids = _first_deposit_campaign_ids(campaigns)
+        if first_dep_ids:
+            fd = bonuses[pd.to_numeric(bonuses[campaign_col], errors="coerce").astype("Int64").isin(first_dep_ids)].copy()
+            if not fd.empty:
+                first_dep = (
+                    fd.dropna(subset=["bonus_date"])
+                    .groupby("bonus_date")
+                    .agg(
+                        first_deposit_bonus_count=(bonus_id, "count"),
+                        first_deposit_bonus_users=(user_id, "nunique"),
+                        first_deposit_bonus_amount=("amount_num", "sum"),
+                    )
+                    .reset_index()
+                    .rename(columns={"bonus_date": "date"})
+                )
+
+    out = out.merge(first_dep, on="date", how="left").fillna(0)
     out["bonus_credited"] = out["bonus_credited"].astype(float)
     out["bonus_count"]    = out["bonus_count"].astype(int)
     out["unique_bonus_users"] = out["unique_bonus_users"].astype(int)
+    out["first_deposit_bonus_count"] = out["first_deposit_bonus_count"].astype(int)
+    out["first_deposit_bonus_users"] = out["first_deposit_bonus_users"].astype(int)
+    out["first_deposit_bonus_amount"] = out["first_deposit_bonus_amount"].astype(float)
     return out.sort_values("date")
 
 
