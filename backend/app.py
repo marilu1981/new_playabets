@@ -71,6 +71,7 @@ RFM_ROLLING_PATH = _SERVING / "rfm_rolling_daily.parquet"
 # Domain-specific serving files (written by build_daily_kpis or domain scripts)
 TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
 BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
+FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
 COMMISSIONS_DAILY_PATH = _SERVING / "commissions_daily.parquet"
 
@@ -164,6 +165,7 @@ def health():
         "rfm_users": RFM_USERS_PATH.exists(),
         "tx_daily": TX_DAILY_PATH.exists(),
         "bonus_daily": BONUS_DAILY_PATH.exists(),
+        "ftd_daily": FTD_DAILY_PATH.exists(),
         "casino_daily": CASINO_DAILY_PATH.exists(),
         "commissions_daily": COMMISSIONS_DAILY_PATH.exists(),
     }
@@ -180,6 +182,7 @@ def kpis(
     df = _filter_range(load_daily_df(), start, end)
     tx = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
+    ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
 
     return {
         "range": {"start": str(start), "end": str(end)},
@@ -188,7 +191,7 @@ def kpis(
         "turnover": _s(df, "placed_stake"),
         "ggr": _s(df, "ggr"),
         "ngr": _s(df, "ggr") - _s(bonus, "bonus_credited"),
-        "ftds": 0,  # requires dedicated FTD logic — placeholder
+        "ftds": _i(ftd, "ftds"),
         "deposits": _s(tx, "deposits"),
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),
@@ -224,9 +227,17 @@ def registrations_timeseries(
     end: date = Query(...),
 ):
     df = load_daily_df()
+    ftd = load_parquet_cached(FTD_DAILY_PATH, "ftd_daily")
     d = _filter_range(df, start, end).sort_values("date")
+    f = _filter_range(ftd, start, end).sort_values("date")
+
+    ftd_by_date: dict[date, int] = {}
+    if not f.empty and "date" in f.columns and "ftds" in f.columns:
+        for _, row in f.iterrows():
+            ftd_by_date[row["date"]] = int(row.get("ftds", 0) or 0)
+
     regs = [{"date": str(x), "value": int(v)} for x, v in zip(d["date"], d.get("registrations", [0] * len(d)))]
-    ftds = [{"date": str(x), "value": 0} for x in d["date"]]
+    ftds = [{"date": str(x), "value": int(ftd_by_date.get(x, 0))} for x in d["date"]]
     return {"registrations": regs, "ftds": ftds}
 
 
@@ -387,12 +398,18 @@ def bonus_kpis():
     elif not campaigns.empty and "CampaignStatusID" in campaigns.columns:
         active_campaigns = int((campaigns["CampaignStatusID"] == 1).sum())
 
+    first_deposit_campaigns = 0
+    if not campaigns.empty and "BonusType" in campaigns.columns:
+        bt = campaigns["BonusType"].fillna("").astype(str).str.lower()
+        first_deposit_campaigns = int((bt.str.contains("first", na=False) & bt.str.contains("deposit", na=False)).sum())
+
     total_freebets  = int(len(freebets)) if not freebets.empty else 0
     freebet_amount  = float(freebets["Amount"].sum()) if not freebets.empty and "Amount" in freebets.columns else 0.0
 
     return {
         "total_campaigns": total_campaigns,
         "active_campaigns": active_campaigns,
+        "first_deposit_campaigns": first_deposit_campaigns,
         "total_freebets": total_freebets,
         "total_freebet_amount": freebet_amount,
     }
@@ -409,7 +426,13 @@ def bonus_daily(
     df = df.sort_values("date")
     return {
         "points": [
-            {"date": str(r["date"]), "bonus_credited": float(r.get("bonus_credited", 0))}
+            {
+                "date": str(r["date"]),
+                "bonus_credited": float(r.get("bonus_credited", 0)),
+                "first_deposit_bonus_count": int(r.get("first_deposit_bonus_count", 0)),
+                "first_deposit_bonus_users": int(r.get("first_deposit_bonus_users", 0)),
+                "first_deposit_bonus_amount": float(r.get("first_deposit_bonus_amount", 0)),
+            }
             for _, r in df.iterrows()
         ]
     }

@@ -16,7 +16,7 @@
  *   Top Sports bar, By Platform bars, User Status list, Upcoming Events table
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
@@ -89,6 +89,18 @@ const COUNTRY_BRAND_MAP: Record<string, string> = {
   Uganda: "PlayaBets UG",
   Zambia: "PlayaBets ZM",
 };
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+
+type DataMode = "mock" | "partial" | "live";
+
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status} for ${path}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 function toIsoDate(d: Date): string {
   const year = d.getUTCFullYear();
@@ -298,6 +310,15 @@ export default function Home() {
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
   const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
+  const [dataMode, setDataMode] = useState<DataMode>("mock");
+
+  const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
+  const [liveRevenueTrend, setLiveRevenueTrend] = useState<typeof baseRevenueTrend | null>(null);
+  const [liveRevenueMetricsTrend, setLiveRevenueMetricsTrend] = useState<typeof baseRevenueMetricsTrend | null>(null);
+  const [livePlayerAcquisition, setLivePlayerAcquisition] = useState<typeof basePlayerAcquisition | null>(null);
+  const [liveConversionRateTrend, setLiveConversionRateTrend] = useState<typeof baseConversionRateTrend | null>(null);
+  const [liveTransactionSummary, setLiveTransactionSummary] = useState<typeof baseTransactionSummary | null>(null);
+  const [liveBonusKPIs, setLiveBonusKPIs] = useState<typeof baseBonusKPIs | null>(null);
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
@@ -306,13 +327,207 @@ export default function Home() {
 
   const multiplier = 1;
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadLiveData() {
+      const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+
+      const [
+        kpisRes,
+        dailyRes,
+        bonusDailyRes,
+        regsRes,
+        txRes,
+        bonusKpisRes,
+      ] = await Promise.allSettled([
+        fetchJson<{
+          registrations?: number;
+          actives?: number;
+          turnover?: number;
+          ggr?: number;
+          ngr?: number;
+          deposits?: number;
+          withdrawals?: number;
+          bonus_spent?: number;
+          ftds?: number;
+        }>(`/kpis?${query}`),
+        fetchJson<{ rows: Array<{ date: string; placed_stake?: number; ggr?: number; betslips_count?: number }> }>(
+          `/kpis/daily?${query}&metrics=placed_stake,ggr,betslips_count`
+        ),
+        fetchJson<{ points: Array<{ date: string; bonus_credited?: number }> }>(`/bonus/daily?${query}`),
+        fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
+          `/timeseries/registrations?${query}`
+        ),
+        fetchJson<{
+          deposits?: number;
+          withdrawals?: number;
+          tx_count_pending?: number;
+          tx_count_accepted?: number;
+          tx_count_other_status?: number;
+        }>(`/transactions/kpis?${query}`),
+        fetchJson<{
+          active_campaigns?: number;
+          total_freebets?: number;
+          total_freebet_amount?: number;
+        }>(`/bonus/kpis`),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      const hasKpis = kpisRes.status === "fulfilled";
+      const hasDaily = dailyRes.status === "fulfilled";
+      const hasRegs = regsRes.status === "fulfilled";
+      const mode: DataMode = hasKpis && hasDaily && hasRegs ? "live" : hasKpis || hasDaily || hasRegs ? "partial" : "mock";
+      setDataMode(mode);
+
+      if (!hasDaily) {
+        return;
+      }
+
+      const dailyRows = dailyRes.value.rows ?? [];
+      const bonusByDate = new Map<string, number>();
+      if (bonusDailyRes.status === "fulfilled") {
+        for (const p of bonusDailyRes.value.points ?? []) {
+          bonusByDate.set(p.date, Number(p.bonus_credited ?? 0));
+        }
+      }
+
+      const metrics = dailyRows
+        .map((r) => {
+          const turnover = Number(r.placed_stake ?? 0);
+          const ggr = Number(r.ggr ?? 0);
+          const ngr = ggr - Number(bonusByDate.get(r.date) ?? 0);
+          return { date: r.date, turnover, ggr, ngr, betslips_count: Number(r.betslips_count ?? 0) };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      setLiveRevenueMetricsTrend(metrics.map((r) => ({
+        date: r.date,
+        turnover: r.turnover,
+        ggr: r.ggr,
+        ngr: r.ngr,
+      })));
+
+      setLiveRevenueTrend(metrics.map((r) => ({
+        date: r.date,
+        stake: r.turnover,
+        winnings: r.turnover - r.ggr,
+        revenue: r.ggr,
+      })));
+
+      if (kpisRes.status === "fulfilled") {
+        const k = kpisRes.value;
+        const totalBetslips = metrics.reduce((sum, r) => sum + r.betslips_count, 0);
+        setLiveOverviewKPIs({
+          ...baseOverviewKPIs,
+          activeUsers: Number(k.actives ?? 0),
+          totalBetslips,
+          totalStake: Number(k.turnover ?? 0),
+          totalWinnings: Number(k.turnover ?? 0) - Number(k.ggr ?? 0),
+          grossRevenue: Number(k.ggr ?? 0),
+        });
+      }
+
+      if (txRes.status === "fulfilled") {
+        const tx = txRes.value;
+        setLiveTransactionSummary({
+          ...baseTransactionSummary,
+          totalDeposits: Number(tx.deposits ?? 0),
+          totalWithdrawals: Number(tx.withdrawals ?? 0),
+          pendingTransactions: Number(tx.tx_count_pending ?? 0),
+          acceptedToday: Number(tx.tx_count_accepted ?? 0),
+          refusedToday: Number(tx.tx_count_other_status ?? 0),
+        });
+      }
+
+      if (bonusKpisRes.status === "fulfilled" || kpisRes.status === "fulfilled") {
+        const b = bonusKpisRes.status === "fulfilled" ? bonusKpisRes.value : {};
+        const k = kpisRes.status === "fulfilled" ? kpisRes.value : {};
+        setLiveBonusKPIs({
+          ...baseBonusKPIs,
+          activeCampaigns: Number(b.active_campaigns ?? baseBonusKPIs.activeCampaigns),
+          totalBonusBalance: Number(k.bonus_spent ?? b.total_freebet_amount ?? baseBonusKPIs.totalBonusBalance),
+          freebetsIssued: Number(b.total_freebets ?? baseBonusKPIs.freebetsIssued),
+        });
+      }
+
+      if (regsRes.status === "fulfilled") {
+        const regs = regsRes.value.registrations ?? [];
+        const ftds = regsRes.value.ftds ?? [];
+
+        const ftdByDate = new Map<string, number>();
+        for (const row of ftds) {
+          ftdByDate.set(row.date, Number(row.value ?? 0));
+        }
+
+        const byMonth = new Map<string, { month: string; registrations: number; ftds: number }>();
+        for (const row of regs) {
+          const date = row.date;
+          const dt = new Date(`${date}T00:00:00Z`);
+          if (Number.isNaN(dt.getTime())) {
+            continue;
+          }
+          const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
+          const month = dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+          const bucket = byMonth.get(key) ?? { month, registrations: 0, ftds: 0 };
+          bucket.registrations += Number(row.value ?? 0);
+          bucket.ftds += Number(ftdByDate.get(date) ?? 0);
+          byMonth.set(key, bucket);
+        }
+
+        const monthly = Array.from(byMonth.entries())
+          .sort(([a], [b]) => a.localeCompare(b))
+          .slice(-12)
+          .map(([, v]) => ({
+            month: v.month,
+            registrations: v.registrations,
+            ftds: v.ftds,
+            vftds: Math.round(v.ftds * 0.12),
+            topFtds: Math.round(v.ftds * 0.04),
+          }));
+        setLivePlayerAcquisition(monthly);
+
+        const conversion = regs
+          .map((r) => {
+            const registrationsVal = Number(r.value ?? 0);
+            const ftdVal = Number(ftdByDate.get(r.date) ?? 0);
+            const rate = registrationsVal > 0 ? Number(((ftdVal / registrationsVal) * 100).toFixed(1)) : 0;
+            return { date: r.date, rate };
+          })
+          .sort((a, b) => a.date.localeCompare(b.date));
+        setLiveConversionRateTrend(conversion);
+      }
+    }
+
+    loadLiveData().catch(() => {
+      if (!cancelled) {
+        setDataMode("mock");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.dateFrom, filters.dateTo]);
+
+  const sourceOverviewKPIs = liveOverviewKPIs ?? baseOverviewKPIs;
+  const sourceRevenueTrend = liveRevenueTrend ?? baseRevenueTrend;
+  const sourceRevenueMetricsTrend = liveRevenueMetricsTrend ?? baseRevenueMetricsTrend;
+  const sourcePlayerAcquisition = livePlayerAcquisition ?? basePlayerAcquisition;
+  const sourceConversionRateTrend = liveConversionRateTrend ?? baseConversionRateTrend;
+  const sourceTransactionSummary = liveTransactionSummary ?? baseTransactionSummary;
+  const sourceBonusKPIs = liveBonusKPIs ?? baseBonusKPIs;
+
   const overviewKPIs = useMemo(
-    () => scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]),
-    [multiplier],
+    () => scaleObjectNumericFields(sourceOverviewKPIs, multiplier, ["currency"]),
+    [multiplier, sourceOverviewKPIs],
   );
   const revenueTrend = useMemo(() => {
     const scaled = scaleArrayNumericFields(
-      filterByDateRange(baseRevenueTrend, filters, (row) => row.date),
+      filterByDateRange(sourceRevenueTrend, filters, (row) => row.date),
       multiplier,
       ["date"],
     );
@@ -320,7 +535,7 @@ export default function Home() {
       labelKey: "date",
       fallbackYear,
     });
-  }, [fallbackYear, filters, multiplier]);
+  }, [fallbackYear, filters, multiplier, sourceRevenueTrend]);
   const betslipsByStatus = useMemo(
     () => scaleArrayNumericFields(baseBetslipsByStatus, multiplier, ["status", "statusId"]),
     [multiplier],
@@ -339,15 +554,15 @@ export default function Home() {
   );
   const playerAcquisition = useMemo(
     () => scaleArrayNumericFields(
-      filterMonthRows(basePlayerAcquisition, filters, (row) => row.month, fallbackYear),
+      filterMonthRows(sourcePlayerAcquisition, filters, (row) => row.month, fallbackYear),
       multiplier,
       ["month"],
     ),
-    [filters, fallbackYear, multiplier],
+    [filters, fallbackYear, multiplier, sourcePlayerAcquisition],
   );
   const revenueMetricsTrend = useMemo(() => {
     const scaled = scaleArrayNumericFields(
-      filterByDateRange(baseRevenueMetricsTrend, filters, (row) => row.date),
+      filterByDateRange(sourceRevenueMetricsTrend, filters, (row) => row.date),
       multiplier,
       ["date"],
     );
@@ -355,7 +570,7 @@ export default function Home() {
       labelKey: "date",
       fallbackYear,
     });
-  }, [fallbackYear, filters, multiplier]);
+  }, [fallbackYear, filters, multiplier, sourceRevenueMetricsTrend]);
   const segmentDistribution = useMemo(() => {
     const filtered = baseSegmentDistribution.filter((row) =>
       matchesRowFilters(filters, { segment: row.segment }),
@@ -377,7 +592,7 @@ export default function Home() {
   );
   const conversionRateTrend = useMemo(() => {
     const scaled = scaleArrayNumericFields(
-      filterByDateRange(baseConversionRateTrend, filters, (row) => row.date),
+      filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date),
       multiplier,
       ["date"],
     );
@@ -386,7 +601,7 @@ export default function Home() {
       fallbackYear,
       avgFields: ["rate"],
     });
-  }, [fallbackYear, filters, multiplier]);
+  }, [fallbackYear, filters, multiplier, sourceConversionRateTrend]);
   const summaryMetrics = useMemo(() => {
     const scaleMetricRows = (rows: typeof baseSummaryMetrics.overview) =>
       rows.map((row) => ({
@@ -402,12 +617,12 @@ export default function Home() {
     };
   }, [multiplier]);
   const transactionSummary = useMemo(
-    () => scaleObjectNumericFields(baseTransactionSummary, multiplier),
-    [multiplier],
+    () => scaleObjectNumericFields(sourceTransactionSummary, multiplier),
+    [multiplier, sourceTransactionSummary],
   );
   const bonusKPIs = useMemo(
-    () => scaleObjectNumericFields(baseBonusKPIs, multiplier),
-    [multiplier],
+    () => scaleObjectNumericFields(sourceBonusKPIs, multiplier),
+    [multiplier, sourceBonusKPIs],
   );
   const geographicDistribution = useMemo(() => {
     const filtered = baseGeographicDistribution.filter((row) =>
@@ -486,11 +701,11 @@ export default function Home() {
     : "0.0";
   const granularityLabel = `${filters.granularity.charAt(0).toUpperCase()}${filters.granularity.slice(1)}`;
 
-  const lastMonth = playerAcquisition[playerAcquisition.length - 1] ?? basePlayerAcquisition[basePlayerAcquisition.length - 1];
+  const lastMonth = playerAcquisition[playerAcquisition.length - 1] ?? sourcePlayerAcquisition[sourcePlayerAcquisition.length - 1];
   const prevMonth = playerAcquisition[playerAcquisition.length - 2] ?? lastMonth;
-  const lastConvRate = conversionRateTrend[conversionRateTrend.length - 1]?.rate ?? baseConversionRateTrend[baseConversionRateTrend.length - 1].rate;
+  const lastConvRate = conversionRateTrend[conversionRateTrend.length - 1]?.rate ?? sourceConversionRateTrend[sourceConversionRateTrend.length - 1].rate;
   const prevConvAnchor = conversionRateTrend.length >= 8 ? conversionRateTrend[conversionRateTrend.length - 8] : conversionRateTrend[0];
-  const prevConvRate = prevConvAnchor?.rate ?? baseConversionRateTrend[Math.max(0, baseConversionRateTrend.length - 8)].rate;
+  const prevConvRate = prevConvAnchor?.rate ?? sourceConversionRateTrend[Math.max(0, sourceConversionRateTrend.length - 8)].rate;
 
   const momData = playerAcquisition.slice(1).map((d, i) => {
     const prevRegs = Math.max(1, playerAcquisition[i].registrations);
@@ -614,10 +829,15 @@ export default function Home() {
           <div className="flex items-center gap-4 mt-3">
             <div className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.75 0.17 145)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              DWH Connected (Mock)
+              DWH Connected ({dataMode === "live" ? "Live" : dataMode === "partial" ? "Partial Live" : "Mock"})
             </div>
             <div className="text-xs text-white/40">Last refresh: just now</div>
           </div>
+          {dataMode !== "mock" && (
+            <div className="text-xs text-white/45 mt-2">
+              Pending (Mock): betslip status, top sports, platform mix, segment and geographic widgets.
+            </div>
+          )}
         </div>
       </div>
 
