@@ -32,6 +32,15 @@ def compute_bonus_daily(bonuses: pd.DataFrame) -> pd.DataFrame:
     bonuses["amount_num"] = to_num(bonuses[amount], default=0.0)
     bonuses["bonus_date"] = to_date(bonuses[date_c])
 
+    # Filter to only actual bonus spend: Credited (5) and To Be Credited (2).
+    # Cancelled (7) bonuses must be excluded — they were never paid out.
+    status_id_col = bcol.get("bonusstatusid")
+    status_str_col = bcol.get("bonusstatus")
+    if status_id_col:
+        bonuses = bonuses[pd.to_numeric(bonuses[status_id_col], errors="coerce").isin([2, 5])]
+    elif status_str_col:
+        bonuses = bonuses[bonuses[status_str_col].str.lower().isin(["credited", "to be credited"])]
+
     out = (
         bonuses.dropna(subset=["bonus_date"])
         .groupby("bonus_date")
