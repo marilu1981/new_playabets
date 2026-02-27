@@ -27,6 +27,8 @@ COLUMNS = [
     "userstatus",
     "testuser",
     "usertype",
+    "userprofileid",
+    "userprofile",
     "lastlogin",
     "countryid",
     "country",
