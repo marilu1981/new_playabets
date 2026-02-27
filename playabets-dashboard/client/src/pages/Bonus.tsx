@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Bonus & Campaigns Page
  * DWH Views: view_BonusCampaigns, view_BonusBalances, view_Freebets
@@ -10,8 +10,14 @@ import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/To
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import { Gift, Users, Percent, Ticket } from "lucide-react";
-import { bonusCampaigns, bonusKPIs } from "@/lib/mockData";
+import { bonusCampaigns as baseBonusCampaigns, bonusKPIs as baseBonusKPIs } from "@/lib/mockData";
 import { formatCompact, formatNumber, formatPercent } from "@/lib/formatters";
+import {
+  filterByDateRange,
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -23,7 +29,22 @@ const CHART_COLORS = {
 
 export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const freebetUsageRate = (bonusKPIs.freebetsUsed / bonusKPIs.freebetsIssued * 100).toFixed(1);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const bonusCampaigns = useMemo(
+    () =>
+      scaleArrayNumericFields(
+        filterByDateRange(baseBonusCampaigns, filters, (row) => row.startDate),
+        multiplier,
+        ["campaignId", "name", "status", "bonusType", "startDate", "endDate", "roi"],
+      ),
+    [filters, multiplier],
+  );
+  const bonusKPIs = useMemo(
+    () => scaleObjectNumericFields(baseBonusKPIs, multiplier),
+    [multiplier],
+  );
+  const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
+  const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
 
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
@@ -44,9 +65,9 @@ export default function BonusPage() {
           <div className="space-y-4">
             {[
               { label: "Issued", value: bonusKPIs.freebetsIssued, color: CHART_COLORS.gold, pct: 100 },
-              { label: "Used", value: bonusKPIs.freebetsUsed, color: CHART_COLORS.green, pct: bonusKPIs.freebetsUsed / bonusKPIs.freebetsIssued * 100 },
-              { label: "Expired", value: bonusKPIs.freebetsExpired, color: CHART_COLORS.red, pct: bonusKPIs.freebetsExpired / bonusKPIs.freebetsIssued * 100 },
-              { label: "Pending", value: bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired, color: CHART_COLORS.amber, pct: (bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired) / bonusKPIs.freebetsIssued * 100 },
+              { label: "Used", value: bonusKPIs.freebetsUsed, color: CHART_COLORS.green, pct: bonusKPIs.freebetsUsed / issuedSafe * 100 },
+              { label: "Expired", value: bonusKPIs.freebetsExpired, color: CHART_COLORS.red, pct: bonusKPIs.freebetsExpired / issuedSafe * 100 },
+              { label: "Pending", value: bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired, color: CHART_COLORS.amber, pct: (bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired) / issuedSafe * 100 },
             ].map((f) => (
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1.5">

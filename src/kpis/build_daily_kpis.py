@@ -7,6 +7,7 @@ from .io_utils import read_all_parquets
 from .users_kpis import compute_registrations_daily
 from .betslips_kpis import compute_betslips_daily_kpis
 from .rfm_kpis import build_rfm_users, RFMWindow
+from .users_and_segments_kpi import compute_users_segments_daily, compute_users_segments_latest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -17,6 +18,8 @@ SESSIONS_DIR = None
 SERVING_DIR = PROJECT_ROOT / "data" / "serving"
 OUT_KPIS = SERVING_DIR / "daily_kpis.parquet"
 OUT_RFM = SERVING_DIR / "rfm_users.parquet"
+OUT_USERS_SEG_DAILY = SERVING_DIR / "users_segments_daily.parquet"
+OUT_USERS_SEG_LATEST = SERVING_DIR / "users_segments_latest.parquet"
 
 print("PROJECT_ROOT:", PROJECT_ROOT)
 print("USERS_DIR:", USERS_DIR, "exists:", USERS_DIR.exists())
@@ -82,6 +85,12 @@ def main() -> None:
     # Save user-level RFM for drill-down
     rfm_users.to_parquet(OUT_RFM, index=False)
 
+    # Save users profile segment outputs (VIP/Max/etc from userprofile)
+    users_seg_daily = compute_users_segments_daily(users)
+    users_seg_latest = compute_users_segments_latest(users)
+    users_seg_daily.to_parquet(OUT_USERS_SEG_DAILY, index=False)
+    users_seg_latest.to_parquet(OUT_USERS_SEG_LATEST, index=False)
+
     # Add a single daily row summary (or you can compute for each date later)
     rfm_daily = summarize_rfm_daily(rfm_users, pd.Timestamp(as_of))
 
@@ -90,6 +99,8 @@ def main() -> None:
 
     print(f"Wrote KPIs: {OUT_KPIS} ({len(daily)} rows)")
     print(f"Wrote RFM users: {OUT_RFM} ({len(rfm_users)} rows)")
+    print(f"Wrote users segments daily: {OUT_USERS_SEG_DAILY} ({len(users_seg_daily)} rows)")
+    print(f"Wrote users segments latest: {OUT_USERS_SEG_LATEST} ({len(users_seg_latest)} rows)")
 
 
 if __name__ == "__main__":

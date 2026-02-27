@@ -350,6 +350,10 @@ def transactions_kpis(
         "net_deposits": _s(df, "net_deposits"),
         "tx_count": _i(df, "tx_count"),
         "unique_depositors": _i(df, "unique_depositors"),
+        "tx_count_accepted": _i(df, "tx_count_accepted"),
+        "tx_count_pending": _i(df, "tx_count_pending"),
+        "tx_count_system": _i(df, "tx_count_system"),
+        "tx_count_other_status": _i(df, "tx_count_other_status"),
     }
 
 

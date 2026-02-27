@@ -8,6 +8,7 @@ DB_PATH = "data/watermarks.db"
 DEFAULTS = [
     ("Dwh_en.view_users", "DateVersion", "1900-01-01 00:00:00"),
     ("Dwh_en.view_betslips", "DateVersion", "1900-01-01 00:00:00"),
+    ("Dwh_en.view_transactions", "DateVersion", "1900-01-01 00:00:00"),
     ("Dwh_en.view_payments", "paymentenddate", "1900-01-01 00:00:00"),
     ("Dwh_en.view_casino", "insertdate", "1900-01-01 00:00:00"),
     ("Dwh_en.view_bonustransactions", "date", "1900-01-01 00:00:00"),

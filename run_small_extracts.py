@@ -7,8 +7,9 @@ Available modules:
   commissions   — 4 commission views (full-refresh)
   bonus         — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
   users         — view_users (incremental via DateVersion)
+  balances      — view_balances (full-refresh snapshot)
   casino        — view_casino (incremental via InsertDate)
-  transactions  — view_bonustransactions (incremental via DateVersion)
+  transactions  — view_transactions (incremental via DateVersion)
   betslips      — view_betslips (incremental via DateVersion, LARGE)
 
 Usage examples:
@@ -48,6 +49,7 @@ MODULES: dict[str, str] = {
     "commissions":  "src.extract.incremental_commissions",
     "bonus":        "src.extract.incremental_bonus",
     "users":        "src.extract.incremental_users",
+    "balances":     "src.extract.incremental_balances",
     "casino":       "src.extract.incremental_casino",
     "transactions": "src.extract.incremental_transactions",
     "betslips":     "src.extract.incremental_betslips",
@@ -59,7 +61,7 @@ TRANSFORM_MODULES: dict[str, str] = {
 }
 
 # Default run order when no specific modules are given (excludes betslips)
-DEFAULT_ORDER = ["commissions", "bonus", "users", "casino", "transactions"]
+DEFAULT_ORDER = ["commissions", "bonus", "users", "balances", "casino", "transactions"]
 
 # Maps each module name to the view names it writes watermarks for
 MODULE_VIEWS: dict[str, list[str]] = {
@@ -77,6 +79,7 @@ MODULE_VIEWS: dict[str, list[str]] = {
         "Dwh_en.view_bonusfreebets",
     ],
     "users":        ["Dwh_en.view_users"],
+    "balances":     ["Dwh_en.view_balances"],
     "casino":       ["Dwh_en.view_casino"],
     "transactions": ["Dwh_en.view_transactions"],
     "betslips":     ["Dwh_en.view_betslips"],
@@ -98,8 +101,10 @@ ALL_VIEWS = [
     "Dwh_en.view_bonustransactions",
     # Core
     "Dwh_en.view_users",
+    "Dwh_en.view_balances",
     "Dwh_en.view_casino",
     "Dwh_en.view_payments",
+    "Dwh_en.view_transactions",
     "Dwh_en.view_betslips",
     # Legacy mixed-case names from old code — reset these too
     "Dwh_en.view_BonusBonuses",

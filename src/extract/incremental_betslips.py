@@ -23,10 +23,10 @@ VIEW_NAME     = "Dwh_en.view_betslips"
 CURSOR_COLUMN = "DateVersion"
 
 COLUMNS = [
-    "BetSlipID", "UserID", "BetSlipStatusID", "BetSlipStatus",
-    "BetTypeID", "BetType", "Stake", "Winnings", "BonusWinnings",
-    "BetSlipDate", "SettlementDate", "ApplicationID", "Application",
-    "CurrencyID", "CurrencyExchangeID", "NumberOfEvents",
+    "BetSlipID", "UserID", "BookmakerID",
+    "PlacementDate", "PaymentDate",
+    "Stake", "Winnings", "UserWinnings",
+    "BetslipStatus", "OutcomeType", "BetslipType", "CreditType",
     "DateVersion", "DetailDateVersion",
 ]
 

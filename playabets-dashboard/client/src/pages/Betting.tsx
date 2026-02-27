@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Betting & Events Page
  * DWH Views: view_Betslips, view_Bets, view_EventProgram
@@ -15,10 +15,21 @@ import {
 } from "recharts";
 import { TrendingUp, Activity, Zap, Target } from "lucide-react";
 import {
-  overviewKPIs, betslipsByStatus, betslipsByType, betsByType,
-  betsByApplication, topSports, upcomingEvents,
+  overviewKPIs as baseOverviewKPIs,
+  betslipsByStatus as baseBetslipsByStatus,
+  betslipsByType as baseBetslipsByType,
+  betsByType as baseBetsByType,
+  betsByApplication as baseBetsByApplication,
+  topSports as baseTopSports,
+  upcomingEvents as baseUpcomingEvents,
 } from "@/lib/mockData";
 import { formatNumber, formatCompact, formatCurrency } from "@/lib/formatters";
+import {
+  filterByDateRange,
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -32,7 +43,45 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
 
 export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const margin = ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const overviewKPIs = useMemo(
+    () => scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]),
+    [multiplier],
+  );
+  const betslipsByStatus = useMemo(
+    () => scaleArrayNumericFields(baseBetslipsByStatus, multiplier, ["status", "statusId"]),
+    [multiplier],
+  );
+  const betslipsByType = useMemo(
+    () => scaleArrayNumericFields(baseBetslipsByType, multiplier, ["type", "typeId"]),
+    [multiplier],
+  );
+  const betsByType = useMemo(
+    () => scaleArrayNumericFields(baseBetsByType, multiplier, ["betType"]),
+    [multiplier],
+  );
+  const betsByApplication = useMemo(
+    () => scaleArrayNumericFields(baseBetsByApplication, multiplier, ["app", "percentage"]),
+    [multiplier],
+  );
+  const topSports = useMemo(
+    () => scaleArrayNumericFields(baseTopSports, multiplier, ["sport", "sportId"]),
+    [multiplier],
+  );
+  const upcomingEvents = useMemo(
+    () =>
+      scaleArrayNumericFields(
+        filterByDateRange(baseUpcomingEvents, filters, (row) => row.startDate),
+        multiplier,
+        ["eventId", "sport", "event", "startDate", "status"],
+      ),
+    [filters, multiplier],
+  );
+  const totalBetslipsSafe = Math.max(1, overviewKPIs.totalBetslips);
+  const totalBetTypeCount = Math.max(1, betsByType.reduce((sum, row) => sum + row.count, 0));
+  const margin = overviewKPIs.totalStake > 0
+    ? ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1)
+    : "0.0";
 
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
@@ -53,7 +102,7 @@ export default function BettingPage() {
           <p className="text-xs text-white/40 mb-4">view_Betslips — BetslipStatusId</p>
           <div className="space-y-2">
             {betslipsByStatus.map((s) => {
-              const pct = (s.count / overviewKPIs.totalBetslips * 100).toFixed(1);
+              const pct = (s.count / totalBetslipsSafe * 100).toFixed(1);
               return (
                 <div key={s.status}>
                   <div className="flex justify-between text-xs mb-1">
@@ -101,7 +150,7 @@ export default function BettingPage() {
           <div className="space-y-3">
             {betsByType.map((b, i) => {
               const colors = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.amber];
-              const pct = (b.count / betsByType.reduce((a, c) => a + c.count, 0) * 100).toFixed(0);
+              const pct = (b.count / totalBetTypeCount * 100).toFixed(0);
               return (
                 <div key={b.betType}>
                   <div className="flex justify-between text-xs mb-1">

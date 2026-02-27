@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Transactions Page
  * DWH Views: view_Transactions, view_TransactionTypes
@@ -13,9 +13,17 @@ import {
 } from "recharts";
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle } from "lucide-react";
 import {
-  transactionSummary, transactionsByReason, transactionTrend,
+  transactionSummary as baseTransactionSummary,
+  transactionsByReason as baseTransactionsByReason,
+  transactionTrend as baseTransactionTrend,
 } from "@/lib/mockData";
 import { formatCompact, formatNumber } from "@/lib/formatters";
+import {
+  filterByDateRange,
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -27,6 +35,33 @@ const CHART_COLORS = {
 
 export default function TransactionsPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const transactionTrend = useMemo(
+    () =>
+      scaleArrayNumericFields(
+        filterByDateRange(baseTransactionTrend, filters, (row) => row.date),
+        multiplier,
+        ["date"],
+      ),
+    [filters, multiplier],
+  );
+  const transactionSummary = useMemo(() => {
+    const scaled = scaleObjectNumericFields(baseTransactionSummary, multiplier);
+    if (transactionTrend.length === 0) {
+      return scaled;
+    }
+    const deposits = transactionTrend.reduce((sum, row) => sum + row.deposits, 0);
+    const withdrawals = transactionTrend.reduce((sum, row) => sum + row.withdrawals, 0);
+    return {
+      ...scaled,
+      totalDeposits: deposits,
+      totalWithdrawals: withdrawals,
+    };
+  }, [multiplier, transactionTrend]);
+  const transactionsByReason = useMemo(
+    () => scaleArrayNumericFields(baseTransactionsByReason, multiplier, ["reason", "type"]),
+    [multiplier],
+  );
   return (
     <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>

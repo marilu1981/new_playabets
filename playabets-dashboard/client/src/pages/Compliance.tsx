@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 /**
  * PLAYA BETS — Compliance & Audit Page
  * DWH Views: view_UsersSelfexclusions, view_ImportStatus, view_AuditLog
@@ -10,8 +10,19 @@ import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/To
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import { ShieldCheck, AlertTriangle, UserX, Clock } from "lucide-react";
-import { complianceKPIs, importStatus, selfExclusionSummary } from "@/lib/mockData";
+import {
+  complianceKPIs as baseComplianceKPIs,
+  importStatus as baseImportStatus,
+  selfExclusionSummary as baseSelfExclusionSummary,
+} from "@/lib/mockData";
 import { formatNumber } from "@/lib/formatters";
+import {
+  filterByDateRange,
+  getFilterMultiplier,
+  scaleArrayNumericFields,
+  scaleNumber,
+  scaleObjectNumericFields,
+} from "@/lib/filterUtils";
 
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
@@ -23,6 +34,33 @@ const CHART_COLORS = {
 
 export default function CompliancePage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
+  const complianceKPIs = useMemo(
+    () => scaleObjectNumericFields(baseComplianceKPIs, multiplier),
+    [multiplier],
+  );
+  const importStatus = useMemo(
+    () => filterByDateRange(baseImportStatus, filters, (row) => row.lastRun),
+    [filters],
+  );
+  const selfExclusionSummary = useMemo(() => {
+    const scaledByPeriod = baseSelfExclusionSummary.byPeriod.map((row) => ({
+      ...row,
+      count: scaleNumber(row.count, multiplier),
+    }));
+    const inProgress = scaleNumber(baseSelfExclusionSummary.inProgress, multiplier);
+    const pending = scaleNumber(baseSelfExclusionSummary.pending, multiplier);
+    const completed = scaleNumber(baseSelfExclusionSummary.completed, multiplier);
+    const total = inProgress + pending + completed;
+    return {
+      ...baseSelfExclusionSummary,
+      inProgress,
+      pending,
+      completed,
+      total,
+      byPeriod: scaledByPeriod,
+    };
+  }, [multiplier]);
   return (
     <DashboardLayout title="Compliance & Audit" subtitle="Responsible gaming, KYC, AML alerts, and import status"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
