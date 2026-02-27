@@ -29,14 +29,20 @@
 import * as mock from "./mockData";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const API_ENABLED = false; // ← SET TO true WHEN VPN IS CONNECTED
-const API_BASE_URL = "http://localhost:8080/api"; // ← UPDATE WITH REAL ENDPOINT (see build.md)
+const API_ENABLED = import.meta.env.VITE_API_ENABLED === "true"; // ← SET TO true WHEN VPN IS CONNECTED
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, ""); // ← UPDATE WITH REAL ENDPOINT (see build.md)
 const API_TIMEOUT_MS = 10_000;
 
 // ─── Date Range Filter ────────────────────────────────────────────────────────
 export interface DateRange {
   from: string; // ISO date string e.g. "2026-01-01"
   to: string;   // ISO date string e.g. "2026-02-22"
+}
+function toStartEndParams(range?: DateRange): Record<string, string> | undefined {
+  if (!range) {
+    return undefined;
+  }
+  return { start: range.from, end: range.to };
 }
 
 // ─── Generic Fetch Wrapper ────────────────────────────────────────────────────
@@ -144,7 +150,7 @@ export const usersApi = {
   getRegistrationTrend: (range?: DateRange) => withMock<UserRegistrationTrend[]>(
     mock.userRegistrations,
     "/users/registration-trend",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getSelfExclusions: () => withMock<SelfExclusionSummary>(
@@ -176,19 +182,19 @@ export const transactionsApi = {
   getKPIs: (range?: DateRange) => withMock<TransactionKPIs>(
     mock.transactionSummary,
     "/transactions/kpis",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getTrend: (range?: DateRange) => withMock(
     mock.transactionTrend,
     "/transactions/trend",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getByReason: (range?: DateRange) => withMock(
     mock.transactionsByReason,
     "/transactions/by-reason",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 };
 
@@ -215,43 +221,43 @@ export const bettingApi = {
       margin: (mock.overviewKPIs.totalStake - mock.overviewKPIs.totalWinnings) / mock.overviewKPIs.totalStake * 100,
     },
     "/betting/kpis",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getBetslipsByStatus: (range?: DateRange) => withMock(
     mock.betslipsByStatus,
     "/betting/betslips-by-status",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getBetslipsByType: (range?: DateRange) => withMock(
     mock.betslipsByType,
     "/betting/betslips-by-type",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getBetsByType: (range?: DateRange) => withMock(
     mock.betsByType,
     "/betting/bets-by-type",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getTopSports: (range?: DateRange) => withMock(
     mock.topSports,
     "/betting/top-sports",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getByApplication: (range?: DateRange) => withMock(
     mock.betsByApplication,
     "/betting/by-application",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getRevenueTrend: (range?: DateRange) => withMock(
     mock.revenueTrend,
     "/betting/revenue-trend",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 
   getUpcomingEvents: (limit = 20) => withMock(
@@ -286,12 +292,12 @@ export const casinoApi = {
   getKPIs: (range?: DateRange) => withMock(
     mock.casinoKPIs,
     "/casino/kpis",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
   getProviders: (range?: DateRange) => withMock(
     mock.casinoProviders,
     "/casino/providers",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 };
 
@@ -304,7 +310,7 @@ export const commissionsApi = {
   getSummary: (range?: DateRange) => withMock(
     mock.commissionSummary,
     "/commissions/summary",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
   getTopAgents: (limit = 20) => withMock(
     mock.topAgentCommissions,
@@ -348,7 +354,7 @@ export const overviewApi = {
   getRevenueTrend: (range?: DateRange) => withMock(
     mock.revenueTrend,
     "/overview/revenue-trend",
-    range ? { from: range.from, to: range.to } : undefined
+    toStartEndParams(range)
   ),
 };
 
