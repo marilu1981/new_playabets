@@ -6,7 +6,6 @@ Builds serving-domain parquet files:
   - bonus_daily.parquet
   - ftd_daily.parquet
   - casino_daily.parquet
-  - commissions_daily.parquet
 
 Run from project root:
     python -m src.kpis.build_domain_kpis
@@ -21,7 +20,6 @@ from .transactions_kpi import compute_transactions_daily
 from .bonus_kpis import compute_bonus_daily
 from .ftd_kpis import compute_ftd_daily
 from .casino_kpis import compute_casino_daily
-from .commissions_kpis import compute_commissions_by_period
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW = PROJECT_ROOT / "data" / "raw"
@@ -76,25 +74,6 @@ def main() -> None:
         print(f"[domain_kpis] Casino daily: {len(casino_daily)} rows -> {out}")
     else:
         print("[domain_kpis] No casino raw dir - skipping")
-
-    # Commissions
-    comm_dir = RAW / "commissions"
-    if comm_dir.exists():
-        def _load(name: str) -> pd.DataFrame:
-            p = comm_dir / f"{name}_full.parquet"
-            return pd.read_parquet(p) if p.exists() else pd.DataFrame()
-
-        comm_daily = compute_commissions_by_period(
-            sport_direct=_load("sport_direct"),
-            sport_network=_load("sport_network"),
-            casino_direct=_load("casino_direct"),
-            casino_network=_load("casino_network"),
-        )
-        out = SERVING / "commissions_daily.parquet"
-        comm_daily.to_parquet(out, index=False)
-        print(f"[domain_kpis] Commissions daily: {len(comm_daily)} rows -> {out}")
-    else:
-        print("[domain_kpis] No commissions raw dir - skipping")
 
     print("[domain_kpis] Done.")
 

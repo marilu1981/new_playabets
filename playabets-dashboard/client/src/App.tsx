@@ -17,9 +17,9 @@ import UsersPage from "./pages/Users";
 import BettingPage from "./pages/Betting";
 import TransactionsPage from "./pages/Transactions";
 import CasinoPage from "./pages/Casino";
-import CommissionsPage from "./pages/Commissions";
 import CompliancePage from "./pages/Compliance";
 import HierarchyPage from "./pages/Hierarchy";
+import BonusPage from "./pages/Bonus";
 
 function Router() {
   return (
@@ -29,7 +29,7 @@ function Router() {
       <Route path="/betting" component={BettingPage} />
       <Route path="/transactions" component={TransactionsPage} />
       <Route path="/casino" component={CasinoPage} />
-      <Route path="/commissions" component={CommissionsPage} />
+      <Route path="/bonus" component={BonusPage} />
       <Route path="/compliance" component={CompliancePage} />
       <Route path="/hierarchy" component={HierarchyPage} />
       <Route path="/404" component={NotFound} />
