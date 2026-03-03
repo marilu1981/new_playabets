@@ -13,7 +13,8 @@ async function supaQuery(table, opts = {}) {
       const eqIdx = f.indexOf("=");
       const col = f.substring(0, eqIdx);
       const val = f.substring(eqIdx + 1);
-      url.searchParams.set(col, val);
+      // Use append (not set) so multiple filters on the same column (gte + lte) are both sent
+      url.searchParams.append(col, val);
     }
   }
   if (opts.order) url.searchParams.set("order", opts.order);
