@@ -51,3 +51,4 @@ backend/assets/
 docs/_tmp_dwh.zip
 docs/_tmp_dwh_docx/
 docs/_tmp_*/
+.vercel

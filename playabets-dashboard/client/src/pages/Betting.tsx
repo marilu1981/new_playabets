@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 /**
  * PLAYA BETS — Betting & Events Page
  * DWH Views: view_Betslips, view_Bets, view_EventProgram
- * Data source: mockData.ts (replace with API calls when VPN available)
+ * Data source: Supabase daily_kpis table via /api/sportsbook/kpis
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
@@ -31,6 +31,13 @@ import {
   scaleObjectNumericFields,
 } from "@/lib/filterUtils";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
   green: "oklch(0.62 0.17 145)",
@@ -43,11 +50,34 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
 
 export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
+
+  useEffect(() => {
+    const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+    fetchJson<{ stake?: number; winnings?: number; ggr?: number; bets?: number; actives?: number }>(
+      `/sportsbook/kpis?${query}`
+    )
+      .then((d) => {
+        const stake    = Number(d.stake    ?? 0);
+        const winnings = Number(d.winnings ?? 0);
+        const bets     = Number(d.bets     ?? 0);
+        if (stake === 0 && bets === 0) { setLiveOverviewKPIs(null); return; }
+        setLiveOverviewKPIs({
+          ...baseOverviewKPIs,
+          totalStake:    stake,
+          totalWinnings: winnings,
+          totalBetslips: bets,
+        });
+      })
+      .catch(() => setLiveOverviewKPIs(null));
+  }, [filters.dateFrom, filters.dateTo]);
+
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
-  const overviewKPIs = useMemo(
-    () => scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]),
-    [multiplier],
-  );
+  const overviewKPIs = useMemo(() => {
+    if (liveOverviewKPIs) return liveOverviewKPIs;
+    return scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]);
+  }, [multiplier, liveOverviewKPIs]);
+
   const betslipsByStatus = useMemo(
     () => scaleArrayNumericFields(baseBetslipsByStatus, multiplier, ["status", "statusId"]),
     [multiplier],

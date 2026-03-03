@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 /**
  * PLAYA BETS — Bonus & Campaigns Page
  * DWH Views: view_BonusCampaigns, view_BonusBalances, view_Freebets
- * Data source: mockData.ts (replace with API calls when VPN available)
+ * Data source: Supabase bonus_daily table via /api/bonus/kpis
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
@@ -19,6 +19,13 @@ import {
   scaleObjectNumericFields,
 } from "@/lib/filterUtils";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+async function fetchJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 const CHART_COLORS = {
   gold: "oklch(0.72 0.14 85)",
   green: "oklch(0.62 0.17 145)",
@@ -29,6 +36,35 @@ const CHART_COLORS = {
 
 export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [liveBonusKPIs, setLiveBonusKPIs] = useState<typeof baseBonusKPIs | null>(null);
+
+  useEffect(() => {
+    const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+    fetchJson<{ bonus_credited?: number; bonus_used?: number; bonus_expired?: number; active_campaigns?: number; active_users?: number }>(
+      `/bonus/kpis?${query}`
+    )
+      .then((d) => {
+        const credited = Number(d.bonus_credited ?? 0);
+        const used     = Number(d.bonus_used     ?? 0);
+        const expired  = Number(d.bonus_expired  ?? 0);
+        const users    = Number(d.active_users   ?? 1);
+        if (credited === 0 && used === 0) {
+          setLiveBonusKPIs(null);
+          return;
+        }
+        setLiveBonusKPIs({
+          ...baseBonusKPIs,
+          totalBonusBalance: credited,
+          freebetsIssued:    credited,
+          freebetsUsed:      used,
+          freebetsExpired:   expired,
+          activeCampaigns:   Number(d.active_campaigns ?? baseBonusKPIs.activeCampaigns),
+          avgBonusPerUser:   users > 0 ? Number((credited / users).toFixed(2)) : 0,
+        });
+      })
+      .catch(() => setLiveBonusKPIs(null));
+  }, [filters.dateFrom, filters.dateTo]);
+
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const bonusCampaigns = useMemo(
     () =>
@@ -39,10 +75,11 @@ export default function BonusPage() {
       ),
     [filters, multiplier],
   );
-  const bonusKPIs = useMemo(
-    () => scaleObjectNumericFields(baseBonusKPIs, multiplier),
-    [multiplier],
-  );
+  const bonusKPIs = useMemo(() => {
+    if (liveBonusKPIs) return liveBonusKPIs;
+    return scaleObjectNumericFields(baseBonusKPIs, multiplier);
+  }, [multiplier, liveBonusKPIs]);
+
   const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
   const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
 
@@ -108,7 +145,6 @@ export default function BonusPage() {
                     <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{ formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
                       <span className="text-xs font-mono font-semibold" style={{
-                       
                         color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,
                       }}>
                         {c.roi >= 0 ? "+" : ""}{c.roi.toFixed(1)}%
