@@ -580,7 +580,8 @@ export default function Home() {
 
         const ftdByDate = new Map<string, number>();
         for (const row of ftds) {
-          ftdByDate.set(row.date, Number(row.value ?? 0));
+          // ftd rows use { date, value }
+          ftdByDate.set(row.date, Number((row as { date: string; value?: number }).value ?? 0));
         }
 
         const byMonth = new Map<string, { month: string; registrations: number; ftds: number }>();
@@ -593,7 +594,8 @@ export default function Home() {
           const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
           const month = dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
           const bucket = byMonth.get(key) ?? { month, registrations: 0, ftds: 0 };
-          bucket.registrations += Number(row.value ?? 0);
+          // registration rows use { date, registrations } — NOT { date, value }
+          bucket.registrations += Number((row as { date: string; registrations?: number }).registrations ?? 0);
           bucket.ftds += Number(ftdByDate.get(date) ?? 0);
           byMonth.set(key, bucket);
         }
@@ -612,9 +614,12 @@ export default function Home() {
 
         const conversion = regs
           .map((r) => {
-            const registrationsVal = Number(r.value ?? 0);
+            // registration rows use { date, registrations } — NOT { date, value }
+            const registrationsVal = Number((r as { date: string; registrations?: number }).registrations ?? 0);
             const ftdVal = Number(ftdByDate.get(r.date) ?? 0);
-            const rate = registrationsVal > 0 ? Number(((ftdVal / registrationsVal) * 100).toFixed(1)) : 0;
+            // cap at 100% to avoid display artifacts at period boundaries
+            const raw = registrationsVal > 0 ? (ftdVal / registrationsVal) * 100 : 0;
+            const rate = Number(Math.min(raw, 100).toFixed(1));
             return { date: r.date, rate };
           })
           .sort((a, b) => a.date.localeCompare(b.date));
