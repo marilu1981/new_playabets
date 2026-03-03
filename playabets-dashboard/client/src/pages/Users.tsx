@@ -50,6 +50,7 @@ async function fetchJson<T>(path: string): Promise<T> {
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [dataMode, setDataMode] = useState<DataMode>("mock");
+  const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRegistrations, setLiveRegistrations] = useState<typeof baseUserRegistrations | null>(null);
 
@@ -61,11 +62,45 @@ export default function UsersPage() {
 
   useEffect(() => {
     let cancelled = false;
+    fetchJson<{ date?: string }>("/kpis/latest")
+      .then((latest) => {
+        if (cancelled) {
+          return;
+        }
+        const maxDate = latest.date;
+        if (!maxDate || !/^\d{4}-\d{2}-\d{2}$/.test(maxDate)) {
+          return;
+        }
+        setLatestDataDate(maxDate);
+        setFilters((prev) => {
+          let dateTo = prev.dateTo;
+          let dateFrom = prev.dateFrom;
+          let changed = false;
+          if (dateTo > maxDate) {
+            dateTo = maxDate;
+            changed = true;
+          }
+          if (dateFrom > dateTo) {
+            dateFrom = `${dateTo.slice(0, 7)}-01`;
+            changed = true;
+          }
+          return changed ? { ...prev, dateFrom, dateTo } : prev;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
 
     async function loadLiveData() {
       const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
       const [kpisRes, regsRes] = await Promise.allSettled([
-        fetchJson<{ actives?: number }>(`/kpis?${query}`),
+        fetchJson<{ actives?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
       ]);
 
@@ -80,6 +115,7 @@ export default function UsersPage() {
       if (hasKpis) {
         setLiveOverview({
           ...baseOverviewKPIs,
+          totalUsers: Number(kpisRes.value.registrations ?? 0),
           activeUsers: Number(kpisRes.value.actives ?? 0),
         });
       }
@@ -160,7 +196,7 @@ export default function UsersPage() {
     const activeUsers = usersByStatus.find((row) => row.status === "Enabled")?.count ?? 0;
     return {
       ...(liveOverview ?? baseOverviewKPIs),
-      totalUsers,
+      totalUsers: liveOverview?.totalUsers ?? totalUsers,
       activeUsers: liveOverview?.activeUsers ?? activeUsers,
     };
   }, [usersByStatus, liveOverview]);
@@ -177,10 +213,11 @@ export default function UsersPage() {
     >
       <div className="text-xs text-white/50 mb-3">
         Data mode: {dataMode === "live" ? "Live" : dataMode === "partial" ? "Partial Live" : "Mock"}
+        {latestDataDate ? ` · Data through ${latestDataDate}` : ""}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Users" value={formatCompact(overviewKPIs.totalUsers)} subtitle="All time registrations" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" />
+        <KpiCard title="Total Users" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" />
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" />
         <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" />
         <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle={`${selfExclusionSummary.inProgress} in progress`} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" />

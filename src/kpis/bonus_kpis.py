@@ -66,6 +66,13 @@ def compute_bonus_daily(bonuses: pd.DataFrame, campaigns: pd.DataFrame | None = 
     amount   = cols["amount"]
     date_c   = cols["insertdate"]
 
+    # Incremental bonus files can overlap between runs.
+    # Keep only the latest record per BonusID so credits/cancellations
+    # are not double-counted across files.
+    order_col = bcol.get("__cursor__") or bcol.get("insertdate")
+    bonuses["_ord"] = pd.to_datetime(bonuses[order_col], errors="coerce")
+    bonuses = bonuses.sort_values("_ord").drop_duplicates(subset=[bonus_id], keep="last")
+
     bonuses["amount_num"] = to_num(bonuses[amount], default=0.0)
     bonuses["bonus_date"] = to_date(bonuses[date_c])
 

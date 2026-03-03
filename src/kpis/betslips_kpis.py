@@ -177,7 +177,9 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
         ])
 
     # --- Combine
-    out = placed_daily.merge(open_daily, on="date", how="left").merge(settled_daily, on="date", how="left")
+    # Keep both placement and settlement calendars; otherwise settlement-only dates
+    # disappear and revenue can be understated on those days.
+    out = placed_daily.merge(open_daily, on="date", how="outer").merge(settled_daily, on="date", how="outer")
     out = out.fillna(0)
 
     # Dtypes

@@ -183,19 +183,42 @@ def kpis(
     tx = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
+    casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+
+    sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
+    sportsbook_winnings = _s(df, "settled_winnings")
+    sportsbook_ggr = _s(df, "ggr")
+
+    casino_turnover = _s(casino, "casino_stake")
+    casino_winnings = _s(casino, "casino_winnings")
+    casino_ggr = _s(casino, "casino_ggr")
+
+    turnover = sportsbook_turnover + casino_turnover
+    winnings = sportsbook_winnings + casino_winnings
+    ggr = sportsbook_ggr + casino_ggr
+    bonus_spent = _s(bonus, "bonus_credited")
+    ngr = ggr - bonus_spent
 
     return {
         "range": {"start": str(start), "end": str(end)},
         "registrations": _i(df, "registrations"),
         "actives": _i(df, "actives_sports"),
-        "turnover": _s(df, "placed_stake"),
-        "ggr": _s(df, "ggr"),
-        "ngr": _s(df, "ggr") - _s(bonus, "bonus_credited"),
+        "turnover": turnover,
+        "winnings": winnings,
+        "ggr": ggr,
+        "ngr": ngr,
+        "sportsbook_turnover": sportsbook_turnover,
+        "sportsbook_winnings": sportsbook_winnings,
+        "sportsbook_ggr": sportsbook_ggr,
+        "casino_turnover": casino_turnover,
+        "casino_winnings": casino_winnings,
+        "casino_ggr": casino_ggr,
         "ftds": _i(ftd, "ftds"),
         "deposits": _s(tx, "deposits"),
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),
-        "bonus_spent": _s(bonus, "bonus_credited"),
+        "bonus_spent": bonus_spent,
+        "has_transactions_data": not tx.empty,
     }
 
 
@@ -356,6 +379,7 @@ def transactions_kpis(
     df = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
     return {
         "range": {"start": str(start), "end": str(end)},
+        "has_data": not df.empty,
         "deposits": _s(df, "deposits"),
         "withdrawals": _s(df, "withdrawals"),
         "net_deposits": _s(df, "net_deposits"),
@@ -375,9 +399,10 @@ def transactions_trend(
 ):
     df = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
     if df.empty:
-        return {"deposits": [], "withdrawals": []}
+        return {"has_data": False, "deposits": [], "withdrawals": []}
     df = df.sort_values("date")
     return {
+        "has_data": True,
         "deposits": [{"date": str(r["date"]), "value": float(r.get("deposits", 0))} for _, r in df.iterrows()],
         "withdrawals": [{"date": str(r["date"]), "value": float(r.get("withdrawals", 0))} for _, r in df.iterrows()],
     }

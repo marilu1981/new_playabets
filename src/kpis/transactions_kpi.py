@@ -11,8 +11,10 @@ from __future__ import annotations
 import pandas as pd
 from .io_utils import normalize_cols, ensure_cols, to_date, to_num
 
-# TransactionAmountTypeID: 1 = Positive (deposit), 2 = Negative (withdrawal)
-DEPOSIT_TYPE_ID    = 1
+# TransactionAmountTypeID often maps to 1=deposit, 2=withdrawal, but this is not
+# guaranteed across all source environments. We keep ID-first logic and add
+# robust fallbacks below.
+DEPOSIT_TYPE_ID = 1
 WITHDRAWAL_TYPE_ID = 2
 
 
@@ -42,7 +44,7 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
     transactions, tcol = normalize_cols(transactions)
     cols = ensure_cols(
         tcol,
-        required_lower=["transactionid", "userid", "amount", "date", "transactionamounttypeid"],
+        required_lower=["transactionid", "userid", "amount", "date"],
         context="Transactions",
     )
 
@@ -50,7 +52,8 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
     user_id = cols["userid"]
     amount  = cols["amount"]
     date_c  = cols["date"]
-    type_id = cols["transactionamounttypeid"]
+    type_id = tcol.get("transactionamounttypeid")
+    type_name = tcol.get("transactionamounttype")
     status_c = tcol.get("transactionmanagementstatus")
 
     # Keep only latest record per transaction across incremental files.
@@ -68,21 +71,39 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
     )
 
     transactions["amount_num"] = to_num(transactions[amount], default=0.0)
+    transactions["amount_abs"] = transactions["amount_num"].abs()
     transactions["tx_date"]    = to_date(transactions[date_c])
-    transactions["type_id_num"] = pd.to_numeric(transactions[type_id], errors="coerce").fillna(0).astype(int)
+    if type_id:
+        transactions["type_id_num"] = pd.to_numeric(transactions[type_id], errors="coerce").fillna(0).astype(int)
+    else:
+        transactions["type_id_num"] = 0
     if status_c:
         transactions["status_bucket"] = _status_bucket(transactions[status_c])
     else:
         transactions["status_bucket"] = "other_status"
 
-    deposits    = transactions[transactions["type_id_num"] == DEPOSIT_TYPE_ID]
-    withdrawals = transactions[transactions["type_id_num"] == WITHDRAWAL_TYPE_ID]
+    dep_mask = transactions["type_id_num"] == DEPOSIT_TYPE_ID
+    wd_mask = transactions["type_id_num"] == WITHDRAWAL_TYPE_ID
+
+    # Fallback 1: classify by TransactionAmountType text (if IDs are not 1/2).
+    if dep_mask.sum() == 0 and wd_mask.sum() == 0 and type_name:
+        t = transactions[type_name].astype(str).str.strip().str.lower()
+        dep_mask = t.str.contains("deposit|depo|ricaric|top\\s*up", regex=True, na=False)
+        wd_mask = t.str.contains("withdraw|preliev|cash\\s*out|payout", regex=True, na=False)
+
+    # Fallback 2: classify by amount sign.
+    if dep_mask.sum() == 0 and wd_mask.sum() == 0:
+        dep_mask = transactions["amount_num"] > 0
+        wd_mask = transactions["amount_num"] < 0
+
+    deposits = transactions[dep_mask]
+    withdrawals = transactions[wd_mask]
 
     dep_daily = (
         deposits.dropna(subset=["tx_date"])
         .groupby("tx_date")
         .agg(
-            deposits=("amount_num", "sum"),
+            deposits=("amount_abs", "sum"),
             unique_depositors=(user_id, "nunique"),
         )
         .reset_index()
@@ -91,7 +112,7 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
 
     wd_daily = (
         withdrawals.dropna(subset=["tx_date"])
-        .groupby("tx_date")["amount_num"]
+        .groupby("tx_date")["amount_abs"]
         .sum()
         .rename("withdrawals")
         .reset_index()

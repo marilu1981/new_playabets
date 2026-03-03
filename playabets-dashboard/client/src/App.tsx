@@ -16,7 +16,6 @@ import Home from "./pages/Home";
 import UsersPage from "./pages/Users";
 import BettingPage from "./pages/Betting";
 import TransactionsPage from "./pages/Transactions";
-import BonusPage from "./pages/Bonus";
 import CasinoPage from "./pages/Casino";
 import CommissionsPage from "./pages/Commissions";
 import CompliancePage from "./pages/Compliance";
@@ -29,7 +28,6 @@ function Router() {
       <Route path="/users" component={UsersPage} />
       <Route path="/betting" component={BettingPage} />
       <Route path="/transactions" component={TransactionsPage} />
-      <Route path="/bonus" component={BonusPage} />
       <Route path="/casino" component={CasinoPage} />
       <Route path="/commissions" component={CommissionsPage} />
       <Route path="/compliance" component={CompliancePage} />
