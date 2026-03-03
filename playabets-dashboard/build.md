@@ -353,3 +353,4 @@ The DWH views are in the `isbets_bi` database, `dbo` schema. All view names foll
 | 2026-02-22 | Initial build — all 9 pages, mock data, inactive API stubs |
 | 2026-03-03 | Removed all Commissions references (page, route, API, ETL, scheduler, docs) |
 | 2026-03-03 | Deployed demo to Vercel + Supabase (6 parquet files loaded as Postgres tables) |
+# VITE_API_ENABLED=true added to Vercel Tue Mar  3 10:08:26 EST 2026
