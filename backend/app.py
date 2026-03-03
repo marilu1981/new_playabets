@@ -73,8 +73,6 @@ TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
 BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
-COMMISSIONS_DAILY_PATH = _SERVING / "commissions_daily.parquet"
-
 # Raw bonus reference files (full-refresh, written by incremental_bonus.py)
 CAMPAIGNS_PATH = _first_existing_path(
     _RAW / "bonus" / "campaigns_full.parquet",
@@ -85,11 +83,6 @@ FREEBETS_PATH = _first_existing_path(
     _RAW / "bonus" / "freebets_latest.parquet",
 )
 
-# Raw commission snapshots
-SPORT_DIRECT_PATH    = _RAW / "commissions" / "sport_direct_full.parquet"
-SPORT_NETWORK_PATH   = _RAW / "commissions" / "sport_network_full.parquet"
-CASINO_DIRECT_PATH   = _RAW / "commissions" / "casino_direct_full.parquet"
-CASINO_NETWORK_PATH  = _RAW / "commissions" / "casino_network_full.parquet"
 
 # ---------------------------------------------------------------------------
 # Cache
@@ -167,7 +160,6 @@ def health():
         "bonus_daily": BONUS_DAILY_PATH.exists(),
         "ftd_daily": FTD_DAILY_PATH.exists(),
         "casino_daily": CASINO_DAILY_PATH.exists(),
-        "commissions_daily": COMMISSIONS_DAILY_PATH.exists(),
     }
 
 
@@ -569,82 +561,6 @@ def casino_types(
     )
     out["ggr"] = out["stake"] - out["winnings"]
     return {"types": out.sort_values("ggr", ascending=False).to_dict(orient="records")}
-
-
-# ---------------------------------------------------------------------------
-# Commissions
-# ---------------------------------------------------------------------------
-@app.get("/commissions/summary")
-def commissions_summary(
-    start: Optional[date] = Query(None),
-    end: Optional[date] = Query(None),
-):
-    df = load_parquet_cached(COMMISSIONS_DAILY_PATH, "commissions_daily")
-    if start and end:
-        df = _filter_range(df, start, end)
-
-    sport_direct   = load_parquet_cached(SPORT_DIRECT_PATH, "sport_direct")
-    sport_network  = load_parquet_cached(SPORT_NETWORK_PATH, "sport_network")
-    casino_direct  = load_parquet_cached(CASINO_DIRECT_PATH, "casino_direct")
-    casino_network = load_parquet_cached(CASINO_NETWORK_PATH, "casino_network")
-
-    # Combine all commission frames for top-agents
-    frames = []
-    for d, tag in [
-        (sport_direct, "sport_direct"), (sport_network, "sport_network"),
-        (casino_direct, "casino_direct"), (casino_network, "casino_network"),
-    ]:
-        if not d.empty:
-            c = d.copy()
-            c["_source"] = tag
-            frames.append(c)
-
-    top_agents: list[dict] = []
-    total_agents = 0
-    if frames:
-        combined = pd.concat(frames, ignore_index=True)
-        if "UserID" in combined.columns and "Commissions" in combined.columns:
-            combined["Commissions"] = pd.to_numeric(combined["Commissions"], errors="coerce").fillna(0)
-            total_agents = int(combined["UserID"].nunique())
-            ta = (
-                combined.groupby("UserID")["Commissions"]
-                .sum()
-                .sort_values(ascending=False)
-                .head(10)
-                .reset_index()
-            )
-            top_agents = [
-                {"user_id": int(r["UserID"]), "commissions": float(r["Commissions"])}
-                for _, r in ta.iterrows()
-            ]
-
-    return {
-        "total_commissions": _s(df, "commissions"),
-        "sport_commissions": _s(df, "commissions"),  # split available in trend
-        "total_agents": total_agents,
-        "top_agents": top_agents,
-    }
-
-
-@app.get("/commissions/trend")
-def commissions_trend(
-    start: date = Query(...),
-    end: date = Query(...),
-):
-    df = _filter_range(load_parquet_cached(COMMISSIONS_DAILY_PATH, "commissions_daily"), start, end)
-    if df.empty:
-        return {"points": []}
-    df = df.sort_values("date")
-    return {
-        "points": [
-            {
-                "date": str(r["date"]),
-                "commissions": float(r.get("commissions", 0)),
-                "stake": float(r.get("stake", 0)),
-            }
-            for _, r in df.iterrows()
-        ]
-    }
 
 
 # ---------------------------------------------------------------------------

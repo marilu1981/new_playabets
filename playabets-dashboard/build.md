@@ -1,7 +1,7 @@
 # Playa Bets Analytics Dashboard — Build Tracker
 
-> **Status:** Frontend complete (mock data). API layer built but inactive. VPN connection required to activate live data.
-> **Last Updated:** 2026-02-22
+> **Status:** Demo deployed to Vercel (Supabase data). API layer built but inactive. VPN connection required to activate live DWH data.
+> **Last Updated:** 2026-03-03
 
 ---
 
@@ -98,7 +98,6 @@ playabets-dashboard/
 │           ├── Transactions.tsx      ← Transactions
 │           ├── Bonus.tsx             ← Bonus & Campaigns
 │           ├── Casino.tsx            ← Casino & Games
-│           ├── Commissions.tsx       ← Commissions
 │           ├── Compliance.tsx        ← Compliance & Audit
 │           └── Hierarchy.tsx         ← Hierarchy & Roles
 ```
@@ -115,7 +114,6 @@ playabets-dashboard/
 | `/transactions` | Transactions | `view_Transactions`, `view_TransactionTypes` |
 | `/bonus` | Bonus & Campaigns | `view_BonusCampaigns`, `view_BonusBalances`, `view_Freebets` |
 | `/casino` | Casino & Games | `view_CasinoBets`, `view_CasinoGames`, `view_VirtualGames` |
-| `/commissions` | Commissions | `view_CommissionsSport`, `view_CommissionsCasino`, `view_CommissionsPoker` |
 | `/compliance` | Compliance & Audit | `view_ImportStatus`, `view_AuditLog`, `view_UsersSelfexclusions` |
 | `/hierarchy` | Hierarchy & Roles | `view_Hierarchy`, `view_UserRoles` |
 
@@ -209,12 +207,6 @@ The frontend expects the following REST API endpoints. You will need to build or
 | GET | `/api/casino/kpis?from=&to=` | SUM from `view_CasinoBets` |
 | GET | `/api/casino/providers?from=&to=` | GROUP BY ProviderId from `view_CasinoBets` |
 
-### Commissions
-| Method | Endpoint | DWH Query |
-|---|---|---|
-| GET | `/api/commissions/summary?from=&to=` | SUM from `view_CommissionsSport`, `view_CommissionsCasino`, `view_CommissionsPoker` |
-| GET | `/api/commissions/top-agents?limit=` | GROUP BY AgentId, ORDER BY SUM(Commission) DESC |
-
 ### Hierarchy
 | Method | Endpoint | DWH Query |
 |---|---|---|
@@ -289,6 +281,55 @@ This backend should run inside the VPN perimeter. The frontend can then be deplo
 
 ---
 
+## Demo Deployment (Vercel + Supabase)
+
+### Live URL
+```
+https://playabets-dashboard.vercel.app
+```
+*(Deployment URL: `playabets-dashboard-mtbssbyu7-marilus-projects.vercel.app`)*
+
+### Supabase Project
+| Property | Value |
+|---|---|
+| Project Name | `playabets` |
+| Project Ref | `guaeohezgweuhomyweld` |
+| Region | `eu-west-2` (London) |
+| REST URL | `https://guaeohezgweuhomyweld.supabase.co` |
+| Dashboard | https://supabase.com/dashboard/project/guaeohezgweuhomyweld |
+
+### Tables Loaded
+| Table | Rows | Source Parquet |
+|---|---|---|
+| `daily_kpis` | 448 | `daily_kpis.parquet` |
+| `rfm_users` | 185,250 | `rfm_users.parquet` |
+| `bonus_daily` | 42 | `bonus_daily.parquet` |
+| `ftd_daily` | 121 | `ftd_daily.parquet` |
+| `casino_daily` | 120 | `casino_daily.parquet` |
+| `transactions_daily` | 0 | `transactions_daily.parquet` (empty — shows mock data) |
+
+### Vercel Environment Variables Set
+```
+VITE_SUPABASE_URL=https://guaeohezgweuhomyweld.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon key — see Supabase dashboard>
+VITE_API_ENABLED=false
+```
+
+### To Redeploy After Changes
+```bash
+cd playabets-dashboard
+pnpm build
+vercel deploy --prod --token <your-vercel-token>
+```
+
+### To Refresh Supabase Data
+Re-run the parquet loader script after updating the files:
+```bash
+python3 load_parquets.py  # located at repo root
+```
+
+---
+
 ## DWH Connection Details (to be filled in locally)
 
 ```
@@ -310,3 +351,5 @@ The DWH views are in the `isbets_bi` database, `dbo` schema. All view names foll
 | Date | Change |
 |---|---|
 | 2026-02-22 | Initial build — all 9 pages, mock data, inactive API stubs |
+| 2026-03-03 | Removed all Commissions references (page, route, API, ETL, scheduler, docs) |
+| 2026-03-03 | Deployed demo to Vercel + Supabase (6 parquet files loaded as Postgres tables) |

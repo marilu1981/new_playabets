@@ -11,7 +11,7 @@ import KpiCard from "@/components/KpiCard";
 import { Network, Users, UserCheck, TrendingUp } from "lucide-react";
 import {
   hierarchySummary as baseHierarchySummary,
-  topAgentCommissions as baseTopAgentCommissions,
+  topAgents as baseTopAgents,
 } from "@/lib/mockData";
 import { formatNumber, formatCompact } from "@/lib/formatters";
 import {
@@ -34,8 +34,8 @@ export default function HierarchyPage() {
     () => scaleObjectNumericFields(baseHierarchySummary, multiplier),
     [multiplier],
   );
-  const topAgentCommissions = useMemo(
-    () => scaleArrayNumericFields(baseTopAgentCommissions, multiplier, ["agentId", "username"]),
+  const topAgents = useMemo(
+    () => scaleArrayNumericFields(baseTopAgents, multiplier, ["agentId", "username"]),
     [multiplier],
   );
   const hierarchyLevels = useMemo(
@@ -143,19 +143,18 @@ export default function HierarchyPage() {
           <table className="w-full text-sm">
             <thead>
               <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-                {["Agent ID", "Username", "Direct Users", "Total Stake", "Commissions"].map((h) => (
+                {["Agent ID", "Username", "Direct Users", "Total Stake"].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-6 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {topAgentCommissions.map((a) => (
+              {topAgents.map((a) => (
                 <tr key={a.agentId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                   <td className="py-2.5 pr-6 text-white/40 text-xs font-mono">#{a.agentId}</td>
                   <td className="py-2.5 pr-6 text-white/80 font-medium">{a.username}</td>
                   <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{formatNumber(a.directUsers)}</td>
                   <td className="py-2.5 pr-6 text-white/50 text-xs font-mono">{ formatCompact(a.stake)}</td>
-                  <td className="py-2.5 font-mono text-sm font-semibold" style={{color: CHART_COLORS.gold }}>{ formatCompact(a.commissions)}</td>
                 </tr>
               ))}
             </tbody>

@@ -20,7 +20,6 @@
  *   Bonus:        view_BonusCampaigns, view_BonusBalances, view_Freebets
  *   Bets:         view_Betslips, view_Bets, view_EventProgram
  *   Casino:       view_CasinoBets, view_CasinoGames, view_VirtualGames
- *   Commissions:  view_CommissionsSport, view_CommissionsCasino, view_CommissionsPoker
  *   Hierarchy:    view_Hierarchy, view_UserRoles
  *   Compliance:   view_ImportStatus, view_AuditLog
  *   Lookup:       view_Sports, view_Currencies, view_Countries, view_BetslipStatuses
@@ -302,24 +301,6 @@ export const casinoApi = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMMISSIONS API
-// DWH: view_CommissionsSport, view_CommissionsCasino, view_CommissionsPoker
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const commissionsApi = {
-  getSummary: (range?: DateRange) => withMock(
-    mock.commissionSummary,
-    "/commissions/summary",
-    toStartEndParams(range)
-  ),
-  getTopAgents: (limit = 20) => withMock(
-    mock.topAgentCommissions,
-    "/commissions/top-agents",
-    { limit: String(limit) }
-  ),
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // HIERARCHY API
 // DWH: view_Hierarchy, view_UserRoles
 // ─────────────────────────────────────────────────────────────────────────────
@@ -327,7 +308,7 @@ export const commissionsApi = {
 export const hierarchyApi = {
   getSummary: () => withMock(mock.hierarchySummary, "/hierarchy/summary"),
   getAgents: (limit = 50) => withMock(
-    mock.topAgentCommissions,
+    mock.topAgents,
     "/hierarchy/agents",
     { limit: String(limit) }
   ),

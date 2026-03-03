@@ -53,12 +53,11 @@ EXTRACT_MODULES = [
     "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",
-    "src.extract.incremental_commissions",
 ]
 
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",   # builds daily_kpis.parquet + rfm_users.parquet
-    "src.kpis.build_domain_kpis",  # builds transactions/bonus/casino/commissions serving files
+    "src.kpis.build_domain_kpis",  # builds transactions/bonus/casino serving files
 ]
 
 

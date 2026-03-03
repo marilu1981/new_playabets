@@ -12,7 +12,7 @@ import {
   TrendingUp,
   DollarSign,
   Gamepad2,
-  Award,
+  Gift,
   ShieldCheck,
   ChevronLeft,
   ChevronRight,
@@ -57,7 +57,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Products",
     items: [
       { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
-      { path: "/commissions", label: "Commissions", icon: Award },
+      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
     ],
   },
   {

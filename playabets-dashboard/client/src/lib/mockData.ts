@@ -201,23 +201,13 @@ export const casinoKPIs = {
   totalBets: 870_000,
 };
 
-// ─── Commissions ──────────────────────────────────────────────────────────────
-export const commissionSummary = {
-  sportDirect: 284_100,
-  sportNetwork: 142_050,
-  casinoDirect: 98_400,
-  casinoNetwork: 49_200,
-  pokerDirect: 12_840,
-  pokerNetwork: 6_420,
-  totalPaid: 593_010,
-};
-
-export const topAgentCommissions = [
-  { agentId: 10042, username: "agent_ng_master", directUsers: 842, stake: 4_200_000, commissions: 42_000 },
-  { agentId: 10038, username: "agent_gh_west", directUsers: 621, stake: 3_105_000, commissions: 31_050 },
-  { agentId: 10031, username: "agent_ke_nairobi", directUsers: 498, stake: 2_490_000, commissions: 24_900 },
-  { agentId: 10028, username: "agent_ug_kampala", directUsers: 384, stake: 1_920_000, commissions: 19_200 },
-  { agentId: 10024, username: "agent_ng_lagos2", directUsers: 312, stake: 1_560_000, commissions: 15_600 },
+// ─── Top Agents (Hierarchy) ──────────────────────────────────────────────────
+export const topAgents = [
+  { agentId: 10042, username: "agent_ng_master", directUsers: 842, stake: 4_200_000 },
+  { agentId: 10038, username: "agent_gh_west", directUsers: 621, stake: 3_105_000 },
+  { agentId: 10031, username: "agent_ke_nairobi", directUsers: 498, stake: 2_490_000 },
+  { agentId: 10028, username: "agent_ug_kampala", directUsers: 384, stake: 1_920_000 },
+  { agentId: 10024, username: "agent_ng_lagos2", directUsers: 312, stake: 1_560_000 },
 ];
 
 // ─── Compliance / Audit ───────────────────────────────────────────────────────

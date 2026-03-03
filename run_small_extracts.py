@@ -4,7 +4,6 @@ run_small_extracts.py
 Run one, several, or all extract modules.
 
 Available modules:
-  commissions   — 4 commission views (full-refresh)
   bonus         — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
   users         — view_users (incremental via DateVersion)
   balances      — view_balances (full-refresh snapshot)
@@ -46,7 +45,6 @@ WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
 
 # ── Module registry ───────────────────────────────────────────────────────────
 MODULES: dict[str, str] = {
-    "commissions":  "src.extract.incremental_commissions",
     "bonus":        "src.extract.incremental_bonus",
     "users":        "src.extract.incremental_users",
     "balances":     "src.extract.incremental_balances",
@@ -62,18 +60,10 @@ TRANSFORM_MODULES: dict[str, str] = {
 }
 
 # Default run order when no specific modules are given (excludes betslips)
-DEFAULT_ORDER = ["commissions", "bonus", "users", "balances", "casino", "transactions", "first_deposits"]
+DEFAULT_ORDER = ["bonus", "users", "balances", "casino", "transactions", "first_deposits"]
 
 # Maps each module name to the view names it writes watermarks for
 MODULE_VIEWS: dict[str, list[str]] = {
-    "commissions":  [
-        "Dwh_en.view_sportdirectcommissions",
-        "Dwh_en.view_sportnetworkcommissions",
-        "Dwh_en.view_casinodirectcommissions",
-        "Dwh_en.view_casinonetworkcommissions",
-        "Dwh_en.view_pokerdirectcommissions",
-        "Dwh_en.view_pokernetworkcommissions",
-    ],
     "bonus":        [
         "Dwh_en.view_bonusbonuses",
         "Dwh_en.view_bonuscampaigns",
@@ -89,13 +79,6 @@ MODULE_VIEWS: dict[str, list[str]] = {
 
 # ── Watermark management ──────────────────────────────────────────────────────
 ALL_VIEWS = [
-    # Commissions
-    "Dwh_en.view_sportdirectcommissions",
-    "Dwh_en.view_sportnetworkcommissions",
-    "Dwh_en.view_casinodirectcommissions",
-    "Dwh_en.view_casinonetworkcommissions",
-    "Dwh_en.view_pokerdirectcommissions",
-    "Dwh_en.view_pokernetworkcommissions",
     # Bonus
     "Dwh_en.view_bonuscampaigns",
     "Dwh_en.view_bonusfreebets",
@@ -116,10 +99,6 @@ ALL_VIEWS = [
     "Dwh_en.view_Casino",
     "Dwh_en.view_BetSlips",
     "Dwh_en.view_Transactions",
-    "Dwh_en.view_SportDirectCommissions",
-    "Dwh_en.view_SportNetworkCommissions",
-    "Dwh_en.view_CasinoDirectCommissions",
-    "Dwh_en.view_CasinoNetworkCommissions",
 ]
 
 
