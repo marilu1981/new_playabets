@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS - Users & Players Page
+ * PLAYA BETS - Players Breakdown Page
  * DWH Views: view_Users, view_Balances, view_UserSessions, view_UsersSelfexclusions
  */
 
@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
+import MockOverlay from "@/components/MockOverlay";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -53,6 +54,7 @@ export default function UsersPage() {
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRegistrations, setLiveRegistrations] = useState<typeof baseUserRegistrations | null>(null);
+  const [liveStatusBreakdown, setLiveStatusBreakdown] = useState<Array<{ status: string; count: number }> | null>(null);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const fallbackYear = useMemo(() => {
@@ -99,9 +101,10 @@ export default function UsersPage() {
 
     async function loadLiveData() {
       const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-      const [kpisRes, regsRes] = await Promise.allSettled([
+      const [kpisRes, regsRes, statusRes] = await Promise.allSettled([
         fetchJson<{ actives?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
+        fetchJson<{ statuses?: Array<{ status: string; count: number }> }>('/users/status-breakdown'),
       ]);
 
       if (cancelled) {
@@ -139,6 +142,16 @@ export default function UsersPage() {
           .map(([, v]) => v);
         setLiveRegistrations(monthly);
       }
+
+      if (statusRes.status === "fulfilled") {
+        const payload = statusRes.value;
+        const statuses = Array.isArray(payload)
+          ? payload
+          : payload.statuses ?? [];
+        setLiveStatusBreakdown(statuses);
+      } else {
+        setLiveStatusBreakdown(null);
+      }
     }
 
     loadLiveData().catch(() => {
@@ -152,9 +165,11 @@ export default function UsersPage() {
     };
   }, [filters.dateFrom, filters.dateTo]);
 
+  const statusSource = liveStatusBreakdown ?? baseUsersByStatus;
+  const statusMultiplier = liveStatusBreakdown ? 1 : multiplier;
   const usersByStatus = useMemo(
-    () => scaleArrayNumericFields(baseUsersByStatus, multiplier, ["status", "statusId"]),
-    [multiplier],
+    () => scaleArrayNumericFields(statusSource, statusMultiplier, ["status", "statusId"]),
+    [statusSource, statusMultiplier],
   );
   const usersByCurrency = useMemo(
     () => scaleArrayNumericFields(baseUsersByCurrency, multiplier, ["currency", "currencyId"]),
@@ -207,7 +222,7 @@ export default function UsersPage() {
 
   return (
     <DashboardLayout
-      title="Users & Players"
+      title="Players Breakdown"
       subtitle="Player lifecycle, sessions, and responsible gaming"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
     >
@@ -224,7 +239,8 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={dataMode === "mock"} description="Registrations chart uses mock data" />
           <h3 className="text-sm font-semibold text-white mb-1">User Registrations</h3>
           <p className="text-xs text-white/40 mb-4">
             Last 12 months - new vs churned{liveRegistrations ? " (live registrations, churn pending)" : " (mock)"}
@@ -241,7 +257,8 @@ export default function UsersPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={dataMode === "mock"} description="Currency mix pending live data" />
           <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
           <p className="text-xs text-white/40 mb-4">African market distribution - Pending (Mock)</p>
           <div className="space-y-3">
@@ -268,7 +285,11 @@ export default function UsersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-4">User Status Breakdown - Pending (Mock)</h3>
+          <h3 className="text-sm font-semibold text-white mb-2">
+            User Status Breakdown
+            {dataMode === "mock" ? " (Mock data)" : dataMode === "partial" ? " (Partial live)" : ""}
+          </h3>
+          <p className="text-xs text-white/40 mb-4">Derived from the latest `userstatus` field export.</p>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
               const pct = (u.count / totalUsersSafe * 100).toFixed(1);
@@ -293,7 +314,8 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={dataMode === "mock"} description="Self-exclusion data still mock" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
           <p className="text-xs text-white/40 mb-4">Responsible gaming overview - Pending (Mock)</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -324,7 +346,8 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active={dataMode === "mock"} description="Recent sessions table pending live feed" />
         <div className="flex items-center gap-2 mb-4">
           <Clock size={16} style={{ color: "oklch(0.72 0.14 85)" }} />
           <h3 className="text-sm font-semibold text-white">Recent Sessions - Pending (Mock)</h3>

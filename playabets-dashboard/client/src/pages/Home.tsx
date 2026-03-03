@@ -21,6 +21,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
+import MockOverlay from "@/components/MockOverlay";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -310,6 +311,7 @@ export default function Home() {
   const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
   const [dataMode, setDataMode] = useState<DataMode>("mock");
+  const isMockMode = dataMode === "mock";
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
@@ -887,7 +889,10 @@ export default function Home() {
   const renderSummaryMetricsTable = () => (
     <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Summary Metrics</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Summary Metrics</h3>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
+        </div>
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
           style={{ background: CHART_COLORS.green, color: "white" }}
@@ -1175,7 +1180,8 @@ export default function Home() {
       {/* ── SEGMENT DISTRIBUTION + DEPOSIT VS WITHDRAWAL ─────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Segment Distribution */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={isMockMode} description="Segment exports pending" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
             <p className="text-xs text-white/40">VIP / PVIP / Mass / Mix breakdown</p>
@@ -1233,7 +1239,8 @@ export default function Home() {
       </div>
 
       {/* ── SEGMENT PERFORMANCE KPI ROW ─────────────────────────────────── */}
-      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
+      <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
+        <MockOverlay active={isMockMode} label="Segment Mock" description="Awaiting live segment exports" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
@@ -1252,7 +1259,8 @@ export default function Home() {
       {/* ── GEOGRAPHIC DISTRIBUTION + TRAFFIC SOURCE ───────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Geographic Distribution */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={isMockMode} description="Geographic data still mocked" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Geographic Distribution</h3>
@@ -1284,7 +1292,8 @@ export default function Home() {
         </div>
 
         {/* Traffic Source Breakdown */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={isMockMode} description="Traffic source data mock" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Traffic Source Breakdown</h3>
@@ -1510,7 +1519,10 @@ export default function Home() {
       <div className="rounded-xl p-5" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Detailed Breakdown</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Detailed Breakdown</h3>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
+            </div>
             <p className="text-xs text-white/40">Date · Brand · Segment · Territory · Value · % Change</p>
           </div>
           <button

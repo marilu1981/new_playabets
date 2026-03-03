@@ -28,9 +28,10 @@
 import * as mock from "./mockData";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const API_ENABLED = import.meta.env.VITE_API_ENABLED === "true"; // ← SET TO true WHEN VPN IS CONNECTED
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, ""); // ← UPDATE WITH REAL ENDPOINT (see build.md)
-const API_TIMEOUT_MS = 10_000;
+const API_ENABLED = import.meta.env.VITE_API_ENABLED === "true"; // controlled via env (VITE_API_ENABLED)
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
+const API_TIMEOUT_MS = Number.parseInt(import.meta.env.VITE_API_TIMEOUT_MS ?? "10000", 10) || 10_000;
 
 // ─── Date Range Filter ────────────────────────────────────────────────────────
 export interface DateRange {
@@ -41,7 +42,12 @@ function toStartEndParams(range?: DateRange): Record<string, string> | undefined
   if (!range) {
     return undefined;
   }
-  return { start: range.from, end: range.to };
+  const start = range.from?.trim();
+  const end = range.to?.trim();
+  if (!start || !end) {
+    return undefined;
+  }
+  return { start, end };
 }
 
 // ─── Generic Fetch Wrapper ────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ Endpoints:
   /kpis                    — overview KPIs for a date range
   /timeseries/revenue      — daily time-series for a metric
   /timeseries/registrations
+  /timeseries/conversion-cohorts
   /kpis/latest
   /kpis/series
   /kpis/rolling
@@ -34,6 +35,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Literal
@@ -42,10 +44,16 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.kpis.io_utils import normalize_cols, read_all_parquets, to_dt
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-_ROOT = Path(__file__).resolve().parents[1]
+_ROOT = PROJECT_ROOT
 
 
 def _first_existing_path(*paths: Path) -> Path:
@@ -63,6 +71,7 @@ _RAW = _first_existing_path(
     _ROOT / "data" / "raw",
     _ROOT / "backend" / "data" / "raw",
 )
+USERS_RAW = _first_existing_path(_RAW / "users", _RAW / "Users")
 
 DATA_PATH        = _SERVING / "daily_kpis.parquet"
 RFM_USERS_PATH   = _SERVING / "rfm_users.parquet"
@@ -73,21 +82,31 @@ TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
 BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
+
 # Raw bonus reference files (full-refresh, written by incremental_bonus.py)
-CAMPAIGNS_PATH = _first_existing_path(
-    _RAW / "bonus" / "campaigns_full.parquet",
-    _RAW / "bonus" / "campaigns_latest.parquet",
-)
-FREEBETS_PATH = _first_existing_path(
-    _RAW / "bonus" / "freebets_full.parquet",
-    _RAW / "bonus" / "freebets_latest.parquet",
-)
+def _prefer_latest_parquet(base_dir: Path, prefix: str) -> Path:
+    latest_candidates = sorted(
+        (base_dir.glob(f"{prefix}_latest*.parquet")),
+        key=lambda p: p.stat().st_mtime if p.exists() else 0,
+    )
+    if latest_candidates:
+        return latest_candidates[-1]
+    fallback_full = base_dir / f"{prefix}_full.parquet"
+    return fallback_full if fallback_full.exists() else base_dir / f"{prefix}_latest.parquet"
+
+CAMPAIGNS_PATH = _prefer_latest_parquet(_RAW / "bonus", "campaigns")
+FREEBETS_PATH = _prefer_latest_parquet(_RAW / "bonus", "freebets")
 
 
 # ---------------------------------------------------------------------------
 # Cache
 # ---------------------------------------------------------------------------
 _PARQUET_CACHE: dict[str, dict] = {}
+_COHORT_CACHE: dict[str, object] = {
+    "fingerprint": None,
+    "df": pd.DataFrame(),
+    "max_observed_date": None,
+}
 
 
 def load_parquet_cached(path: Path, key: str) -> pd.DataFrame:
@@ -106,6 +125,169 @@ def load_parquet_cached(path: Path, key: str) -> pd.DataFrame:
 
 def load_daily_df() -> pd.DataFrame:
     return load_parquet_cached(DATA_PATH, "daily_kpis")
+
+
+def _raw_files_fingerprint(files: list[Path]) -> tuple[tuple[str, int, int], ...]:
+    return tuple((f.name, int(f.stat().st_mtime), int(f.stat().st_size)) for f in files)
+
+
+def _normalize_cols(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
+    out = df.copy()
+    out.columns = [str(c).strip() for c in out.columns]
+    return out, {str(c).lower(): str(c) for c in out.columns}
+
+
+def _load_latest_users() -> pd.DataFrame:
+    users = read_all_parquets(USERS_RAW, "users_increment_*.parquet") if USERS_RAW.exists() else pd.DataFrame()
+    if users.empty:
+        return users
+
+    df, mapping = normalize_cols(users)
+    uid_col = mapping.get("userid")
+    if not uid_col:
+        return df
+
+    sort_candidate = None
+    for candidate in ("dateversion", "detaildateversion", "creationdate", "lastlogin"):
+        if candidate in mapping:
+            sort_candidate = mapping[candidate]
+            break
+
+    if sort_candidate:
+        df["_sort_dt"] = to_dt(df[sort_candidate])
+        df = df.sort_values("_sort_dt")
+
+    df = df.drop_duplicates(subset=[uid_col], keep="last")
+    return df
+
+
+def _status_counts() -> list[dict[str, object]]:
+    users = _load_latest_users()
+    if users.empty:
+        return []
+
+    users, mapping = normalize_cols(users)
+    status_col = mapping.get("userstatus")
+    if not status_col:
+        return []
+
+    statuses = users[status_col].fillna("Unknown").astype(str).str.strip()
+    statuses.loc[statuses == ""] = "Unknown"
+    counts = statuses.value_counts()
+    return [
+        {"status": str(status), "count": int(count)}
+        for status, count in counts.items()
+    ]
+
+
+def _build_conversion_cohorts() -> tuple[pd.DataFrame, Optional[date]]:
+    users_dir = _RAW / "users"
+    ftd_dir = _RAW / "first_deposits"
+    user_files = sorted(users_dir.glob("users_increment_*.parquet")) if users_dir.exists() else []
+    ftd_files = sorted(ftd_dir.glob("first_deposits_increment_*.parquet")) if ftd_dir.exists() else []
+    if not user_files or not ftd_files:
+        empty = pd.DataFrame(
+            columns=["date", "registrations", "ftds_d7", "ftds_d30", "rate_d7", "rate_d30"]
+        )
+        return empty, None
+
+    fingerprint = ("cohorts", _raw_files_fingerprint(user_files), _raw_files_fingerprint(ftd_files))
+    if _COHORT_CACHE.get("fingerprint") == fingerprint:
+        cached_df = _COHORT_CACHE.get("df")
+        if isinstance(cached_df, pd.DataFrame):
+            return cached_df.copy(), _COHORT_CACHE.get("max_observed_date")
+
+    users = pd.concat((pd.read_parquet(f) for f in user_files), ignore_index=True)
+    first_deposits = pd.concat((pd.read_parquet(f) for f in ftd_files), ignore_index=True)
+    users, ucol = _normalize_cols(users)
+    first_deposits, fcol = _normalize_cols(first_deposits)
+
+    uid_col = ucol.get("userid")
+    creation_col = ucol.get("creationdate")
+    if not uid_col or not creation_col:
+        empty = pd.DataFrame(
+            columns=["date", "registrations", "ftds_d7", "ftds_d30", "rate_d7", "rate_d30"]
+        )
+        return empty, None
+
+    users["_uid"] = pd.to_numeric(users[uid_col], errors="coerce")
+    users["_creation_dt"] = pd.to_datetime(users[creation_col], errors="coerce")
+    users = users.dropna(subset=["_uid", "_creation_dt"]).copy()
+
+    test_col = ucol.get("testuser")
+    if test_col:
+        users = users[pd.to_numeric(users[test_col], errors="coerce").fillna(0).astype(int) == 0].copy()
+
+    users = users.sort_values("_creation_dt").drop_duplicates(subset=["_uid"], keep="first")
+    users["date"] = users["_creation_dt"].dt.date
+
+    ftd_uid_col = fcol.get("idutente")
+    ftd_date_col = fcol.get("dataprimodeposito")
+    if not ftd_uid_col or not ftd_date_col:
+        daily_regs = (
+            users.groupby("date")["_uid"].nunique().rename("registrations").reset_index().sort_values("date")
+        )
+        daily_regs["ftds_d7"] = 0
+        daily_regs["ftds_d30"] = 0
+        daily_regs["rate_d7"] = 0.0
+        daily_regs["rate_d30"] = 0.0
+        return daily_regs, None
+
+    first_deposits["_uid"] = pd.to_numeric(first_deposits[ftd_uid_col], errors="coerce")
+    first_deposits["_ftd_dt"] = pd.to_datetime(first_deposits[ftd_date_col], errors="coerce")
+    first_deposits = first_deposits.dropna(subset=["_uid", "_ftd_dt"]).copy()
+    first_deposits = first_deposits.sort_values("_ftd_dt").drop_duplicates(subset=["_uid"], keep="first")
+    max_observed_date = first_deposits["_ftd_dt"].dt.date.max()
+
+    merged = users[["_uid", "date"]].merge(first_deposits[["_uid", "_ftd_dt"]], on="_uid", how="left")
+    merged["_cohort_dt"] = pd.to_datetime(merged["date"], errors="coerce")
+    merged["lag_days"] = (merged["_ftd_dt"].dt.normalize() - merged["_cohort_dt"]).dt.days
+    merged.loc[merged["lag_days"] < 0, "lag_days"] = pd.NA
+
+    regs = merged.groupby("date")["_uid"].nunique().rename("registrations").reset_index()
+    d7 = (
+        merged[(merged["lag_days"] >= 0) & (merged["lag_days"] <= 7)]
+        .groupby("date")["_uid"]
+        .nunique()
+        .rename("ftds_d7")
+        .reset_index()
+    )
+    d30 = (
+        merged[(merged["lag_days"] >= 0) & (merged["lag_days"] <= 30)]
+        .groupby("date")["_uid"]
+        .nunique()
+        .rename("ftds_d30")
+        .reset_index()
+    )
+
+    out = regs.merge(d7, on="date", how="left").merge(d30, on="date", how="left").fillna(0)
+    out["registrations"] = out["registrations"].astype(int)
+    out["ftds_d7"] = out["ftds_d7"].astype(int)
+    out["ftds_d30"] = out["ftds_d30"].astype(int)
+
+    out["rate_d7"] = out.apply(
+        lambda r: (float(r["ftds_d7"]) / float(r["registrations"]) * 100.0) if r["registrations"] > 0 else 0.0,
+        axis=1,
+    )
+    out["rate_d30"] = out.apply(
+        lambda r: (float(r["ftds_d30"]) / float(r["registrations"]) * 100.0) if r["registrations"] > 0 else 0.0,
+        axis=1,
+    )
+
+    if max_observed_date:
+        observed_dt = pd.Timestamp(max_observed_date)
+        cohort_dt = pd.to_datetime(out["date"], errors="coerce")
+        mature_d7 = cohort_dt + pd.Timedelta(days=7) <= observed_dt
+        mature_d30 = cohort_dt + pd.Timedelta(days=30) <= observed_dt
+        out.loc[~mature_d7, "rate_d7"] = pd.NA
+        out.loc[~mature_d30, "rate_d30"] = pd.NA
+
+    out = out.sort_values("date")
+
+    _COHORT_CACHE["fingerprint"] = fingerprint
+    _COHORT_CACHE["df"] = out.copy()
+    _COHORT_CACHE["max_observed_date"] = max_observed_date
+    return out, max_observed_date
 
 
 # ---------------------------------------------------------------------------
@@ -180,10 +362,12 @@ def kpis(
     sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
     sportsbook_winnings = _s(df, "settled_winnings")
     sportsbook_ggr = _s(df, "ggr")
+    sportsbook_actives = _i(df, "actives_sports")
 
     casino_turnover = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
     casino_ggr = _s(casino, "casino_ggr")
+    casino_actives = _i(casino, "casino_actives")
 
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings
@@ -194,7 +378,9 @@ def kpis(
     return {
         "range": {"start": str(start), "end": str(end)},
         "registrations": _i(df, "registrations"),
-        "actives": _i(df, "actives_sports"),
+        "actives": sportsbook_actives + casino_actives,
+        "sports_actives": sportsbook_actives,
+        "casino_actives": casino_actives,
         "turnover": turnover,
         "winnings": winnings,
         "ggr": ggr,
@@ -254,6 +440,32 @@ def registrations_timeseries(
     regs = [{"date": str(x), "value": int(v)} for x, v in zip(d["date"], d.get("registrations", [0] * len(d)))]
     ftds = [{"date": str(x), "value": int(ftd_by_date.get(x, 0))} for x in d["date"]]
     return {"registrations": regs, "ftds": ftds}
+
+
+@app.get("/timeseries/conversion-cohorts")
+def conversion_cohorts_timeseries(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    cohorts, max_observed_date = _build_conversion_cohorts()
+    if cohorts.empty:
+        return {"points": [], "max_observed_date": None}
+
+    d = cohorts[(cohorts["date"] >= start) & (cohorts["date"] <= end)].sort_values("date")
+    return {
+        "max_observed_date": str(max_observed_date) if max_observed_date else None,
+        "points": [
+            {
+                "date": str(r["date"]),
+                "registrations": int(r.get("registrations", 0)),
+                "ftds_d7": int(r.get("ftds_d7", 0)),
+                "ftds_d30": int(r.get("ftds_d30", 0)),
+                "rate_d7": (float(r["rate_d7"]) if pd.notna(r.get("rate_d7")) else None),
+                "rate_d30": (float(r["rate_d30"]) if pd.notna(r.get("rate_d30")) else None),
+            }
+            for _, r in d.iterrows()
+        ],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +535,12 @@ def kpis_daily(
         if keep:
             d = d[keep]
     return {"path": str(DATA_PATH), "rows": d.to_dict(orient="records")}
+
+
+@app.get("/users/status-breakdown")
+def users_status_breakdown():
+    statuses = _status_counts()
+    return {"statuses": statuses}
 
 
 # ---------------------------------------------------------------------------
@@ -569,6 +787,9 @@ def casino_types(
 @app.post("/cache/clear")
 def cache_clear():
     _PARQUET_CACHE.clear()
+    _COHORT_CACHE["fingerprint"] = None
+    _COHORT_CACHE["df"] = pd.DataFrame()
+    _COHORT_CACHE["max_observed_date"] = None
     return {"ok": True}
 
 

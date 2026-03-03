@@ -242,15 +242,25 @@ def build_rfm_users(
 
     rfm["rfm_score"] = rfm["r_score"] * 100 + rfm["f_score"] * 10 + rfm["m_score"]
 
-    # Simple segments (customise later)
+    # Segment rules:
+    # 1) Champions: R=5, F=5, M=5
+    # 2) Big Spenders: not Champion AND F>=4 AND M=5
+    # 3) Loyal: not Champion/Big Spender AND R>=4 AND F>=4 AND M>=3
+    # 4) At Risk / Dormant / Mid unchanged
     def segment(row) -> str:
         r, f, m = row["r_score"], row["f_score"], row["m_score"]
-        if r >= 4 and f >= 4 and m >= 4:
+        is_champion = (r == 5 and f == 5 and m == 5)
+        if is_champion:
             return "Champions"
-        if r >= 4 and f >= 3:
-            return "Loyal"
-        if r >= 4 and m >= 4:
+
+        is_big_spender = (f >= 4 and m == 5)
+        if is_big_spender:
             return "Big Spenders"
+
+        is_loyal = (r >= 4 and f >= 4 and m >= 3)
+        if is_loyal:
+            return "Loyal"
+
         if r <= 2 and f >= 3:
             return "At Risk"
         if r <= 2 and f <= 2:
