@@ -2,6 +2,8 @@
 
 This document describes how values are calculated in the **Executive Overview** dashboard (`Home.tsx`) for the current codebase.
 
+Deployed in Vercel 
+
 ## Scope
 
 - Page: `playabets-dashboard/client/src/pages/Home.tsx`
