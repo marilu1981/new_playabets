@@ -48,7 +48,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Operations",
     items: [
-      { path: "/users", label: "Users & Players", icon: Users },
+      { path: "/users", label: "Players Breakdown", icon: Users },
       { path: "/betting", label: "Betting & Events", icon: TrendingUp },
       { path: "/transactions", label: "Transactions", icon: DollarSign },
     ],
