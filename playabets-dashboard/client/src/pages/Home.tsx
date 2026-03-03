@@ -3,8 +3,8 @@
  * Savanna Gold design system — full-width layout, horizontal filter bar at top.
  *
  * All charts from the client demo are preserved:
- * - 12 KPI cards (Registrations, FTDs, V_FTDs, Top_FTDs, Actives, Deposits,
- *   Withdrawals, Turnover, GGR, NGR, Bonus Spent, Conversion Rate)
+ * - 11 KPI cards (Registrations, FTDs, V_FTDs, Top_FTDs, Actives, Deposits,
+ *   Withdrawals, Turnover, GGR, NGR, Conversion Rate)
  * - Revenue Trends with GGR/NGR/Turnover toggle
  * - Player Acquisition chart (Trend / MoM toggle)
  * - Conversion Rate line chart
@@ -27,7 +27,7 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, DollarSign, Activity,
-  Gift, Zap, Download, UserPlus, ArrowUpRight, BarChart2, Percent,
+  Zap, Download, UserPlus, ArrowUpRight, BarChart2, Percent,
 } from "lucide-react";
 import {
   overviewKPIs as baseOverviewKPIs,
@@ -43,7 +43,6 @@ import {
   conversionRateTrend as baseConversionRateTrend,
   summaryMetrics as baseSummaryMetrics,
   transactionSummary as baseTransactionSummary,
-  bonusKPIs as baseBonusKPIs,
   geographicDistribution as baseGeographicDistribution,
   trafficSourceBreakdown as baseTrafficSourceBreakdown,
   trendBySegment as baseTrendBySegment,
@@ -311,6 +310,7 @@ export default function Home() {
   const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
   const [dataMode, setDataMode] = useState<DataMode>("mock");
+  const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRevenueTrend, setLiveRevenueTrend] = useState<typeof baseRevenueTrend | null>(null);
@@ -318,7 +318,10 @@ export default function Home() {
   const [livePlayerAcquisition, setLivePlayerAcquisition] = useState<typeof basePlayerAcquisition | null>(null);
   const [liveConversionRateTrend, setLiveConversionRateTrend] = useState<typeof baseConversionRateTrend | null>(null);
   const [liveTransactionSummary, setLiveTransactionSummary] = useState<typeof baseTransactionSummary | null>(null);
-  const [liveBonusKPIs, setLiveBonusKPIs] = useState<typeof baseBonusKPIs | null>(null);
+  const [liveRangeKpis, setLiveRangeKpis] = useState<{ registrations: number; ftds: number } | null>(null);
+  const [liveNgr, setLiveNgr] = useState<number | null>(null);
+  const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
+  const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
@@ -329,6 +332,40 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    fetchJson<{ date?: string }>("/kpis/latest")
+      .then((latest) => {
+        if (cancelled) {
+          return;
+        }
+        const maxDate = latest.date;
+        if (!maxDate || !/^\d{4}-\d{2}-\d{2}$/.test(maxDate)) {
+          return;
+        }
+        setLatestDataDate(maxDate);
+        setFilters((prev) => {
+          let dateTo = prev.dateTo;
+          let dateFrom = prev.dateFrom;
+          let changed = false;
+          if (dateTo > maxDate) {
+            dateTo = maxDate;
+            changed = true;
+          }
+          if (dateFrom > dateTo) {
+            dateFrom = `${dateTo.slice(0, 7)}-01`;
+            changed = true;
+          }
+          return changed ? { ...prev, dateFrom, dateTo } : prev;
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
 
     async function loadLiveData() {
       const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -336,15 +373,16 @@ export default function Home() {
       const [
         kpisRes,
         dailyRes,
+        casinoDailyRes,
         bonusDailyRes,
         regsRes,
         txRes,
-        bonusKpisRes,
       ] = await Promise.allSettled([
         fetchJson<{
           registrations?: number;
           actives?: number;
           turnover?: number;
+          winnings?: number;
           ggr?: number;
           ngr?: number;
           deposits?: number;
@@ -352,25 +390,33 @@ export default function Home() {
           bonus_spent?: number;
           ftds?: number;
         }>(`/kpis?${query}`),
-        fetchJson<{ rows: Array<{ date: string; placed_stake?: number; ggr?: number; betslips_count?: number }> }>(
-          `/kpis/daily?${query}&metrics=placed_stake,ggr,betslips_count`
+        fetchJson<{
+          rows: Array<{
+            date: string;
+            placed_stake?: number;
+            settled_stake?: number;
+            settled_winnings?: number;
+            ggr?: number;
+            betslips_count?: number;
+          }>;
+        }>(
+          `/kpis/daily?${query}&metrics=placed_stake,settled_stake,settled_winnings,ggr,betslips_count`
+        ),
+        fetchJson<{ points: Array<{ date: string; stake?: number; winnings?: number; ggr?: number }> }>(
+          `/casino/daily?${query}`
         ),
         fetchJson<{ points: Array<{ date: string; bonus_credited?: number }> }>(`/bonus/daily?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
           `/timeseries/registrations?${query}`
         ),
         fetchJson<{
+          has_data?: boolean;
           deposits?: number;
           withdrawals?: number;
           tx_count_pending?: number;
           tx_count_accepted?: number;
           tx_count_other_status?: number;
         }>(`/transactions/kpis?${query}`),
-        fetchJson<{
-          active_campaigns?: number;
-          total_freebets?: number;
-          total_freebet_amount?: number;
-        }>(`/bonus/kpis`),
       ]);
 
       if (cancelled) {
@@ -388,6 +434,43 @@ export default function Home() {
       }
 
       const dailyRows = dailyRes.value.rows ?? [];
+      const sportsbookByDate = new Map<
+        string,
+        {
+          turnover: number;
+          settledStake: number;
+          settledWinnings: number;
+          ggr: number;
+          betslipsCount: number;
+        }
+      >();
+      for (const r of dailyRows) {
+        const turnover = Number(r.placed_stake ?? 0);
+        const settledStake = Number(r.settled_stake ?? turnover);
+        const ggr = Number(r.ggr ?? 0);
+        const settledWinnings = Number(
+          r.settled_winnings ?? (Number.isFinite(ggr) ? settledStake - ggr : 0),
+        );
+        sportsbookByDate.set(r.date, {
+          turnover,
+          settledStake,
+          settledWinnings,
+          ggr,
+          betslipsCount: Number(r.betslips_count ?? 0),
+        });
+      }
+
+      const casinoByDate = new Map<string, { stake: number; winnings: number; ggr: number }>();
+      if (casinoDailyRes.status === "fulfilled") {
+        for (const row of casinoDailyRes.value.points ?? []) {
+          casinoByDate.set(row.date, {
+            stake: Number(row.stake ?? 0),
+            winnings: Number(row.winnings ?? 0),
+            ggr: Number(row.ggr ?? 0),
+          });
+        }
+      }
+
       const bonusByDate = new Map<string, number>();
       if (bonusDailyRes.status === "fulfilled") {
         for (const p of bonusDailyRes.value.points ?? []) {
@@ -395,44 +478,90 @@ export default function Home() {
         }
       }
 
-      const metrics = dailyRows
-        .map((r) => {
-          const turnover = Number(r.placed_stake ?? 0);
-          const ggr = Number(r.ggr ?? 0);
-          const ngr = ggr - Number(bonusByDate.get(r.date) ?? 0);
-          return { date: r.date, turnover, ggr, ngr, betslips_count: Number(r.betslips_count ?? 0) };
-        })
-        .sort((a, b) => a.date.localeCompare(b.date));
+      const allDates = Array.from(
+        new Set([
+          ...Array.from(sportsbookByDate.keys()),
+          ...Array.from(casinoByDate.keys()),
+          ...Array.from(bonusByDate.keys()),
+        ]),
+      ).sort();
 
-      setLiveRevenueMetricsTrend(metrics.map((r) => ({
+      const fromDt = parseIsoDate(filters.dateFrom);
+      const toDt = parseIsoDate(filters.dateTo);
+      const totalDays = fromDt && toDt
+        ? Math.max(1, Math.floor((Math.abs(toDt.getTime() - fromDt.getTime()) / 86400000)) + 1)
+        : Math.max(1, allDates.length);
+      setLiveBonusCoverage({
+        coveredDays: bonusByDate.size,
+        totalDays,
+      });
+
+      const metrics = allDates
+        .map((date) => {
+          const sportsbook = sportsbookByDate.get(date) ?? {
+            turnover: 0,
+            settledStake: 0,
+            settledWinnings: 0,
+            ggr: 0,
+            betslipsCount: 0,
+          };
+          const casino = casinoByDate.get(date) ?? { stake: 0, winnings: 0, ggr: 0 };
+
+          const turnover = sportsbook.settledStake + casino.stake;
+          const winnings = sportsbook.settledWinnings + casino.winnings;
+          const ggr = sportsbook.ggr + casino.ggr;
+          const ngr = ggr - Number(bonusByDate.get(date) ?? 0);
+
+          return {
+            date,
+            turnover,
+            winnings,
+            settledStake: sportsbook.settledStake,
+            settledWinnings: sportsbook.settledWinnings,
+            ggr,
+            ngr,
+            betslips_count: sportsbook.betslipsCount,
+          };
+        });
+
+      setLiveRevenueMetricsTrend(metrics.length > 0 ? metrics.map((r) => ({
         date: r.date,
         turnover: r.turnover,
         ggr: r.ggr,
         ngr: r.ngr,
-      })));
+      })) : null);
 
-      setLiveRevenueTrend(metrics.map((r) => ({
+      setLiveRevenueTrend(metrics.length > 0 ? metrics.map((r) => ({
         date: r.date,
         stake: r.turnover,
-        winnings: r.turnover - r.ggr,
+        winnings: r.winnings,
         revenue: r.ggr,
-      })));
+      })) : null);
 
       if (kpisRes.status === "fulfilled") {
         const k = kpisRes.value;
-        const totalBetslips = metrics.reduce((sum, r) => sum + r.betslips_count, 0);
+        const totalBetslips = Array.from(sportsbookByDate.values()).reduce((sum, r) => sum + r.betslipsCount, 0);
+        setLiveRangeKpis({
+          registrations: Number(k.registrations ?? 0),
+          ftds: Number(k.ftds ?? 0),
+        });
+        setLiveNgr(Number(k.ngr ?? 0));
         setLiveOverviewKPIs({
           ...baseOverviewKPIs,
           activeUsers: Number(k.actives ?? 0),
           totalBetslips,
           totalStake: Number(k.turnover ?? 0),
-          totalWinnings: Number(k.turnover ?? 0) - Number(k.ggr ?? 0),
+          totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
           grossRevenue: Number(k.ggr ?? 0),
         });
+      } else {
+        setLiveNgr(null);
+        setLiveBonusCoverage(null);
       }
 
       if (txRes.status === "fulfilled") {
         const tx = txRes.value;
+        setHasTransactionsData(Boolean(tx.has_data));
         setLiveTransactionSummary({
           ...baseTransactionSummary,
           totalDeposits: Number(tx.deposits ?? 0),
@@ -441,17 +570,8 @@ export default function Home() {
           acceptedToday: Number(tx.tx_count_accepted ?? 0),
           refusedToday: Number(tx.tx_count_other_status ?? 0),
         });
-      }
-
-      if (bonusKpisRes.status === "fulfilled" || kpisRes.status === "fulfilled") {
-        const b = bonusKpisRes.status === "fulfilled" ? bonusKpisRes.value : {};
-        const k = kpisRes.status === "fulfilled" ? kpisRes.value : {};
-        setLiveBonusKPIs({
-          ...baseBonusKPIs,
-          activeCampaigns: Number(b.active_campaigns ?? baseBonusKPIs.activeCampaigns),
-          totalBonusBalance: Number(k.bonus_spent ?? b.total_freebet_amount ?? baseBonusKPIs.totalBonusBalance),
-          freebetsIssued: Number(b.total_freebets ?? baseBonusKPIs.freebetsIssued),
-        });
+      } else {
+        setHasTransactionsData(false);
       }
 
       if (regsRes.status === "fulfilled") {
@@ -488,7 +608,7 @@ export default function Home() {
             vftds: Math.round(v.ftds * 0.12),
             topFtds: Math.round(v.ftds * 0.04),
           }));
-        setLivePlayerAcquisition(monthly);
+        setLivePlayerAcquisition(monthly.length > 0 ? monthly : null);
 
         const conversion = regs
           .map((r) => {
@@ -498,7 +618,7 @@ export default function Home() {
             return { date: r.date, rate };
           })
           .sort((a, b) => a.date.localeCompare(b.date));
-        setLiveConversionRateTrend(conversion);
+        setLiveConversionRateTrend(conversion.length > 0 ? conversion : null);
       }
     }
 
@@ -519,7 +639,6 @@ export default function Home() {
   const sourcePlayerAcquisition = livePlayerAcquisition ?? basePlayerAcquisition;
   const sourceConversionRateTrend = liveConversionRateTrend ?? baseConversionRateTrend;
   const sourceTransactionSummary = liveTransactionSummary ?? baseTransactionSummary;
-  const sourceBonusKPIs = liveBonusKPIs ?? baseBonusKPIs;
 
   const overviewKPIs = useMemo(
     () => scaleObjectNumericFields(sourceOverviewKPIs, multiplier, ["currency"]),
@@ -571,6 +690,17 @@ export default function Home() {
       fallbackYear,
     });
   }, [fallbackYear, filters, multiplier, sourceRevenueMetricsTrend]);
+  const stakeVsRevenueTrend = useMemo(() => {
+    if (revenueMetricsTrend.length > 0) {
+      return revenueMetricsTrend.map((row) => ({
+        date: row.date,
+        stake: Number(row.turnover ?? 0),
+        winnings: Number((row.turnover ?? 0) - (row.ggr ?? 0)),
+        revenue: Number(row.ggr ?? 0),
+      }));
+    }
+    return revenueTrend;
+  }, [revenueMetricsTrend, revenueTrend]);
   const segmentDistribution = useMemo(() => {
     const filtered = baseSegmentDistribution.filter((row) =>
       matchesRowFilters(filters, { segment: row.segment }),
@@ -619,10 +749,6 @@ export default function Home() {
   const transactionSummary = useMemo(
     () => scaleObjectNumericFields(sourceTransactionSummary, multiplier),
     [multiplier, sourceTransactionSummary],
-  );
-  const bonusKPIs = useMemo(
-    () => scaleObjectNumericFields(sourceBonusKPIs, multiplier),
-    [multiplier, sourceBonusKPIs],
   );
   const geographicDistribution = useMemo(() => {
     const filtered = baseGeographicDistribution.filter((row) =>
@@ -700,12 +826,41 @@ export default function Home() {
     ? ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1)
     : "0.0";
   const granularityLabel = `${filters.granularity.charAt(0).toUpperCase()}${filters.granularity.slice(1)}`;
+  const pendingDataItems = [
+    !hasTransactionsData ? "transactions" : null,
+    "betslip status",
+    "top sports",
+    "platform mix",
+    "segment and geographic widgets",
+  ].filter((item): item is string => Boolean(item));
+  const ngrCardValue =
+    liveNgr !== null
+      ? formatCompact(Math.round(liveNgr))
+      : dataMode === "mock"
+        ? formatCompact(Math.round(overviewKPIs.grossRevenue * 0.82))
+        : "Pending";
+  const ngrCardSubtitle =
+    liveNgr !== null
+      ? `GGR - Bonus Cost${
+        liveBonusCoverage
+          ? ` | Bonus coverage ${liveBonusCoverage.coveredDays}/${liveBonusCoverage.totalDays} days`
+          : ""
+      }`
+      : dataMode === "mock"
+        ? "Estimated (mock mode)"
+        : "Waiting for KPI endpoint";
 
-  const lastMonth = playerAcquisition[playerAcquisition.length - 1] ?? sourcePlayerAcquisition[sourcePlayerAcquisition.length - 1];
-  const prevMonth = playerAcquisition[playerAcquisition.length - 2] ?? lastMonth;
-  const lastConvRate = conversionRateTrend[conversionRateTrend.length - 1]?.rate ?? sourceConversionRateTrend[sourceConversionRateTrend.length - 1].rate;
-  const prevConvAnchor = conversionRateTrend.length >= 8 ? conversionRateTrend[conversionRateTrend.length - 8] : conversionRateTrend[0];
-  const prevConvRate = prevConvAnchor?.rate ?? sourceConversionRateTrend[Math.max(0, sourceConversionRateTrend.length - 8)].rate;
+  const acqSeries = playerAcquisition.length > 0 ? playerAcquisition : sourcePlayerAcquisition;
+  const convSeries = conversionRateTrend.length > 0 ? conversionRateTrend : sourceConversionRateTrend;
+  const fallbackMonth = { month: "-", registrations: 0, ftds: 0, vftds: 0, topFtds: 0 };
+  const lastMonth = acqSeries[acqSeries.length - 1] ?? fallbackMonth;
+  const prevMonth = acqSeries[acqSeries.length - 2] ?? lastMonth;
+  const kpiRegistrations = liveRangeKpis?.registrations ?? lastMonth.registrations;
+  const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
+  const kpiVftds = liveRangeKpis ? Math.round(kpiFtds * 0.12) : lastMonth.vftds;
+  const kpiTopFtds = liveRangeKpis ? Math.round(kpiFtds * 0.04) : lastMonth.topFtds;
+  const lastConvRate = convSeries[convSeries.length - 1]?.rate ?? 0;
+  const prevConvRate = convSeries[Math.max(0, convSeries.length - 8)]?.rate ?? lastConvRate;
 
   const momData = playerAcquisition.slice(1).map((d, i) => {
     const prevRegs = Math.max(1, playerAcquisition[i].registrations);
@@ -826,6 +981,9 @@ export default function Home() {
           <p className="text-sm text-white/60 max-w-lg">
             Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo} · {granularityLabel} view
           </p>
+          {latestDataDate && (
+            <p className="text-xs text-white/45 mt-1">Data available through {latestDataDate}</p>
+          )}
           <div className="flex items-center gap-4 mt-3">
             <div className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.75 0.17 145)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
@@ -835,7 +993,7 @@ export default function Home() {
           </div>
           {dataMode !== "mock" && (
             <div className="text-xs text-white/45 mt-2">
-              Pending (Mock): betslip status, top sports, platform mix, segment and geographic widgets.
+              Pending: {pendingDataItems.join(", ")}.
             </div>
           )}
         </div>
@@ -848,45 +1006,55 @@ export default function Home() {
         </h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
-        <KpiCard title="Registrations" value={formatCompact(lastMonth.registrations)} subtitle="This period"
+        <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range"
           change={pctChange(lastMonth.registrations, prevMonth.registrations)} changeLabel="vs last month"
           icon={<UserPlus size={18} />} accent="teal" />
-        <KpiCard title="FTDs" value={formatCompact(lastMonth.ftds)} subtitle="First-time depositors"
+        <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
           change={pctChange(lastMonth.ftds, prevMonth.ftds)} changeLabel="vs last month"
           icon={<Users size={18} />} accent="gold" />
         <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Unique active players"
           change={8.4} changeLabel="vs last month"
           icon={<Activity size={18} />} accent="green" />
-        <KpiCard title="Total Deposits" value={`${formatCompact(transactionSummary.totalDeposits)}`} subtitle="Gross deposits"
-          change={6.2} changeLabel="vs last month"
-          icon={<DollarSign size={18} />} accent="amber" />
+        <KpiCard
+          title="Total Deposits"
+          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
+          subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
+          change={hasTransactionsData ? 6.2 : undefined}
+          changeLabel={hasTransactionsData ? "vs last month" : undefined}
+          icon={<DollarSign size={18} />}
+          accent="amber"
+        />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 2 ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-        <KpiCard title="Total Withdrawals" value={`${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="Paid out"
-          change={-3.8} changeLabel="vs last month"
-          icon={<ArrowUpRight size={18} />} accent="red" />
-        <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips"
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+        <KpiCard
+          title="Total Withdrawals"
+          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalWithdrawals)}` : "Pending"}
+          subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
+          change={hasTransactionsData ? -3.8 : undefined}
+          changeLabel={hasTransactionsData ? "vs last month" : undefined}
+          icon={<ArrowUpRight size={18} />}
+          accent="red"
+        />
+        <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Sports + Casino"
           change={12.1} changeLabel="vs last month"
           icon={<TrendingUp size={18} />} accent="teal" />
-        <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`${margin}% margin`}
+        <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`Sports + Casino · ${margin}% margin`}
           change={5.3} changeLabel="vs last month"
           icon={<BarChart2 size={18} />} accent="gold" />
-        <KpiCard title="Bonus Spent" value={`${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle={`${bonusKPIs.activeCampaigns} active campaigns`}
-          change={-2.1} changeLabel="vs last month"
-          icon={<Gift size={18} />} accent="amber" />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 3 ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <KpiCard title="NGR" value={`${formatCompact(Math.round(overviewKPIs.grossRevenue * 0.82))}`} subtitle="Net Gaming Revenue"
-          change={4.1} changeLabel="vs last month"
+        <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle}
+          change={liveNgr !== null || dataMode === "mock" ? 4.1 : undefined}
+          changeLabel={liveNgr !== null || dataMode === "mock" ? "vs last month" : undefined}
           icon={<Percent size={18} />} accent="green" />
-        <KpiCard title="V_FTDs" value={formatCompact(lastMonth.vftds)} subtitle="Verified FTDs"
+        <KpiCard title="V_FTDs" value={formatCompact(kpiVftds)} subtitle="Verified FTDs"
           change={pctChange(lastMonth.vftds, prevMonth.vftds)} changeLabel="vs last month"
           icon={<Users size={18} />} accent="teal" />
-        <KpiCard title="Top_FTDs" value={formatCompact(lastMonth.topFtds)} subtitle="High-value FTDs"
+        <KpiCard title="Top_FTDs" value={formatCompact(kpiTopFtds)} subtitle="High-value FTDs"
           change={pctChange(lastMonth.topFtds, prevMonth.topFtds)} changeLabel="vs last month"
           icon={<Zap size={18} />} accent="gold" />
         <KpiCard title="Conversion Rate" value={`${lastConvRate}%`} subtitle="Reg → FTD"
@@ -1218,10 +1386,10 @@ export default function Home() {
         <div className="lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
-            <p className="text-xs text-white/40">Last 30 days — Stake vs Revenue</p>
+            <p className="text-xs text-white/40">Same GGR basis as Revenue Trends chart</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={revenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={CHART_COLORS.gold}  stopOpacity={0.3} />

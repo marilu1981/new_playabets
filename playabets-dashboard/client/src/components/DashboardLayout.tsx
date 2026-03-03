@@ -11,7 +11,6 @@ import {
   Users,
   TrendingUp,
   DollarSign,
-  Gift,
   Gamepad2,
   Award,
   ShieldCheck,
@@ -57,7 +56,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Products",
     items: [
-      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
       { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
       { path: "/commissions", label: "Commissions", icon: Award },
     ],
