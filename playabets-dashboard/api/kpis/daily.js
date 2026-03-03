@@ -18,7 +18,8 @@ module.exports = async function handler(req, res) {
       filters,
       order: "date.asc",
     });
-    return res.status(200).json(rows);
+    // Wrap in { rows: [...] } to match the original FastAPI response shape
+    return res.status(200).json({ rows: rows || [] });
   } catch (err) {
     console.error("[/api/kpis/daily]", err);
     return res.status(500).json({ error: String(err) });
