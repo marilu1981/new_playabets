@@ -1,32 +1,23 @@
 /**
- * Shared Supabase REST helper for Vercel API routes.
+ * Shared Supabase REST helper for Vercel API routes (CommonJS).
  * Uses the service-role key server-side — never exposed to the browser.
  */
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-const SUPABASE_URL = process.env.SUPABASE_URL!;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY!;
-
-export interface QueryOptions {
-  select?: string;
-  filters?: string[]; // PostgREST filter strings e.g. "date=gte.2025-01-01"
-  order?: string;     // e.g. "date.asc"
-  limit?: number;
-}
-
-export async function supaQuery<T = Record<string, unknown>>(
-  table: string,
-  opts: QueryOptions = {}
-): Promise<T[]> {
+async function supaQuery(table, opts = {}) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
   url.searchParams.set("select", opts.select ?? "*");
   if (opts.filters) {
     for (const f of opts.filters) {
-      const [col, val] = f.split("=");
+      const eqIdx = f.indexOf("=");
+      const col = f.substring(0, eqIdx);
+      const val = f.substring(eqIdx + 1);
       url.searchParams.set(col, val);
     }
   }
   if (opts.order) url.searchParams.set("order", opts.order);
-  if (opts.limit)  url.searchParams.set("limit", String(opts.limit));
+  if (opts.limit) url.searchParams.set("limit", String(opts.limit));
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -35,19 +26,18 @@ export async function supaQuery<T = Record<string, unknown>>(
       "Content-Type": "application/json",
     },
   });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Supabase ${table} ${res.status}: ${text}`);
   }
-  return res.json() as Promise<T[]>;
+  return res.json();
 }
 
-export function sum(rows: Record<string, unknown>[], col: string): number {
+function sum(rows, col) {
   return rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
 }
 
-export function corsHeaders() {
+function corsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,OPTIONS",
@@ -55,3 +45,5 @@ export function corsHeaders() {
     "Content-Type": "application/json",
   };
 }
+
+module.exports = { supaQuery, sum, corsHeaders };
