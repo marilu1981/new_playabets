@@ -14,7 +14,8 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
     const rows = await supaQuery("bonus_daily", { filters, order: "date.asc" });
-    return res.status(200).json(rows);
+    // Return { points: [...] } to match the original FastAPI response shape
+    return res.status(200).json({ points: rows || [] });
   } catch (err) {
     console.error("[/api/bonus/daily]", err);
     return res.status(500).json({ error: String(err) });

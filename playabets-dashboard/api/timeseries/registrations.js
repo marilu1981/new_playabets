@@ -20,16 +20,12 @@ module.exports = async function handler(req, res) {
       supaQuery("ftd_daily",  { select: "date,ftds",          filters: ftdFilters, order: "date.asc" }),
     ]);
 
-    // Merge by date
-    const ftdMap = {};
-    for (const r of ftdRows) ftdMap[r.date] = r.ftds;
-
-    const merged = kpiRows.map(r => ({
-      date:          r.date,
-      registrations: r.registrations,
-      ftds:          ftdMap[r.date] ?? 0,
-    }));
-    return res.status(200).json(merged);
+    // Return { registrations: [{date, registrations}], ftds: [{date, value}] }
+    // to match the original FastAPI response shape the frontend expects
+    return res.status(200).json({
+      registrations: kpiRows,
+      ftds: ftdRows.map(r => ({ date: r.date, value: r.ftds })),
+    });
   } catch (err) {
     console.error("[/api/timeseries/registrations]", err);
     return res.status(500).json({ error: String(err) });

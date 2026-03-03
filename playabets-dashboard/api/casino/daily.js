@@ -14,7 +14,16 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
     const rows = await supaQuery("casino_daily", { filters, order: "date.asc" });
-    return res.status(200).json(rows);
+    // Map casino_daily columns to the shape the frontend expects: { points: [{date, stake, winnings, ggr}] }
+    const points = (rows || []).map(r => ({
+      date: r.date,
+      stake: r.casino_stake,
+      winnings: r.casino_winnings,
+      ggr: r.casino_ggr,
+      actives: r.casino_actives,
+      bets: r.casino_bets,
+    }));
+    return res.status(200).json({ points });
   } catch (err) {
     console.error("[/api/casino/daily]", err);
     return res.status(500).json({ error: String(err) });
