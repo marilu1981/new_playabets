@@ -53,6 +53,7 @@ export default function UsersPage() {
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRegistrations, setLiveRegistrations] = useState<typeof baseUserRegistrations | null>(null);
+  const [liveStatusBreakdown, setLiveStatusBreakdown] = useState<Array<{ status: string; count: number }> | null>(null);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const fallbackYear = useMemo(() => {
@@ -99,9 +100,10 @@ export default function UsersPage() {
 
     async function loadLiveData() {
       const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-      const [kpisRes, regsRes] = await Promise.allSettled([
+      const [kpisRes, regsRes, statusRes] = await Promise.allSettled([
         fetchJson<{ actives?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
+        fetchJson<{ statuses?: Array<{ status: string; count: number }> }>('/users/status-breakdown'),
       ]);
 
       if (cancelled) {
@@ -139,6 +141,16 @@ export default function UsersPage() {
           .map(([, v]) => v);
         setLiveRegistrations(monthly);
       }
+
+      if (statusRes.status === "fulfilled") {
+        const payload = statusRes.value;
+        const statuses = Array.isArray(payload)
+          ? payload
+          : payload.statuses ?? [];
+        setLiveStatusBreakdown(statuses);
+      } else {
+        setLiveStatusBreakdown(null);
+      }
     }
 
     loadLiveData().catch(() => {
@@ -152,9 +164,11 @@ export default function UsersPage() {
     };
   }, [filters.dateFrom, filters.dateTo]);
 
+  const statusSource = liveStatusBreakdown ?? baseUsersByStatus;
+  const statusMultiplier = liveStatusBreakdown ? 1 : multiplier;
   const usersByStatus = useMemo(
-    () => scaleArrayNumericFields(baseUsersByStatus, multiplier, ["status", "statusId"]),
-    [multiplier],
+    () => scaleArrayNumericFields(statusSource, statusMultiplier, ["status", "statusId"]),
+    [statusSource, statusMultiplier],
   );
   const usersByCurrency = useMemo(
     () => scaleArrayNumericFields(baseUsersByCurrency, multiplier, ["currency", "currencyId"]),
@@ -268,7 +282,11 @@ export default function UsersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-4">User Status Breakdown - Pending (Mock)</h3>
+          <h3 className="text-sm font-semibold text-white mb-2">
+            User Status Breakdown
+            {dataMode === "mock" ? " (Mock data)" : dataMode === "partial" ? " (Partial live)" : ""}
+          </h3>
+          <p className="text-xs text-white/40 mb-4">Derived from the latest `userstatus` field export.</p>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
               const pct = (u.count / totalUsersSafe * 100).toFixed(1);
