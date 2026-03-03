@@ -1,3 +1,4 @@
+'use strict';
 const { supaQuery, sum, corsHeaders } = require("./_supabase");
 
 module.exports = async function handler(req, res) {
@@ -11,26 +12,41 @@ module.exports = async function handler(req, res) {
   try {
     const start = String(req.query.start ?? "");
     const end   = String(req.query.end   ?? "");
-    const dateFilters = (col = "date") => {
+    const dateFilters = () => {
       const f = [];
-      if (start) f.push(`${col}=gte.${start}`);
-      if (end)   f.push(`${col}=lte.${end}`);
+      if (start) f.push(`date=gte.${start}`);
+      if (end)   f.push(`date=lte.${end}`);
       return f;
     };
-    const [kpiRows, ftdRows, bonusRows] = await Promise.all([
+
+    // Fetch sportsbook KPIs, FTDs, bonus, and casino in parallel
+    const [kpiRows, ftdRows, bonusRows, casinoRows] = await Promise.all([
       supaQuery("daily_kpis",  { filters: dateFilters() }),
       supaQuery("ftd_daily",   { filters: dateFilters() }),
       supaQuery("bonus_daily", { filters: dateFilters() }),
+      supaQuery("casino_daily", { filters: dateFilters() }),
     ]);
-    const ggr       = sum(kpiRows, "ggr");
-    const bonusSpent = sum(bonusRows, "bonus_credited");
+
+    // Sportsbook metrics
+    const sportsbook_turnover = sum(kpiRows, "settled_stake");
+    const sportsbook_ggr      = sum(kpiRows, "ggr");
+
+    // Casino metrics — casino_stake and casino_ggr are the column names in casino_daily
+    const casino_turnover = sum(casinoRows, "casino_stake");
+    const casino_ggr      = sum(casinoRows, "casino_ggr");
+
+    // Combined totals — mirrors backend/app.py lines 184-188
+    const total_turnover = sportsbook_turnover + casino_turnover;
+    const total_ggr      = sportsbook_ggr + casino_ggr;
+    const bonusSpent     = sum(bonusRows, "bonus_credited");
+
     return res.status(200).json({
       registrations: sum(kpiRows, "registrations"),
       actives:       sum(kpiRows, "actives_sports"),
-      turnover:      sum(kpiRows, "settled_stake"),
-      winnings:      sum(kpiRows, "settled_winnings"),
-      ggr,
-      ngr:           ggr - bonusSpent,
+      turnover:      total_turnover,
+      winnings:      sum(kpiRows, "settled_winnings") + sum(casinoRows, "casino_winnings"),
+      ggr:           total_ggr,
+      ngr:           total_ggr - bonusSpent,
       bonus_spent:   bonusSpent,
       ftds:          sum(ftdRows, "ftds"),
       deposits:      null,
