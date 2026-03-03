@@ -1,6 +1,6 @@
 # Playa Bets Analytics Dashboard — Build Log
 
-> Last updated: 2026-02-22 (Session 4)
+> Last updated: 2026-03-03 (Session 5 — Vercel + Supabase Demo Deployment)
 
 ---
 
@@ -297,8 +297,75 @@ Then replace mock data calls in each page component with the corresponding API h
 
 ---
 
+### Session 5 — Vercel + Supabase Demo Deployment
+
+**Goal:** Deploy a live demo of the dashboard without requiring VPN access to the AWS DWH. Data is served from processed Parquet files loaded into Supabase (PostgreSQL).
+
+#### What was done
+
+1. **Supabase project created** (ID: `guaeohezgweuhomyweld`, region: `eu-west-2`)
+   - 6 Parquet files loaded as tables via Python `supabase-py` client:
+     - `daily_kpis` (448 rows) — sportsbook settled_stake, ggr, registrations, actives
+     - `rfm_users` (185,250 rows) — RFM segment data
+     - `bonus_daily` (42 rows) — daily bonus_credited
+     - `ftd_daily` (121 rows) — daily FTD counts
+     - `casino_daily` (120 rows) — casino_stake, casino_ggr, casino_winnings
+     - `transactions_daily` (0 rows — empty, no transactions data available yet)
+
+2. **Vercel project created** (`playabets-dashboard`) connected to `marilu1981/playabets` GitHub repo
+   - Auto-deploys on every push to `main`
+   - Live URL: **https://playabets-dashboard.vercel.app**
+
+3. **14 Vercel serverless API routes** created in `playabets-dashboard/api/` (JavaScript) to replace FastAPI:
+   - `_supabase.js` — shared Supabase PostgREST query helper with date-filter support
+   - `kpis.js` — combined sportsbook + casino KPIs
+   - `timeseries.js`, `rfm.js`, `bonus.js`, `casino.js`, `transactions.js`, and more
+
+4. **Date filtering bug fixed** in `_supabase.js`:
+   - Was using `searchParams.set()` (overwrites duplicate keys) → changed to `searchParams.append()` so both `date=gte.X` and `date=lte.Y` are sent correctly
+
+5. **Turnover/GGR calculation fixed** in `kpis.js` (commit `5e6d145`):
+   - Was querying only `daily_kpis` (sportsbook) → now also queries `casino_daily`
+   - `total_turnover = settled_stake (sportsbook) + casino_stake (casino)`
+   - `total_ggr = ggr (sportsbook) + casino_ggr (casino)`
+   - Mirrors `backend/app.py` lines 184–188
+
+#### Verified KPIs (Feb 01–27, 2026)
+
+| Metric | Expected | Live | Status |
+|---|---|---|---|
+| Registrations | 44,800 | 44,795 | ✓ |
+| FTDs | 12,034 | 12,034 | ✓ |
+| Actives | 25,059 | 25,059 | ✓ |
+| Turnover | 437.8M | 437.8M | ✓ |
+| GGR | 18.1M | 18.1M | ✓ |
+
+#### Supabase Environment Variables (set in Vercel)
+
+| Variable | Description |
+|---|---|
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon/public key |
+
+#### Architecture (Demo Mode)
+
+```
+Browser → Vercel Edge (React SPA)
+              ↓
+         Vercel Serverless Functions (api/*.js)
+              ↓
+         Supabase PostgREST API
+              ↓
+         PostgreSQL tables (loaded from Parquet files)
+```
+
+---
+
 ## Next Steps
 
+- [x] Deploy demo to Vercel + Supabase (live at https://playabets-dashboard.vercel.app)
+- [x] Fix date filtering bug in Supabase query helper
+- [x] Fix combined sportsbook + casino turnover/GGR calculation
 - [ ] Wire `api.ts` hooks into each page (replace mock data with real API calls)
 - [ ] Apply `useFilteredData` hook to remaining pages (Sports, Casino, Transactions, Bonus, Commissions, RFM)
 - [ ] Add `build_domain_kpis.py` to the scheduler's TRANSFORM_MODULES list (already done)
