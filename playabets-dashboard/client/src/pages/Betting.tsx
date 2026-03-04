@@ -122,7 +122,7 @@ export default function BettingPage() {
       {/* MOCK DATA ONLY banner */}
       <div className="w-full mb-5 rounded-xl px-6 py-4" style={{ background: "oklch(0.22 0.08 50 / 0.9)", border: "2px solid oklch(0.72 0.14 85 / 0.6)" }}>
         <p className="text-center font-bold tracking-widest uppercase" style={{ color: "oklch(0.72 0.14 85)", fontSize: "1rem", letterSpacing: "0.15em" }}>
-          ⚠ MOCK DATA ONLY — Betting &amp; Events data not yet connected to DWH
+          ⚠ MOCK DATA ONLY — Betting &amp; Events data not yet connected
         </p>
       </div>
       {/* KPI Row */}
