@@ -18,11 +18,8 @@ export interface DashboardFilters {
   country: string;
   trafficSource: string;
   affiliateId: string;
-  historicalSegment: string;
   currentSegment: string;
   customerStatus: string;
-  aggregatedSegment: string;
-  outlierFilter: string;
 }
 
 export const defaultFilters: DashboardFilters = {
@@ -36,11 +33,8 @@ export const defaultFilters: DashboardFilters = {
   country: "all",
   trafficSource: "all",
   affiliateId: "all",
-  historicalSegment: "all",
   currentSegment: "all",
   customerStatus: "all",
-  aggregatedSegment: "all",
-  outlierFilter: "include_all",
 };
 
 interface FiltersPanelProps {
@@ -184,7 +178,7 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
           {/* BRAND */}
           <div>
             <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Brand
+              Brand (TBC)
             </span>
             <select
               value={filters.brand}
@@ -242,7 +236,7 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
           {/* TRAFFIC SOURCE */}
           <div>
             <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Traffic Source
+              Traffic Source (TBC)
             </span>
             <select
               value={filters.trafficSource}
@@ -262,7 +256,7 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
           {/* AFFILIATE ID */}
           <div>
             <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Affiliate ID
+              Affiliate (TBC)
             </span>
             <select
               value={filters.affiliateId}
@@ -277,29 +271,10 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
             </select>
           </div>
 
-          {/* HISTORICAL SEGMENT */}
+          {/* USER SEGMENT */}
           <div>
             <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Historical Segment
-            </span>
-            <select
-              value={filters.historicalSegment}
-              onChange={(e) => set("historicalSegment", e.target.value)}
-              className={cn(selectClass, "focus:ring-amber-600/40")}
-              style={selectStyle}
-            >
-              <option value="all">All Segments</option>
-              <option value="VIP">VIP</option>
-              <option value="PVIP">PVIP</option>
-              <option value="Mass">Mass</option>
-              <option value="Mix">Mix</option>
-            </select>
-          </div>
-
-          {/* CURRENT SEGMENT */}
-          <div>
-            <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Current Segment
+              User Segment (TBC)
             </span>
             <select
               value={filters.currentSegment}
@@ -334,40 +309,6 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
             </select>
           </div>
 
-          {/* AGGREGATED SEGMENT */}
-          <div>
-            <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Aggregated Segment
-            </span>
-            <select
-              value={filters.aggregatedSegment}
-              onChange={(e) => set("aggregatedSegment", e.target.value)}
-              className={cn(selectClass, "focus:ring-amber-600/40")}
-              style={selectStyle}
-            >
-              <option value="all">All</option>
-              <option value="high_value">High Value</option>
-              <option value="medium_value">Medium Value</option>
-              <option value="low_value">Low Value</option>
-            </select>
-          </div>
-
-          {/* OUTLIER FILTER */}
-          <div>
-            <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              Outlier Filter
-            </span>
-            <select
-              value={filters.outlierFilter}
-              onChange={(e) => set("outlierFilter", e.target.value)}
-              className={cn(selectClass, "focus:ring-amber-600/40")}
-              style={selectStyle}
-            >
-              <option value="include_all">Include All</option>
-              <option value="exclude_outliers">Exclude Outliers</option>
-              <option value="only_outliers">Only Outliers</option>
-            </select>
-          </div>
         </div>
       )}
     </aside>

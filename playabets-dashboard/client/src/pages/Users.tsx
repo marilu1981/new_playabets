@@ -100,7 +100,19 @@ export default function UsersPage() {
     let cancelled = false;
 
     async function loadLiveData() {
-      const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+      const params = new URLSearchParams({
+        start: filters.dateFrom,
+        end: filters.dateTo,
+      });
+      if (filters.brand !== "all") params.set("brand", filters.brand);
+      if (filters.territory !== "all") params.set("territory", filters.territory);
+      if (filters.country !== "all") params.set("country", filters.country);
+      if (filters.trafficSource !== "all") params.set("traffic_source", filters.trafficSource);
+      if (filters.affiliateId !== "all") params.set("affiliate_id", filters.affiliateId);
+      if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
+      if (filters.customerStatus !== "all") params.set("customer_status", filters.customerStatus);
+      if (filters.granularity) params.set("granularity", filters.granularity);
+      const query = params.toString();
       const [kpisRes, regsRes, statusRes] = await Promise.allSettled([
         fetchJson<{ actives?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
