@@ -268,7 +268,8 @@ export default function UsersPage() {
           const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
           const label = `${dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" })} ${dt.getUTCFullYear()}`;
           const bucket = byMonth.get(key) ?? { month: label, registrations: 0, churned: 0 };
-          bucket.registrations += Number(row.value ?? 0);
+          // API returns { date, registrations } — fall back to .value for compatibility
+          bucket.registrations += Number((row as { date: string; registrations?: number; value?: number }).registrations ?? (row as { date: string; registrations?: number; value?: number }).value ?? 0);
           byMonth.set(key, bucket);
         }
         const monthly = Array.from(byMonth.entries())
@@ -278,7 +279,8 @@ export default function UsersPage() {
         setLiveRegistrations(monthly);
         setLiveRegistrationsDaily((regsRes.value.registrations ?? []).map((r) => ({
           date: r.date,
-          value: Number(r.value ?? 0),
+          // API returns { date, registrations } — fall back to .value for compatibility
+          value: Number((r as { date: string; registrations?: number; value?: number }).registrations ?? (r as { date: string; registrations?: number; value?: number }).value ?? 0),
         })));
       } else {
         setLiveRegistrationsDaily(null);
@@ -428,7 +430,7 @@ export default function UsersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active={!liveRegistrationsDaily} description="Registrations trend pending live data" />
+          <MockOverlay active={!liveRegistrationsDaily} description="Registrations trend loading..." />
           <h3 className="text-sm font-semibold text-white mb-1">Registrations Trend</h3>
           <p className="text-xs text-white/40 mb-4">{granularityLabel} registrations over time</p>
           <ResponsiveContainer width="100%" height={200}>
@@ -460,9 +462,9 @@ export default function UsersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active description="Currency mix pending live data" />
+          <MockOverlay active label="TBC — RFM Segments" description="Currency breakdown pending live data" />
           <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
-          <p className="text-xs text-white/40 mb-4">African market distribution - Pending (Mock)</p>
+          <p className="text-xs text-white/40 mb-4">African market distribution — TBC from RFM Segments pipeline</p>
           <div className="space-y-3">
             {usersByCurrency.map((c, i) => {
               const pct = (c.users / totalUsersSafe * 100).toFixed(1);
@@ -517,9 +519,9 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active description="Self-exclusion data still mock" />
+          <MockOverlay active label="TBC — RFM Segments" description="Self-exclusion data pending live feed" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
-          <p className="text-xs text-white/40 mb-4">Responsible gaming overview - Pending (Mock)</p>
+          <p className="text-xs text-white/40 mb-4">Responsible gaming overview — TBC from RFM Segments pipeline</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },
@@ -549,10 +551,10 @@ export default function UsersPage() {
       </div>
 
       <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <MockOverlay active description="Recent sessions table pending live feed" />
+        <MockOverlay active label="TBC — RFM Segments" description="Recent sessions pending live feed" />
         <div className="flex items-center gap-2 mb-4">
           <Clock size={16} style={{ color: "oklch(0.72 0.14 85)" }} />
-          <h3 className="text-sm font-semibold text-white">Recent Sessions - Pending (Mock)</h3>
+          <h3 className="text-sm font-semibold text-white">Recent Sessions — TBC from RFM Segments</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
