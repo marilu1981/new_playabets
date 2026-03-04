@@ -200,8 +200,6 @@ def build_rfm_users(
         # No session frequency available
         login_freq = pd.DataFrame(columns=["userid", "sessions_30d", "active_login_days_30d"])
         # login_freq = pd.DataFrame(columns=["userid", "sessions_30d", "active_login_days_30d"])
-        last_login = pd.DataFrame(columns=["userid", "last_login_dt"])
-        # login_freq = pd.DataFrame(columns=["userid", "sessions_30d", "active_login_days_30d"])
 
     # --- Merge into RFM user table
     rfm = base.merge(last_login, on="userid", how="left")
