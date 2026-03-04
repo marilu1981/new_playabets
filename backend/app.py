@@ -86,6 +86,26 @@ BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
 
+# Filter mappings (UI -> data values)
+_COUNTRY_MAP = {
+    "ng": "Nigeria",
+    "gh": "Ghana",
+    "ke": "Kenya",
+    "ug": "Uganda",
+    "zm": "Zambia",
+}
+_TERRITORY_COUNTRIES = {
+    "west_africa": {"Nigeria", "Ghana"},
+    "east_africa": {"Kenya", "Uganda"},
+    "southern_africa": {"Zambia"},
+}
+_STATUS_ALIASES = {
+    "active": "enabled",
+    "inactive": "disabled",
+    "blocked": "frozen",
+    "dormant": "dormant",
+}
+
 # Raw bonus reference files (full-refresh, written by incremental_bonus.py)
 def _prefer_latest_parquet(base_dir: Path, prefix: str) -> Path:
     latest_candidates = sorted(
@@ -176,6 +196,123 @@ def _normalize_cols(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
     out = df.copy()
     out.columns = [str(c).strip() for c in out.columns]
     return out, {str(c).lower(): str(c) for c in out.columns}
+
+
+def _normalize_value(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    v = str(value).strip()
+    if not v or v.lower() == "all":
+        return None
+    return v
+
+
+def _normalize_status(value: Optional[str]) -> Optional[str]:
+    v = _normalize_value(value)
+    if not v:
+        return None
+    key = v.strip().lower()
+    return _STATUS_ALIASES.get(key, key)
+
+
+def _country_set(country: Optional[str]) -> Optional[set[str]]:
+    v = _normalize_value(country)
+    if not v:
+        return None
+    key = v.lower()
+    mapped = _COUNTRY_MAP.get(key, v)
+    return {mapped}
+
+
+def _territory_set(territory: Optional[str]) -> Optional[set[str]]:
+    v = _normalize_value(territory)
+    if not v:
+        return None
+    key = v.lower().replace(" ", "_")
+    return _TERRITORY_COUNTRIES.get(key)
+
+
+def _load_users_for_filters() -> pd.DataFrame:
+    users = _load_latest_users()
+    if users.empty:
+        return users
+    users, mapping = normalize_cols(users)
+    rename = {}
+    uid_col = mapping.get("userid")
+    if uid_col:
+        rename[uid_col] = "userid"
+    status_col = mapping.get("userstatus")
+    if status_col:
+        rename[status_col] = "userstatus"
+    country_col = mapping.get("country")
+    if country_col:
+        rename[country_col] = "country"
+    creation_col = mapping.get("creationdate")
+    if creation_col:
+        rename[creation_col] = "creationdate"
+    lastlogin_col = mapping.get("lastlogin")
+    if lastlogin_col:
+        rename[lastlogin_col] = "lastlogin"
+    if rename:
+        users = users.rename(columns=rename)
+    return users
+
+
+def _apply_user_filters(
+    users: pd.DataFrame,
+    territory: Optional[str] = None,
+    country: Optional[str] = None,
+    customer_status: Optional[str] = None,
+) -> pd.DataFrame:
+    if users.empty:
+        return users
+    countries = _territory_set(territory)
+    country_single = _country_set(country)
+    if country_single:
+        countries = country_single if countries is None else countries & country_single
+    status = _normalize_status(customer_status)
+
+    filtered = users.copy()
+    if countries is not None:
+        if "country" not in filtered.columns:
+            return filtered.iloc[0:0]
+        allowed = {str(c).strip().lower() for c in countries}
+        filtered = filtered[filtered["country"].astype(str).str.strip().str.lower().isin(allowed)]
+    if status:
+        if "userstatus" not in filtered.columns:
+            return filtered.iloc[0:0]
+        filtered = filtered[filtered["userstatus"].astype(str).str.strip().str.lower() == status]
+    return filtered
+
+
+def _filtered_registration_counts(
+    start: date,
+    end: date,
+    territory: Optional[str] = None,
+    country: Optional[str] = None,
+    customer_status: Optional[str] = None,
+) -> dict[date, int]:
+    users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+    if users.empty or "creationdate" not in users.columns:
+        return {}
+    users = users.copy()
+    users["creationdate"] = to_dt(users["creationdate"]).dt.date
+    users = users[(users["creationdate"] >= start) & (users["creationdate"] <= end)]
+    if users.empty:
+        return {}
+    counts = users.groupby("creationdate").size()
+    return {d: int(v) for d, v in counts.items()}
+
+
+def _filtered_registration_total(
+    start: date,
+    end: date,
+    territory: Optional[str] = None,
+    country: Optional[str] = None,
+    customer_status: Optional[str] = None,
+) -> int:
+    counts = _filtered_registration_counts(start, end, territory, country, customer_status)
+    return int(sum(counts.values()))
 
 
 def _load_latest_users() -> pd.DataFrame:
@@ -393,6 +530,9 @@ def health():
 def kpis(
     start: date = Query(..., description="YYYY-MM-DD"),
     end: date = Query(..., description="YYYY-MM-DD"),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
 ):
     df = _filter_range(load_daily_df(), start, end)
     tx = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
@@ -416,9 +556,14 @@ def kpis(
     bonus_spent = _s(bonus, "bonus_credited")
     ngr = ggr - bonus_spent
 
+    user_filtered = any(_normalize_value(v) for v in (territory, country, customer_status))
+    filtered_registrations = (
+        _filtered_registration_total(start, end, territory, country, customer_status) if user_filtered else None
+    )
+
     return {
         "range": {"start": str(start), "end": str(end)},
-        "registrations": _i(df, "registrations"),
+        "registrations": filtered_registrations if filtered_registrations is not None else _i(df, "registrations"),
         "actives": sportsbook_actives + casino_actives,
         "sports_actives": sportsbook_actives,
         "casino_actives": casino_actives,
@@ -438,6 +583,12 @@ def kpis(
         "net_deposits": _s(tx, "net_deposits"),
         "bonus_spent": bonus_spent,
         "has_transactions_data": not tx.empty,
+        "filters_applied": {
+            "territory": bool(_normalize_value(territory)),
+            "country": bool(_normalize_value(country)),
+            "customer_status": bool(_normalize_value(customer_status)),
+            "registrations_filtered": filtered_registrations is not None,
+        },
     }
 
 
@@ -467,7 +618,18 @@ def revenue_timeseries(
 def registrations_timeseries(
     start: date = Query(...),
     end: date = Query(...),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
 ):
+    user_filtered = any(_normalize_value(v) for v in (territory, country, customer_status))
+    if user_filtered:
+        counts = _filtered_registration_counts(start, end, territory, country, customer_status)
+        dates = pd.date_range(start, end, freq="D").date
+        regs = [{"date": str(d), "value": int(counts.get(d, 0))} for d in dates]
+        ftds = [{"date": str(d), "value": 0} for d in dates]
+        return {"registrations": regs, "ftds": ftds, "filters_applied": True}
+
     df = load_daily_df()
     ftd = load_parquet_cached(FTD_DAILY_PATH, "ftd_daily")
     d = _filter_range(df, start, end).sort_values("date")
@@ -480,7 +642,7 @@ def registrations_timeseries(
 
     regs = [{"date": str(x), "value": int(v)} for x, v in zip(d["date"], d.get("registrations", [0] * len(d)))]
     ftds = [{"date": str(x), "value": int(ftd_by_date.get(x, 0))} for x in d["date"]]
-    return {"registrations": regs, "ftds": ftds}
+    return {"registrations": regs, "ftds": ftds, "filters_applied": False}
 
 
 @app.get("/timeseries/conversion-cohorts")
@@ -562,6 +724,9 @@ def kpis_daily(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
     metrics: Optional[str] = Query(None),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
 ):
     df = load_daily_df()
     if df.empty:
@@ -569,6 +734,12 @@ def kpis_daily(
     d = df.copy()
     if start and end and "date" in d.columns:
         d = _filter_range(d, start, end)
+        if any(_normalize_value(v) for v in (territory, country, customer_status)):
+            regs_by_date = _filtered_registration_counts(start, end, territory, country, customer_status)
+            if regs_by_date:
+                d["registrations"] = d["date"].map(lambda x: int(regs_by_date.get(x, 0)))
+            else:
+                d["registrations"] = 0
     d = d.sort_values("date")
     if metrics:
         wanted = [c.strip() for c in metrics.split(",") if c.strip()]
@@ -579,9 +750,25 @@ def kpis_daily(
 
 
 @app.get("/users/status-breakdown")
-def users_status_breakdown():
-    statuses = _status_counts()
-    return {"statuses": statuses}
+def users_status_breakdown(
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
+):
+    users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+    if users.empty or "userstatus" not in users.columns:
+        return {"statuses": []}
+    statuses = users["userstatus"].fillna("Unknown").astype(str).str.strip()
+    statuses.loc[statuses == ""] = "Unknown"
+    counts = statuses.value_counts()
+    return {
+        "statuses": [{"status": str(status), "count": int(count)} for status, count in counts.items()],
+        "filters_applied": {
+            "territory": bool(_normalize_value(territory)),
+            "country": bool(_normalize_value(country)),
+            "customer_status": bool(_normalize_value(customer_status)),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -628,6 +815,9 @@ def rfm_users(
 def betslips_by_status(
     start: date = Query(...),
     end: date = Query(...),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
 ):
     df = load_betslips_raw()
     if df.empty:
@@ -636,12 +826,21 @@ def betslips_by_status(
     status_col = bcol.get("betslipstatus") or bcol.get("status") or bcol.get("betslipstatusid") or bcol.get("statusid")
     status_id_col = bcol.get("betslipstatusid") or bcol.get("statusid")
     placement_col = bcol.get("placementdate") or bcol.get("placedate") or bcol.get("betdate") or bcol.get("date")
+    user_id_col = bcol.get("userid")
     if not status_col or not placement_col:
         return []
     df["_date"] = to_dt(df[placement_col]).dt.date
     df = _filter_range(df, start, end)
     if df.empty:
         return []
+    if any(_normalize_value(v) for v in (territory, country, customer_status)) and user_id_col:
+        users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+        if users.empty or "userid" not in users.columns:
+            return []
+        allowed_ids = set(users["userid"].astype(str).dropna())
+        df = df[df[user_id_col].astype(str).isin(allowed_ids)]
+        if df.empty:
+            return []
     grouped = df.groupby(status_col).size().reset_index(name="count")
     if status_id_col and status_id_col in df.columns and status_id_col != status_col:
         id_map = df[[status_col, status_id_col]].dropna().drop_duplicates()
@@ -834,6 +1033,7 @@ def casino_daily(
                 "stake": float(r.get("casino_stake", 0)),
                 "winnings": float(r.get("casino_winnings", 0)),
                 "ggr": float(r.get("casino_ggr", 0)),
+                "casino_actives": int(r.get("casino_actives", 0)) if pd.notna(r.get("casino_actives")) else 0,
             }
             for _, r in df.iterrows()
         ]
