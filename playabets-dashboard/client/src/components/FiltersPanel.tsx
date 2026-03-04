@@ -230,6 +230,7 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
               <option value="ZM">Zambia</option>
               <option value="UG">Uganda</option>
               <option value="KE">Kenya</option>
+              <option value="ZA">South Africa</option>
             </select>
           </div>
 

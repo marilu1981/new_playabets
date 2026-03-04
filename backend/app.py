@@ -93,11 +93,12 @@ _COUNTRY_MAP = {
     "ke": "Kenya",
     "ug": "Uganda",
     "zm": "Zambia",
+    "za": "South Africa",
 }
 _TERRITORY_COUNTRIES = {
     "west_africa": {"Nigeria", "Ghana"},
     "east_africa": {"Kenya", "Uganda"},
-    "southern_africa": {"Zambia"},
+    "southern_africa": {"Zambia", "South Africa"},
 }
 _STATUS_ALIASES = {
     "active": "enabled",

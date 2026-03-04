@@ -20,6 +20,7 @@ const COUNTRY_MAP: Record<string, string> = {
   ZM: "Zambia",
   UG: "Uganda",
   KE: "Kenya",
+  ZA: "South Africa",
 };
 
 const TRAFFIC_MAP: Record<string, string> = {
