@@ -1361,11 +1361,11 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Segment Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={segmentPending} description="TBC from RFM Analysis" />
+          <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">TBC from RFM Analysis</p>
-            <p className="text-xs text-white/40">VIP / PVIP / Mass / Mix breakdown</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">TBC — RFM Segments</p>
+            <p className="text-xs text-white/40">RFM analysis will categorise players into: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
           </div>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={160} height={160}>
@@ -1422,9 +1422,9 @@ export default function Home() {
 
       {/* ── SEGMENT PERFORMANCE KPI ROW ─────────────────────────────────── */}
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
-        <MockOverlay active={segmentPending} label="RFM Pending" description="TBC from RFM Analysis" />
+        <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">TBC from RFM Analysis</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">TBC — RFM Segments: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
             <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
@@ -1479,11 +1479,11 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Trend by Segment */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={segmentPending} description="TBC from RFM Analysis" />
+          <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
           <div className="mb-4 flex items-center justify-between">
             <div>
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Trend by Segment</h3>
-            <p className="text-xs text-white/40">{granularityLabel} GGR by player segment</p>
+            <p className="text-xs text-white/40">{granularityLabel} GGR by segment — Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
               Segment filters applied
