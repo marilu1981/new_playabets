@@ -1,11 +1,15 @@
 'use strict';
 /**
  * /api/betting/betslips-by-status
- * Derives betslip status breakdown from daily_kpis aggregates.
- * Uses betslips_count, cancel_rate, and win_rate to estimate:
- *   Won / Lost / Cancelled / Open (exposure)
- * NOTE: This is a derived approximation until a dedicated betslip-status
- *       table is available from the DWH view_Betslips extract.
+ * Returns betslip status breakdown from daily_kpis.
+ *
+ * Preferred: uses betslips_won_count / betslips_cancelled_count / betslips_settled_count
+ * columns added by the updated ETL (betslips_kpis.py).
+ *
+ * Fallback: when those columns are zero/missing, estimates from stake-based rates:
+ *   win_rate = winning_stake / settled_stake   (stake proportion)
+ *   cancel_rate = cancelled_stake / settled_stake  (stake proportion)
+ * Rates are weighted by settled_stake and applied to the settled portion of betslips.
  */
 const { supaQuery, sum, corsHeaders } = require("../_supabase");
 
@@ -37,32 +41,56 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
 
-    const rows = await supaQuery("daily_kpis", {
-      select: "betslips_count,cancel_rate,win_rate,open_exposure_stake,settled_stake",
-      filters,
-    });
+    // Try to fetch count-based columns added by the updated ETL.
+    // Fall back to base columns if the schema hasn't been migrated yet.
+    let rows;
+    let hasCountData = false;
+    try {
+      rows = await supaQuery("daily_kpis", {
+        select: "betslips_count,cancel_rate,win_rate,open_exposure_stake,settled_stake,betslips_won_count,betslips_cancelled_count,betslips_settled_count",
+        filters,
+      });
+      hasCountData = sum(rows, "betslips_settled_count") > 0;
+    } catch {
+      rows = await supaQuery("daily_kpis", {
+        select: "betslips_count,cancel_rate,win_rate,open_exposure_stake,settled_stake",
+        filters,
+      });
+    }
 
-    const totalBetslips = sum(rows, "betslips_count");
-    // Average rates across days (weighted by betslip count)
-    const avgCancelRate = totalBetslips > 0
-      ? rows.reduce((acc, r) => acc + Number(r.cancel_rate ?? 0) * Number(r.betslips_count ?? 0), 0) / totalBetslips
-      : 0;
-    const avgWinRate = totalBetslips > 0
-      ? rows.reduce((acc, r) => acc + Number(r.win_rate ?? 0) * Number(r.betslips_count ?? 0), 0) / totalBetslips
-      : 0;
+    const totalBetslips   = sum(rows, "betslips_count");
+    const totalSettled    = sum(rows, "settled_stake");
+    const totalExposure   = sum(rows, "open_exposure_stake");
 
-    // Derive status counts from rates
-    const cancelled = Math.round(totalBetslips * avgCancelRate);
-    const settled   = totalBetslips - cancelled;
-    const won       = Math.round(settled * avgWinRate);
-    const lost      = settled - won;
-
-    // Open betslips: estimate from exposure vs settled ratio
-    const totalExposure = sum(rows, "open_exposure_stake");
-    const totalSettled  = sum(rows, "settled_stake");
-    const openEstimate  = totalSettled > 0
+    // Open betslips estimate: exposure / (exposure + settled) ratio applied to placed count.
+    const openEstimate = (totalSettled + totalExposure) > 0
       ? Math.round(totalBetslips * (totalExposure / (totalSettled + totalExposure)))
       : 0;
+
+    let won, cancelled, lost;
+    if (hasCountData) {
+      // Accurate count-based breakdown from updated ETL columns.
+      const countWon       = sum(rows, "betslips_won_count");
+      const countCancelled = sum(rows, "betslips_cancelled_count");
+      const countSettled   = sum(rows, "betslips_settled_count");
+      won       = countWon;
+      cancelled = countCancelled;
+      lost      = Math.max(0, countSettled - won - cancelled);
+    } else {
+      // Fallback: stake-based rate estimation.
+      // win_rate = winning_stake / settled_stake (stake proportion, not count proportion).
+      // Weight by settled_stake for a correct overall average.
+      const avgWinRate = totalSettled > 0
+        ? rows.reduce((acc, r) => acc + Number(r.win_rate ?? 0) * Number(r.settled_stake ?? 0), 0) / totalSettled
+        : 0;
+      const avgCancelRate = totalSettled > 0
+        ? rows.reduce((acc, r) => acc + Number(r.cancel_rate ?? 0) * Number(r.settled_stake ?? 0), 0) / totalSettled
+        : 0;
+      const settledEstimate = Math.max(0, totalBetslips - openEstimate);
+      won       = Math.round(settledEstimate * avgWinRate);
+      cancelled = Math.round(settledEstimate * avgCancelRate);
+      lost      = Math.max(0, settledEstimate - won - cancelled);
+    }
 
     const result = [
       { status: "Won",       statusId: 5, count: Math.max(0, won) },

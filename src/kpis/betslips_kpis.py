@@ -46,6 +46,10 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
 
       win_rate (winning stake / settled_stake)  [settled only]
       cancel_rate (cancelled stake / settled_stake) [settled only]
+
+      betslips_settled_count (count of settled betslips by payment date)
+      betslips_won_count (count where OutcomeType=Winning, by payment date)
+      betslips_cancelled_count (count where OutcomeType=Cancelled, by payment date)
     """
     if betslips.empty:
         return pd.DataFrame(columns=[
@@ -60,6 +64,9 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
             "hold_pct",
             "win_rate",
             "cancel_rate",
+            "betslips_settled_count",
+            "betslips_won_count",
+            "betslips_cancelled_count",
         ])
 
     betslips = dedupe_betslips(betslips)
@@ -153,8 +160,46 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
                 .rename(columns={"pay_date": "date"})
             )
 
-            settled_daily = settled_daily.merge(win_stake, on="date", how="left").merge(cancel_stake, on="date", how="left")
+            # Count-based status columns (more accurate than stake-rate approximations)
+            won_counts = (
+                settled[settled[outcome_col].astype(str).eq("Winning")]
+                .dropna(subset=["pay_date"])
+                .groupby("pay_date")
+                .size()
+                .rename("betslips_won_count")
+                .reset_index()
+                .rename(columns={"pay_date": "date"})
+            )
+            cancel_counts = (
+                settled[settled[outcome_col].astype(str).eq("Cancelled")]
+                .dropna(subset=["pay_date"])
+                .groupby("pay_date")
+                .size()
+                .rename("betslips_cancelled_count")
+                .reset_index()
+                .rename(columns={"pay_date": "date"})
+            )
+            settled_counts = (
+                settled.dropna(subset=["pay_date"])
+                .groupby("pay_date")
+                .size()
+                .rename("betslips_settled_count")
+                .reset_index()
+                .rename(columns={"pay_date": "date"})
+            )
+
+            settled_daily = (
+                settled_daily
+                .merge(win_stake, on="date", how="left")
+                .merge(cancel_stake, on="date", how="left")
+                .merge(won_counts, on="date", how="left")
+                .merge(cancel_counts, on="date", how="left")
+                .merge(settled_counts, on="date", how="left")
+            )
             settled_daily[["winning_stake", "cancelled_stake"]] = settled_daily[["winning_stake", "cancelled_stake"]].fillna(0.0)
+            settled_daily[["betslips_won_count", "betslips_cancelled_count", "betslips_settled_count"]] = (
+                settled_daily[["betslips_won_count", "betslips_cancelled_count", "betslips_settled_count"]].fillna(0).astype(int)
+            )
 
             settled_daily["win_rate"] = settled_daily.apply(
                 lambda r: (r["winning_stake"] / r["settled_stake"]) if r["settled_stake"] else 0.0,
@@ -169,6 +214,9 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
         else:
             settled_daily["win_rate"] = 0.0
             settled_daily["cancel_rate"] = 0.0
+            settled_daily["betslips_won_count"] = 0
+            settled_daily["betslips_cancelled_count"] = 0
+            settled_daily["betslips_settled_count"] = 0
 
     else:
         # If you don’t have paymentdate or betslipstatus, we can’t compute settled metrics reliably
@@ -187,5 +235,7 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     out["betslips_count"] = out["betslips_count"].astype(int)
     for c in ["placed_stake", "open_exposure_stake", "settled_stake", "settled_winnings", "ggr", "hold_pct", "win_rate", "cancel_rate"]:
         out[c] = out[c].astype(float)
+    for c in ["betslips_settled_count", "betslips_won_count", "betslips_cancelled_count"]:
+        out[c] = out[c].fillna(0).astype(int)
 
     return out.sort_values("date")
