@@ -3,7 +3,7 @@
  * Savanna Gold design system — full-width layout, horizontal filter bar at top.
  *
  * All charts from the client demo are preserved:
- * - 11 KPI cards (Registrations, FTDs, V_FTDs, Top_FTDs, Actives, Deposits,
+ * - 10 KPI cards (Registrations, FTDs, Top_FTDs, Actives, Deposits,
  *   Withdrawals, Turnover, GGR, NGR, Conversion Rate)
  * - Revenue Trends with GGR/NGR/Turnover toggle
  * - Player Acquisition chart (Trend / MoM toggle)
@@ -135,6 +135,11 @@ function parseSeriesDate(value: string | undefined, fallbackYear: number): Date 
 
 function parseIsoDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    if (/^\d{4}\/\d{2}\/\d{2}$/.test(value)) {
+      const normalized = value.replace(/\//g, "-");
+      const dt = new Date(`${normalized}T00:00:00Z`);
+      return Number.isNaN(dt.getTime()) ? null : dt;
+    }
     return null;
   }
   const dt = new Date(`${value}T00:00:00Z`);
@@ -309,9 +314,11 @@ export default function Home() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
   const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
-  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
-  const [dataMode, setDataMode] = useState<DataMode>("mock");
-  const isMockMode = dataMode === "mock";
+    const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
+    const [dataMode, setDataMode] = useState<DataMode>("mock");
+    const showPendingOverlay = dataMode !== "live";
+    const segmentPending = true;
+    const depositFlowPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
@@ -586,6 +593,7 @@ export default function Home() {
           ftdByDate.set(row.date, Number((row as { date: string; value?: number }).value ?? 0));
         }
 
+        const regByDate = new Map<string, number>();
         const byMonth = new Map<string, { month: string; registrations: number; ftds: number }>();
         for (const row of regs) {
           const date = row.date;
@@ -596,8 +604,15 @@ export default function Home() {
           const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
           const month = dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
           const bucket = byMonth.get(key) ?? { month, registrations: 0, ftds: 0 };
-          // registration rows use { date, registrations } — NOT { date, value }
-          bucket.registrations += Number((row as { date: string; registrations?: number }).registrations ?? 0);
+          // registration rows may use { date, registrations } or { date, value }
+          const regValue = Number(
+            (row as { date: string; registrations?: number; value?: number; count?: number }).registrations
+              ?? (row as { date: string; registrations?: number; value?: number; count?: number }).value
+              ?? (row as { date: string; registrations?: number; value?: number; count?: number }).count
+              ?? 0,
+          );
+          regByDate.set(date, (regByDate.get(date) ?? 0) + regValue);
+          bucket.registrations += regValue;
           bucket.ftds += Number(ftdByDate.get(date) ?? 0);
           byMonth.set(key, bucket);
         }
@@ -614,17 +629,38 @@ export default function Home() {
           }));
         setLivePlayerAcquisition(monthly.length > 0 ? monthly : null);
 
-        const conversion = regs
-          .map((r) => {
-            // registration rows use { date, registrations } — NOT { date, value }
-            const registrationsVal = Number((r as { date: string; registrations?: number }).registrations ?? 0);
-            const ftdVal = Number(ftdByDate.get(r.date) ?? 0);
-            // cap at 100% to avoid display artifacts at period boundaries
-            const raw = registrationsVal > 0 ? (ftdVal / registrationsVal) * 100 : 0;
-            const rate = Number(Math.min(raw, 100).toFixed(1));
-            return { date: r.date, rate };
-          })
-          .sort((a, b) => a.date.localeCompare(b.date));
+        const allDates = Array.from(new Set([...regByDate.keys(), ...ftdByDate.keys()])).sort();
+        const dateRows = allDates
+          .map((date) => ({ date, ts: Date.parse(`${date}T00:00:00Z`) }))
+          .filter((row) => Number.isFinite(row.ts));
+
+        const rollingRates = (windowDays: number) => {
+          const limitMs = (windowDays - 1) * 86400000;
+          return dateRows.map((row, idx) => {
+            let regSum = 0;
+            let ftdSum = 0;
+            for (let j = idx; j >= 0; j -= 1) {
+              if (row.ts - dateRows[j].ts > limitMs) {
+                break;
+              }
+              regSum += regByDate.get(dateRows[j].date) ?? 0;
+              ftdSum += ftdByDate.get(dateRows[j].date) ?? 0;
+            }
+            if (!regSum) {
+              return null;
+            }
+            const raw = (ftdSum / regSum) * 100;
+            return Number(Math.min(raw, 100).toFixed(1));
+          });
+        };
+
+        const rate7d = rollingRates(7);
+        const rate30d = rollingRates(30);
+        const conversion = dateRows.map((row, idx) => ({
+          date: row.date,
+          rate7d: rate7d[idx],
+          rate30d: rate30d[idx],
+        }));
         setLiveConversionRateTrend(conversion.length > 0 ? conversion : null);
       }
     }
@@ -728,15 +764,23 @@ export default function Home() {
     [filters, fallbackYear, multiplier],
   );
   const conversionRateTrend = useMemo(() => {
+    const filtered = filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date);
+    const normalized = filtered.map((row) => {
+      const cast = row as { rate?: number; rate7d?: number; rate30d?: number };
+      if (cast.rate7d === undefined && cast.rate30d === undefined && typeof cast.rate === "number") {
+        return { ...row, rate7d: cast.rate, rate30d: cast.rate };
+      }
+      return row;
+    });
     const scaled = scaleArrayNumericFields(
-      filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date),
+      normalized,
       multiplier,
       ["date"],
     );
     return aggregateByGranularity(scaled, filters.granularity, (row) => row.date, {
       labelKey: "date",
       fallbackYear,
-      avgFields: ["rate"],
+      avgFields: ["rate7d", "rate30d"],
     });
   }, [fallbackYear, filters, multiplier, sourceConversionRateTrend]);
   const summaryMetrics = useMemo(() => {
@@ -861,21 +905,25 @@ export default function Home() {
   const convSeries = conversionRateTrend.length > 0 ? conversionRateTrend : sourceConversionRateTrend;
   const fallbackMonth = { month: "-", registrations: 0, ftds: 0, vftds: 0, topFtds: 0 };
   const lastMonth = acqSeries[acqSeries.length - 1] ?? fallbackMonth;
-  const prevMonth = acqSeries[acqSeries.length - 2] ?? lastMonth;
   const kpiRegistrations = liveRangeKpis?.registrations ?? lastMonth.registrations;
   const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
-  const kpiVftds = liveRangeKpis ? Math.round(kpiFtds * 0.12) : lastMonth.vftds;
-  const kpiTopFtds = liveRangeKpis ? Math.round(kpiFtds * 0.04) : lastMonth.topFtds;
-  const lastConvRate = convSeries[convSeries.length - 1]?.rate ?? 0;
-  const prevConvRate = convSeries[Math.max(0, convSeries.length - 8)]?.rate ?? lastConvRate;
+  const periodConvRate =
+    kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
 
   const momData = playerAcquisition.slice(1).map((d, i) => {
-    const prevRegs = Math.max(1, playerAcquisition[i].registrations);
-    const prevFtds = Math.max(1, playerAcquisition[i].ftds);
+    const prev = playerAcquisition[i];
+    const prevRegs = prev.registrations;
+    const prevFtds = prev.ftds;
+    const registrationsChange = prevRegs > 0
+      ? parseFloat((((d.registrations - prevRegs) / prevRegs) * 100).toFixed(1))
+      : 0;
+    const ftdsChange = prevFtds > 0
+      ? parseFloat((((d.ftds - prevFtds) / prevFtds) * 100).toFixed(1))
+      : 0;
     return {
       month: d.month,
-      registrations: parseFloat((((d.registrations - prevRegs) / prevRegs) * 100).toFixed(1)),
-      ftds: parseFloat((((d.ftds - prevFtds) / prevFtds) * 100).toFixed(1)),
+      registrations: registrationsChange,
+      ftds: ftdsChange,
     };
   });
 
@@ -1017,20 +1065,15 @@ export default function Home() {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
         <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range"
-          change={pctChange(lastMonth.registrations, prevMonth.registrations)} changeLabel="vs last month"
           icon={<UserPlus size={18} />} accent="teal" />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
-          change={pctChange(lastMonth.ftds, prevMonth.ftds)} changeLabel="vs last month"
           icon={<Users size={18} />} accent="gold" />
         <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Unique active players"
-          change={8.4} changeLabel="vs last month"
           icon={<Activity size={18} />} accent="green" />
         <KpiCard
           title="Total Deposits"
           value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
           subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
-          change={hasTransactionsData ? 6.2 : undefined}
-          changeLabel={hasTransactionsData ? "vs last month" : undefined}
           icon={<DollarSign size={18} />}
           accent="amber"
         />
@@ -1042,33 +1085,28 @@ export default function Home() {
           title="Total Withdrawals"
           value={hasTransactionsData ? `${formatCompact(transactionSummary.totalWithdrawals)}` : "Pending"}
           subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
-          change={hasTransactionsData ? -3.8 : undefined}
-          changeLabel={hasTransactionsData ? "vs last month" : undefined}
           icon={<ArrowUpRight size={18} />}
           accent="red"
         />
         <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Sports + Casino"
-          change={12.1} changeLabel="vs last month"
           icon={<TrendingUp size={18} />} accent="teal" />
         <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`Sports + Casino · ${margin}% margin`}
-          change={5.3} changeLabel="vs last month"
           icon={<BarChart2 size={18} />} accent="gold" />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 3 ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle}
-          change={liveNgr !== null || dataMode === "mock" ? 4.1 : undefined}
-          changeLabel={liveNgr !== null || dataMode === "mock" ? "vs last month" : undefined}
           icon={<Percent size={18} />} accent="green" />
-        <KpiCard title="V_FTDs" value={formatCompact(kpiVftds)} subtitle="Verified FTDs"
-          change={pctChange(lastMonth.vftds, prevMonth.vftds)} changeLabel="vs last month"
-          icon={<Users size={18} />} accent="teal" />
-        <KpiCard title="Top_FTDs" value={formatCompact(kpiTopFtds)} subtitle="High-value FTDs"
-          change={pctChange(lastMonth.topFtds, prevMonth.topFtds)} changeLabel="vs last month"
-          icon={<Zap size={18} />} accent="gold" />
-        <KpiCard title="Conversion Rate" value={`${lastConvRate}%`} subtitle="Reg → FTD"
-          change={parseFloat((lastConvRate - prevConvRate).toFixed(1))} changeLabel="vs 7 days ago"
+        <KpiCard
+          title="Top_FTDs (TBC from RFM)"
+          value="TBC"
+          valueClassName="text-white/35"
+          subtitle="High-value FTDs"
+          icon={<Zap size={18} />}
+          accent="gold"
+        />
+        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD"
           icon={<Percent size={18} />} accent="amber" />
       </div>
 
@@ -1076,8 +1114,8 @@ export default function Home() {
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Revenue Trends — Month over Month</h3>
-            <p className="text-xs text-white/40">{granularityLabel} GGR / NGR / Turnover — last 30 days</p>
+            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Revenue Trends — Daily View</h3>
+            <p className="text-xs text-white/40">{granularityLabel} GGR / NGR / Turnover — selected period</p>
           </div>
           <div className="flex gap-1">
             {(["ggr", "ngr", "turnover"] as const).map((m) => (
@@ -1112,13 +1150,13 @@ export default function Home() {
         <div className="rounded-xl p-5" style={CARD_BG}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Player Acquisition</h3>
+              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Monthly Player Acquisition</h3>
               <p className="text-xs text-white/40">Registrations vs FTDs</p>
             </div>
             <div className="flex gap-1">
               {(["trend", "mom"] as const).map((m) => (
                 <button key={m} style={toggleBtn(acqMode === m)} onClick={() => setAcqMode(m)}>
-                  {m === "trend" ? "Trend" : "MoM %"}
+                  {m === "trend" ? "Total" : "MoM %"}
                 </button>
               ))}
             </div>
@@ -1160,18 +1198,24 @@ export default function Home() {
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Conversion Rate</h3>
               <p className="text-xs text-white/40">Registration → FTD rate ({filters.granularity})</p>
+              <p className="text-[10px] text-white/35 mt-1">Rolling 7d/30d conversion (FTDs ÷ registrations in trailing window).</p>
             </div>
             <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.72 0.14 85 / 15%)", color: CHART_COLORS.gold }}>
-              {granularityLabel} %
+              7d / 30d
             </span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={conversionRateTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} domain={[30, 50]} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => [`${v}%`, "Conv. Rate"]} />
-              <Line type="monotone" dataKey="rate" name="Conv. Rate" stroke={CHART_COLORS.amber} strokeWidth={2} dot={false} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} domain={[0, 100]} />
+              <Tooltip
+                contentStyle={TT_STYLE}
+                formatter={(v: number | null) => (v == null ? "n/a" : `${v}%`)}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+              <Line type="monotone" dataKey="rate7d"  name="7d Conversion"  stroke={CHART_COLORS.amber} strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="rate30d" name="30d Conversion" stroke={CHART_COLORS.teal}  strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1181,9 +1225,10 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Segment Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={isMockMode} description="Segment exports pending" />
+          <MockOverlay active={segmentPending} description="TBC from RFM Analysis" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">TBC from RFM Analysis</p>
             <p className="text-xs text-white/40">VIP / PVIP / Mass / Mix breakdown</p>
           </div>
           <div className="flex items-center gap-4">
@@ -1213,7 +1258,8 @@ export default function Home() {
         </div>
 
         {/* Deposit vs Withdrawal Flow */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={depositFlowPending} description="Mock data - pending transactions flow" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Deposit vs Withdrawal Flow</h3>
             <p className="text-xs text-white/40">Net cash flow by month</p>
@@ -1240,8 +1286,9 @@ export default function Home() {
 
       {/* ── SEGMENT PERFORMANCE KPI ROW ─────────────────────────────────── */}
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
-        <MockOverlay active={isMockMode} label="Segment Mock" description="Awaiting live segment exports" />
+        <MockOverlay active={segmentPending} label="RFM Pending" description="TBC from RFM Analysis" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">TBC from RFM Analysis</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
             <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
@@ -1260,7 +1307,7 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Geographic Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={isMockMode} description="Geographic data still mocked" />
+          <MockOverlay active={showPendingOverlay} description="Geographic data still mocked" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Geographic Distribution</h3>
@@ -1293,7 +1340,7 @@ export default function Home() {
 
         {/* Traffic Source Breakdown */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={isMockMode} description="Traffic source data mock" />
+          <MockOverlay active={showPendingOverlay} description="Traffic source data mock" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Traffic Source Breakdown</h3>
@@ -1340,7 +1387,8 @@ export default function Home() {
       {/* ── TREND BY SEGMENT + DAILY TREND ──────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Trend by Segment */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={segmentPending} description="TBC from RFM Analysis" />
           <div className="mb-4 flex items-center justify-between">
             <div>
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Trend by Segment</h3>
@@ -1372,7 +1420,8 @@ export default function Home() {
         </div>
 
         {/* Daily Trend with 7-day Moving Average */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={showPendingOverlay} description="Daily trend pending live data" />
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Trend</h3>
@@ -1417,7 +1466,7 @@ export default function Home() {
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={TT_STYLE} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
               <Area type="monotone" dataKey="revenue" name="Revenue" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2}   dot={false} />
@@ -1426,7 +1475,8 @@ export default function Home() {
         </div>
 
         {/* Betslip Status pie */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={showPendingOverlay} description="Betslip status pending live data" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Betslip Status</h3>
@@ -1462,7 +1512,8 @@ export default function Home() {
 
       {/* Top Sports + Platform + User Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div className="lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={showPendingOverlay} description="Top sports pending live data" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Top Sports by Revenue</h3>
             <p className="text-xs text-white/40">Gross revenue by sport type</p>
@@ -1479,7 +1530,8 @@ export default function Home() {
         </div>
 
         <div className="space-y-4">
-          <div className="rounded-xl p-4" style={CARD_BG}>
+          <div className="relative rounded-xl p-4" style={CARD_BG}>
+            <MockOverlay active={showPendingOverlay} description="Platform mix pending live data" />
             <h3 className="text-sm font-semibold text-white mb-3" style={FONT_SERIF}>By Platform</h3>
             <div className="space-y-2">
               {betsByApplication.map((a) => (
