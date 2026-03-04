@@ -65,6 +65,68 @@ async function supaQuery(table, opts = {}) {
   return data;
 }
 
+/**
+ * Fetches ALL rows from a Supabase table, paginating past the default 1000-row
+ * REST limit using Range headers. The combined result is cached for CACHE_TTL_MS.
+ */
+async function supaQueryAll(table, opts = {}) {
+  const PAGE_SIZE = 1000;
+  const cacheKey = `paginated:${table}:${opts.select ?? "*"}:${JSON.stringify(opts.filters ?? [])}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  let offset = 0;
+  let total = null;
+  const allRows = [];
+
+  while (true) {
+    const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
+    url.searchParams.set("select", opts.select ?? "*");
+    if (opts.filters) {
+      for (const f of opts.filters) {
+        const eqIdx = f.indexOf("=");
+        url.searchParams.append(f.substring(0, eqIdx), f.substring(eqIdx + 1));
+      }
+    }
+    if (opts.order) url.searchParams.set("order", opts.order);
+
+    const res = await fetch(url.toString(), {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "count=exact",
+        "Range": `${offset}-${offset + PAGE_SIZE - 1}`,
+        "Range-Unit": "items",
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Supabase ${table} ${res.status}: ${text}`);
+    }
+
+    const page = await res.json();
+    if (Array.isArray(page)) allRows.push(...page);
+
+    // Parse total from Content-Range: "items 0-999/5000"
+    if (total === null) {
+      const cr = res.headers.get("content-range") ?? res.headers.get("Content-Range");
+      if (cr) {
+        const m = cr.match(/\/(\d+)$/);
+        if (m) total = parseInt(m[1], 10);
+      }
+    }
+
+    offset += PAGE_SIZE;
+    if (total !== null && allRows.length >= total) break;
+    if (!Array.isArray(page) || page.length < PAGE_SIZE) break;
+  }
+
+  cacheSet(cacheKey, allRows);
+  return allRows;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────
 function sum(rows, col) {
   return rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
@@ -79,4 +141,4 @@ function corsHeaders() {
   };
 }
 
-module.exports = { supaQuery, sum, corsHeaders, cacheGet, cacheSet, CACHE_TTL_MS };
+module.exports = { supaQuery, supaQueryAll, sum, corsHeaders, cacheGet, cacheSet, CACHE_TTL_MS };

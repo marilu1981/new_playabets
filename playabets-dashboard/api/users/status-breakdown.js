@@ -7,7 +7,7 @@
  * Response shape (matches FastAPI /users/status-breakdown):
  * { statuses: [{ status: string, count: number }] }
  */
-const { supaQuery, corsHeaders } = require("../_supabase");
+const { supaQueryAll, corsHeaders } = require("../_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
@@ -19,9 +19,10 @@ module.exports = async function handler(req, res) {
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
 
   try {
-    // rfm_users has a userstatus column from the view_Users export
-    // We group by userstatus and count — using Supabase's select with count
-    const rows = await supaQuery("rfm_users", {
+    // rfm_users has a userstatus column from the view_Users export.
+    // supaQueryAll paginates past the 1000-row Supabase REST default so the
+    // counts reflect all users, not just the first page.
+    const rows = await supaQueryAll("rfm_users", {
       select: "userstatus",
     });
 
