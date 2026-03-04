@@ -1,18 +1,22 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
  * ─────────────────────────────────────────────────────────────────────────────
- * API Service Layer — INACTIVE (Mock Mode)
+ * API Service Layer — ACTIVE (Live Mode)
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * STATUS: All API calls are currently DISABLED and return mock data.
- * To activate real API calls:
+ * STATUS: API calls are ENABLED by default — routes are Vercel serverless
+ * functions backed by Supabase (no VPN required for demo environment).
+ *
+ * To force mock mode (e.g. local dev without Supabase access):
+ *   Set VITE_API_ENABLED=false in your .env.local
+ *
+ * To point at the live DWH backend (requires VPN):
  *   1. Connect to the Playa Bets VPN
- *   2. Set API_ENABLED = true
- *   3. Set API_BASE_URL to the DWH API endpoint (see build.md)
- *   4. Ensure the backend API routes are deployed and accessible
+ *   2. Set VITE_API_BASE_URL to the DWH API endpoint (see build.md)
  *
  * ARCHITECTURE:
- *   Frontend → This service layer → (VPN) → Backend API → isbets_bi DWH views
+ *   Frontend → Vercel API routes (/api/*) → Supabase → pre-loaded parquet data
+ *   (Future) Frontend → (VPN) → DWH Backend API → isbets_bi DWH views
  *
  * DWH VIEWS MAPPED:
  *   Users:        view_Users, view_Balances, view_UserSessions, view_UsersSelfexclusions
@@ -28,7 +32,7 @@
 import * as mock from "./mockData";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-const API_ENABLED = import.meta.env.VITE_API_ENABLED === "true"; // controlled via env (VITE_API_ENABLED)
+const API_ENABLED = import.meta.env.VITE_API_ENABLED !== "false"; // default ON; set VITE_API_ENABLED=false to force mock mode
 const DEFAULT_API_BASE_URL = "";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 const API_TIMEOUT_MS = Number.parseInt(import.meta.env.VITE_API_TIMEOUT_MS ?? "10000", 10) || 10_000;
@@ -53,7 +57,7 @@ function toStartEndParams(range?: DateRange): Record<string, string> | undefined
 // ─── Generic Fetch Wrapper ────────────────────────────────────────────────────
 async function apiFetch<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
   if (!API_ENABLED) {
-    throw new Error("API_DISABLED: Running in mock mode. Connect VPN and set API_ENABLED=true.");
+    throw new Error("API_DISABLED: Running in mock mode. Set VITE_API_ENABLED=false to enable.");
   }
 
   const url = new URL(`${API_BASE_URL}${endpoint}`);
