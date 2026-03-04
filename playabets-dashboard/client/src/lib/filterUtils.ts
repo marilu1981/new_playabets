@@ -84,23 +84,6 @@ function sameFilterValue(filterValue: string, rowValue: string | undefined, map:
   return normalize(mappedFilter) === normalize(rowValue);
 }
 
-function matchesAggregatedSegment(filterValue: string, segment: string | undefined): boolean {
-  if (filterValue === "all" || !segment) {
-    return true;
-  }
-  const norm = normalize(segment);
-  if (filterValue === "high_value") {
-    return norm === "vip" || norm === "pvip";
-  }
-  if (filterValue === "medium_value") {
-    return norm === "mass" || norm === "mix";
-  }
-  if (filterValue === "low_value") {
-    return !(norm === "vip" || norm === "pvip" || norm === "mass" || norm === "mix");
-  }
-  return true;
-}
-
 export function matchesRowFilters(
   filters: DashboardFilters,
   row: {
@@ -127,12 +110,6 @@ export function matchesRowFilters(
   if (!sameFilterValue(filters.currentSegment, row.segment)) {
     return false;
   }
-  if (!sameFilterValue(filters.historicalSegment, row.segment)) {
-    return false;
-  }
-  if (!matchesAggregatedSegment(filters.aggregatedSegment, row.segment)) {
-    return false;
-  }
   if (!sameFilterValue(filters.customerStatus, row.status)) {
     return false;
   }
@@ -157,21 +134,13 @@ export function getFilterMultiplier(filters: DashboardFilters): number {
     filters.country,
     filters.trafficSource,
     filters.affiliateId,
-    filters.historicalSegment,
     filters.currentSegment,
     filters.customerStatus,
-    filters.aggregatedSegment,
   ].filter((value) => value !== "all").length;
 
   let multiplier = 1;
   multiplier *= 1 - Math.min(selectedCount * 0.03, 0.27);
   multiplier *= getDateSpanMultiplier(filters);
-
-  if (filters.outlierFilter === "exclude_outliers") {
-    multiplier *= 0.92;
-  } else if (filters.outlierFilter === "only_outliers") {
-    multiplier *= 0.18;
-  }
 
   // Keep deterministic variance so different choices produce different results in mock mode.
   const fingerprint = [
@@ -180,11 +149,8 @@ export function getFilterMultiplier(filters: DashboardFilters): number {
     filters.country,
     filters.trafficSource,
     filters.affiliateId,
-    filters.historicalSegment,
     filters.currentSegment,
     filters.customerStatus,
-    filters.aggregatedSegment,
-    filters.outlierFilter,
   ].join("|");
   let hash = 0;
   for (let i = 0; i < fingerprint.length; i += 1) {

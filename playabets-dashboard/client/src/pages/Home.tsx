@@ -390,7 +390,19 @@ export default function Home() {
     let cancelled = false;
 
     async function loadLiveData() {
-      const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+      const params = new URLSearchParams({
+        start: filters.dateFrom,
+        end: filters.dateTo,
+      });
+      if (filters.brand !== "all") params.set("brand", filters.brand);
+      if (filters.territory !== "all") params.set("territory", filters.territory);
+      if (filters.country !== "all") params.set("country", filters.country);
+      if (filters.trafficSource !== "all") params.set("traffic_source", filters.trafficSource);
+      if (filters.affiliateId !== "all") params.set("affiliate_id", filters.affiliateId);
+      if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
+      if (filters.customerStatus !== "all") params.set("customer_status", filters.customerStatus);
+      if (filters.granularity) params.set("granularity", filters.granularity);
+      const query = params.toString();
 
       const [
         kpisRes,
@@ -861,20 +873,13 @@ export default function Home() {
     const scaled = scaleArrayNumericFields(monthFiltered, multiplier, ["month"]);
     return scaled.map((row) => {
       const out = { ...row };
-      const segmentFilters = [filters.currentSegment, filters.historicalSegment].filter((value) => value !== "all");
+      const segmentFilters = [filters.currentSegment].filter((value) => value !== "all");
       if (segmentFilters.length > 0) {
         (["VIP", "PVIP", "Mass", "Mix"] as const).forEach((segment) => {
           if (!segmentFilters.some((value) => value.toUpperCase() === segment)) {
             out[segment] = 0;
           }
         });
-      }
-      if (filters.aggregatedSegment === "high_value") {
-        out.Mass = 0;
-        out.Mix = 0;
-      } else if (filters.aggregatedSegment === "medium_value") {
-        out.VIP = 0;
-        out.PVIP = 0;
       }
       return out;
     });

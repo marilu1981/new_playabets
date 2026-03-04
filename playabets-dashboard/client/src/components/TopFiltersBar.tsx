@@ -5,7 +5,7 @@
  * Labels sit in small caps above each control — no inline labels, no abbreviations.
  *
  * Row 1: Date From | Date To | Granularity | Brand | Territory | Country
- * Row 2: Traffic Source | Affiliate | Historical Segment | Current Segment | Customer Status | Aggregate Segment | Outlier Filter | [Reset]
+ * Row 2: Traffic Source | Affiliate | User Segment | Customer Status | [Reset]
  */
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -19,11 +19,8 @@ export interface DashboardFilters {
   country: string;
   trafficSource: string;
   affiliateId: string;
-  historicalSegment: string;
   currentSegment: string;
   customerStatus: string;
-  aggregatedSegment: string;
-  outlierFilter: string;
 }
 
 export const defaultFilters: DashboardFilters = {
@@ -37,11 +34,8 @@ export const defaultFilters: DashboardFilters = {
   country: "all",
   trafficSource: "all",
   affiliateId: "all",
-  historicalSegment: "all",
   currentSegment: "all",
   customerStatus: "all",
-  aggregatedSegment: "all",
-  outlierFilter: "include_all",
 };
 
 interface TopFiltersBarProps {
@@ -163,11 +157,8 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
     filters.country !== "all" ||
     filters.trafficSource !== "all" ||
     filters.affiliateId !== "all" ||
-    filters.historicalSegment !== "all" ||
     filters.currentSegment !== "all" ||
-    filters.customerStatus !== "all" ||
-    filters.aggregatedSegment !== "all" ||
-    filters.outlierFilter !== "include_all";
+    filters.customerStatus !== "all";
 
   return (
     <div className="flex flex-shrink-0" style={BAR_BG}>
@@ -240,7 +231,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
 
           <Divider />
 
-          <Field label="Brand">
+          <Field label="Brand (TBC)">
             <select
               value={filters.brand}
               onChange={(e) => set("brand", e.target.value)}
@@ -294,7 +285,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
           style={{ borderTop: "1px solid oklch(1 0 0 / 5%)" }}
         >
 
-          <Field label="Traffic Source">
+          <Field label="Traffic Source (TBC)">
             <select
               value={filters.trafficSource}
               onChange={(e) => set("trafficSource", e.target.value)}
@@ -310,7 +301,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-          <Field label="Affiliate (Pending)">
+          <Field label="Affiliate (TBC)">
             <select
               value={filters.affiliateId}
               onChange={(e) => set("affiliateId", e.target.value)}
@@ -326,22 +317,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
 
           <Divider />
 
-          <Field label="Historical Segment">
-            <select
-              value={filters.historicalSegment}
-              onChange={(e) => set("historicalSegment", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Segments</option>
-              <option value="VIP">VIP</option>
-              <option value="PVIP">PVIP</option>
-              <option value="Mass">Mass</option>
-              <option value="Mix">Mix</option>
-            </select>
-          </Field>
-
-          <Field label="Current Segment">
+          <Field label="User Segment (TBC)">
             <select
               value={filters.currentSegment}
               onChange={(e) => set("currentSegment", e.target.value)}
@@ -356,7 +332,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-          <Field label="Customer Status (Pending)">
+          <Field label="Customer Status">
             <select
               value={filters.customerStatus}
               onChange={(e) => set("customerStatus", e.target.value)}
@@ -368,33 +344,6 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               <option value="inactive">Inactive</option>
               <option value="dormant">Dormant</option>
               <option value="blocked">Blocked</option>
-            </select>
-          </Field>
-
-          <Field label="Aggregate Segment">
-            <select
-              value={filters.aggregatedSegment}
-              onChange={(e) => set("aggregatedSegment", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All</option>
-              <option value="high_value">High Value</option>
-              <option value="medium_value">Medium Value</option>
-              <option value="low_value">Low Value</option>
-            </select>
-          </Field>
-
-          <Field label="Outlier Filter (Pending)">
-            <select
-              value={filters.outlierFilter}
-              onChange={(e) => set("outlierFilter", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="include_all">Include All</option>
-              <option value="exclude_outliers">Exclude Outliers</option>
-              <option value="only_outliers">Only Outliers</option>
             </select>
           </Field>
 
