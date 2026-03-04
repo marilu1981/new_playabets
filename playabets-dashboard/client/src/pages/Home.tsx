@@ -391,6 +391,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Wait until we know the latest data date before firing live data fetch.
+    // Without this guard the initial call uses today's date (March 2026) which
+    // returns empty rows, causing dataMode to stay "mock".
+    if (latestDataDate === null) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadLiveData() {
@@ -814,6 +821,7 @@ export default function Home() {
       cancelled = true;
     };
   }, [
+    latestDataDate,
     filters.dateFrom,
     filters.dateTo,
     filters.brand,

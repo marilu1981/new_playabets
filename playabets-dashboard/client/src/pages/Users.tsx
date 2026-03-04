@@ -218,6 +218,11 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
+    // Wait until we know the latest data date before firing live data fetch.
+    if (latestDataDate === null) {
+      return;
+    }
+
     let cancelled = false;
 
     async function loadLiveData() {
@@ -326,6 +331,7 @@ export default function UsersPage() {
       cancelled = true;
     };
   }, [
+    latestDataDate,
     filters.dateFrom,
     filters.dateTo,
     filters.brand,
