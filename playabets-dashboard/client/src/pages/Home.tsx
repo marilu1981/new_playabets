@@ -50,6 +50,7 @@ import {
 import { formatCompact, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
+  getFilterMultiplier,
   matchesRowFilters,
   scaleArrayNumericFields,
   scaleNumber,
@@ -350,7 +351,7 @@ export default function Home() {
     return { ...defaultFilters, dateFrom, dateTo };
   }, [latestDataDate]);
 
-  const multiplier = 1;
+  const multiplier = dataMode === "mock" ? getFilterMultiplier(filters) : 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -457,7 +458,7 @@ export default function Home() {
           `/betting/betslips-by-status?${query}`
         ),
         fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(
-          "/users/status-breakdown"
+          `/users/status-breakdown?${query}`
         ),
       ]);
 
@@ -737,7 +738,18 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [filters.dateFrom, filters.dateTo]);
+  }, [
+    filters.dateFrom,
+    filters.dateTo,
+    filters.brand,
+    filters.territory,
+    filters.country,
+    filters.trafficSource,
+    filters.affiliateId,
+    filters.currentSegment,
+    filters.customerStatus,
+    filters.granularity,
+  ]);
 
   const sourceOverviewKPIs = liveOverviewKPIs ?? baseOverviewKPIs;
   const sourceRevenueTrend = liveRevenueTrend ?? baseRevenueTrend;
@@ -1263,7 +1275,10 @@ export default function Home() {
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Conversion Rate</h3>
               <p className="text-xs text-white/40">Registration → FTD rate ({filters.granularity})</p>
-              <p className="text-[10px] text-white/35 mt-1">Rolling 7d/30d conversion (FTDs ÷ registrations in trailing window).</p>
+              <p className="text-[10px] text-white/35 mt-1">
+                FTDs ÷ registrations: 7d = users who registered and made their first deposit within 7 days
+                (dated to registration day). 30d = same within 30 days.
+              </p>
             </div>
             <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.72 0.14 85 / 15%)", color: CHART_COLORS.gold }}>
               7d / 30d

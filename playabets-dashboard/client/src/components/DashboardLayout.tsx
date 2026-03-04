@@ -36,7 +36,13 @@ const ICON_LOTTO_URL = "https://files.manuscdn.com/user_upload_by_module/session
 const SIDEBAR_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-1_1771727906000_na1fn_cGxheWFiZXRzLXNpZGViYXItYmc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTFfMTc3MTcyNzkwNjAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMWE5wWkdWaVlYSXRZbWMucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=pA3ZsPLcJLMkqkREcWT7Rd9tENWAsrsx9Ru083kHTN4aFF5tN2T7jqaVZPKjBsWtApcwGBmct60iicQph7tC~NmVWsY3VQZDWMhIvCRTc~JzKnbOKqStYxb4aNbVbnwi2aD3OkcOl8RoOb7N-WPikZ618dX699qOzcBxJvcV2w-yFcegNZnzWfp5yyDkRRZaOcL5q244vfRhWpDV-ge-IOl-E-wg80lUuDO-fsvkoTMRVfjMeZQsVApScGPyFz102jRAD3H8fHiZRQ1mMmnyLxy25Lfxib4AfxFAiG8zS6H-wh9RbIPOUE~QPf2FgmELJWYVznZUEetqzaP869oijA__";
 
 // Nav item type supports either a lucide icon or an image URL
-type NavItem = { path: string; label: string; icon?: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>; imgIcon?: string };
+type NavItem = {
+  path: string;
+  label: string;
+  icon?: React.ComponentType<{ size?: number; className?: string; style?: React.CSSProperties }>;
+  imgIcon?: string;
+  disabled?: boolean;
+};
 
 const navGroups: { label: string; items: NavItem[] }[] = [
   {
@@ -49,22 +55,22 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Operations",
     items: [
       { path: "/users", label: "Players Breakdown", icon: Users },
-      { path: "/betting", label: "Betting & Events", icon: TrendingUp },
-      { path: "/transactions", label: "Transactions", icon: DollarSign },
+      { path: "/betting", label: "Betting & Events", icon: TrendingUp, disabled: true },
+      { path: "/transactions", label: "Transactions", icon: DollarSign, disabled: true },
     ],
   },
   {
     label: "Products",
     items: [
-      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
-      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
+      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL, disabled: true },
+      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift, disabled: true },
     ],
   },
   {
     label: "Governance",
     items: [
-      { path: "/compliance", label: "Compliance & Audit", icon: ShieldCheck },
-      { path: "/hierarchy", label: "Hierarchy & Roles", icon: Network },
+      { path: "/compliance", label: "Compliance & Audit", icon: ShieldCheck, disabled: true },
+      { path: "/hierarchy", label: "Hierarchy & Roles", icon: Network, disabled: true },
     ],
   },
 ];
@@ -159,42 +165,52 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isActive = location === item.path;
+                  const isDisabled = Boolean(item.disabled);
                   const Icon = item.icon;
+                  const content = (
+                    <div
+                      className={cn(
+                        "flex items-center gap-3 px-2 py-2 rounded text-sm transition-all duration-150 group",
+                        isActive
+                          ? "nav-active text-white"
+                          : "text-white/50 hover:text-white/80 hover:bg-white/5",
+                        isDisabled ? "opacity-40 cursor-not-allowed hover:text-white/50 hover:bg-transparent" : "cursor-pointer",
+                      )}
+                    >
+                      {item.imgIcon ? (
+                        <img
+                          src={item.imgIcon}
+                          alt={item.label}
+                          className="flex-shrink-0 w-4 h-4 object-contain"
+                          style={{
+                            opacity: isActive ? 1 : 0.45,
+                            filter: isActive ? "brightness(1.3) saturate(1.2)" : "brightness(0.8)",
+                            transition: "opacity 0.15s, filter 0.15s",
+                          }}
+                        />
+                      ) : Icon ? (
+                        <Icon
+                          size={16}
+                          className={cn(
+                            "flex-shrink-0 transition-colors",
+                            isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
+                          )}
+                          style={isActive ? { color: "oklch(0.72 0.14 85)" } : {}}
+                        />
+                      ) : null}
+                      {!collapsed && (
+                        <span className="truncate font-medium">{item.label}</span>
+                      )}
+                    </div>
+                  );
+
+                  if (isDisabled) {
+                    return <div key={item.path}>{content}</div>;
+                  }
+
                   return (
                     <Link key={item.path} href={item.path}>
-                      <div
-                        className={cn(
-                          "flex items-center gap-3 px-2 py-2 rounded text-sm transition-all duration-150 cursor-pointer group",
-                          isActive
-                            ? "nav-active text-white"
-                            : "text-white/50 hover:text-white/80 hover:bg-white/5"
-                        )}
-                      >
-                        {item.imgIcon ? (
-                          <img
-                            src={item.imgIcon}
-                            alt={item.label}
-                            className="flex-shrink-0 w-4 h-4 object-contain"
-                            style={{
-                              opacity: isActive ? 1 : 0.45,
-                              filter: isActive ? "brightness(1.3) saturate(1.2)" : "brightness(0.8)",
-                              transition: "opacity 0.15s, filter 0.15s",
-                            }}
-                          />
-                        ) : Icon ? (
-                          <Icon
-                            size={16}
-                            className={cn(
-                              "flex-shrink-0 transition-colors",
-                              isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
-                            )}
-                            style={isActive ? { color: "oklch(0.72 0.14 85)" } : {}}
-                          />
-                        ) : null}
-                        {!collapsed && (
-                          <span className="truncate font-medium">{item.label}</span>
-                        )}
-                      </div>
+                      {content}
                     </Link>
                   );
                 })}
