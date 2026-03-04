@@ -23,15 +23,11 @@ export interface DashboardFilters {
   customerStatus: string;
 }
 
-// Default to the last 30 days so the dashboard always opens with real data
-// rather than the current calendar month (which may have no ETL data yet).
-const _today = new Date();
-const _thirtyDaysAgo = new Date(_today);
-_thirtyDaysAgo.setDate(_today.getDate() - 30);
-
 export const defaultFilters: DashboardFilters = {
-  dateFrom: _thirtyDaysAgo.toISOString().split("T")[0],
-  dateTo: _today.toISOString().split("T")[0],
+  dateFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    .toISOString()
+    .split("T")[0],
+  dateTo: new Date().toISOString().split("T")[0],
   granularity: "daily",
   brand: "all",
   territory: "all",
