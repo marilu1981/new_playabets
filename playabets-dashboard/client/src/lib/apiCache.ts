@@ -31,6 +31,20 @@ export function setCached<T>(key: string, data: T): void {
 
 export function invalidateCache(): void {
   cache.clear();
+  _latestDataDate = null;
+}
+
+// ── Persistent latestDataDate ─────────────────────────────────────────────────
+// Stored at module level so it survives React component unmount/remount.
+// This prevents the 30-second wait when navigating back to a page.
+let _latestDataDate: string | null = null;
+
+export function getLatestDataDate(): string | null {
+  return _latestDataDate;
+}
+
+export function setLatestDataDate(date: string): void {
+  _latestDataDate = date;
 }
 
 /**
