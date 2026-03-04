@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { cachedFetch } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -41,11 +42,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$
 type DataMode = "mock" | "partial" | "live";
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} for ${path}`);
-  }
-  return res.json() as Promise<T>;
+  return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
 
 function toIsoDate(d: Date): string {
