@@ -462,9 +462,9 @@ export default function UsersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active label="TBC — RFM Segments" description="Currency breakdown pending live data" />
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
-          <p className="text-xs text-white/40 mb-4">African market distribution — TBC from RFM Segments pipeline</p>
+          <p className="text-xs text-white/40 mb-4">African market distribution — mock data</p>
           <div className="space-y-3">
             {usersByCurrency.map((c, i) => {
               const pct = (c.users / totalUsersSafe * 100).toFixed(1);
@@ -488,11 +488,9 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-2">
-            User Status Breakdown
-            {dataMode === "mock" ? " (Mock data)" : dataMode === "partial" ? " (Partial live)" : ""}
-          </h3>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={dataMode === "mock"} badge label="Mock Data" />
+          <h3 className="text-sm font-semibold text-white mb-2">User Status Breakdown</h3>
           <p className="text-xs text-white/40 mb-4">Derived from the latest `userstatus` field export.</p>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
@@ -519,9 +517,9 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active label="TBC — RFM Segments" description="Self-exclusion data pending live feed" />
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
-          <p className="text-xs text-white/40 mb-4">Responsible gaming overview — TBC from RFM Segments pipeline</p>
+          <p className="text-xs text-white/40 mb-4">Responsible gaming overview — mock data</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },
@@ -551,10 +549,10 @@ export default function UsersPage() {
       </div>
 
       <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <MockOverlay active label="TBC — RFM Segments" description="Recent sessions pending live feed" />
+        <MockOverlay active badge label="Mock Data" />
         <div className="flex items-center gap-2 mb-4">
           <Clock size={16} style={{ color: "oklch(0.72 0.14 85)" }} />
-          <h3 className="text-sm font-semibold text-white">Recent Sessions — TBC from RFM Segments</h3>
+          <h3 className="text-sm font-semibold text-white">Recent Sessions</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

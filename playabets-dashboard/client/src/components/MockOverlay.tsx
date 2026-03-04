@@ -5,6 +5,8 @@ interface MockOverlayProps {
   label?: string;
   description?: string;
   style?: CSSProperties;
+  /** When true, renders a small corner badge instead of a full blocking overlay. */
+  badge?: boolean;
 }
 
 export default function MockOverlay({
@@ -12,9 +14,21 @@ export default function MockOverlay({
   label = "Mock Data",
   description,
   style,
+  badge = false,
 }: MockOverlayProps) {
   if (!active) {
     return null;
+  }
+
+  if (badge) {
+    return (
+      <div
+        className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ background: "oklch(0.72 0.14 85 / 18%)", color: "oklch(0.72 0.14 85)", border: "1px solid oklch(0.72 0.14 85 / 30%)", ...style }}
+      >
+        <span>{label}</span>
+      </div>
+    );
   }
 
   return (
