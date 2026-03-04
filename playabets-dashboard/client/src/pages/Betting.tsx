@@ -9,6 +9,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
+import MockOverlay from "@/components/MockOverlay";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -51,6 +52,7 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
 export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
+  const [dataMode, setDataMode] = useState<"mock" | "live">("mock");
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -61,15 +63,16 @@ export default function BettingPage() {
         const stake    = Number(d.stake    ?? 0);
         const winnings = Number(d.winnings ?? 0);
         const bets     = Number(d.bets     ?? 0);
-        if (stake === 0 && bets === 0) { setLiveOverviewKPIs(null); return; }
+        if (stake === 0 && bets === 0) { setLiveOverviewKPIs(null); setDataMode("mock"); return; }
         setLiveOverviewKPIs({
           ...baseOverviewKPIs,
           totalStake:    stake,
           totalWinnings: winnings,
           totalBetslips: bets,
         });
+        setDataMode("live");
       })
-      .catch(() => setLiveOverviewKPIs(null));
+      .catch(() => { setLiveOverviewKPIs(null); setDataMode("mock"); });
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
@@ -116,6 +119,7 @@ export default function BettingPage() {
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+      <MockOverlay active={dataMode === "mock"} label="Mock Data — Betting & Events data not yet available from DWH" />
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
