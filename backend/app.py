@@ -134,6 +134,44 @@ def _raw_files_fingerprint(files: list[Path]) -> tuple[tuple[str, int, int], ...
     return tuple((f.name, int(f.stat().st_mtime), int(f.stat().st_size)) for f in files)
 
 
+def load_betslips_raw() -> pd.DataFrame:
+    base = BETSLIPS_RAW
+    if not base.exists():
+        return pd.DataFrame()
+
+    if base.is_dir():
+        inc_files = sorted(base.glob("betslips_increment_*.parquet"))
+        latest_files = sorted(base.glob("betslips_latest*.parquet"))
+        full_file = base / "betslips_full.parquet"
+
+        if inc_files:
+            files = inc_files
+            key = "betslips_raw_increment"
+        elif latest_files:
+            files = [latest_files[-1]]
+            key = "betslips_raw_latest"
+        elif full_file.exists():
+            files = [full_file]
+            key = "betslips_raw_full"
+        else:
+            files = sorted(base.glob("*.parquet"))
+            if not files:
+                return pd.DataFrame()
+            key = "betslips_raw_any"
+
+        fingerprint = _raw_files_fingerprint(files)
+        hit = _PARQUET_CACHE.get(key)
+        if hit is None or hit.get("fingerprint") != fingerprint:
+            if len(files) == 1:
+                df = pd.read_parquet(files[0])
+            else:
+                df = pd.concat((pd.read_parquet(f) for f in files), ignore_index=True)
+            _PARQUET_CACHE[key] = {"fingerprint": fingerprint, "df": df}
+        return _PARQUET_CACHE[key]["df"].copy()
+
+    return load_parquet_cached(base, "betslips_raw_file")
+
+
 def _normalize_cols(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
     out = df.copy()
     out.columns = [str(c).strip() for c in out.columns]
