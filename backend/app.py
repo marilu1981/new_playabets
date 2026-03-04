@@ -29,6 +29,8 @@ Endpoints:
   /casino/daily            — daily casino series
   /casino/providers        — by-provider breakdown
   /casino/types            — by-type breakdown
+  /betting/betslips-by-status
+  /betting/betslips-by-type
   /commissions/summary     — commission totals + top agents
   /commissions/trend       — daily commission series
   /cache/clear
@@ -72,6 +74,7 @@ _RAW = _first_existing_path(
     _ROOT / "backend" / "data" / "raw",
 )
 USERS_RAW = _first_existing_path(_RAW / "users", _RAW / "Users")
+BETSLIPS_RAW = _first_existing_path(_RAW / "betslips", _RAW / "BetSlips")
 
 DATA_PATH        = _SERVING / "daily_kpis.parquet"
 RFM_USERS_PATH   = _SERVING / "rfm_users.parquet"
@@ -579,6 +582,80 @@ def rfm_users(
 
 
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Betting
+# ---------------------------------------------------------------------------
+@app.get("/betting/betslips-by-status")
+def betslips_by_status(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    df = load_betslips_raw()
+    if df.empty:
+        return []
+    df, bcol = normalize_cols(df)
+    status_col = bcol.get("betslipstatus") or bcol.get("status") or bcol.get("betslipstatusid") or bcol.get("statusid")
+    status_id_col = bcol.get("betslipstatusid") or bcol.get("statusid")
+    placement_col = bcol.get("placementdate") or bcol.get("placedate") or bcol.get("betdate") or bcol.get("date")
+    if not status_col or not placement_col:
+        return []
+    df["_date"] = to_dt(df[placement_col]).dt.date
+    df = _filter_range(df, start, end)
+    if df.empty:
+        return []
+    grouped = df.groupby(status_col).size().reset_index(name="count")
+    if status_id_col and status_id_col in df.columns and status_id_col != status_col:
+        id_map = df[[status_col, status_id_col]].dropna().drop_duplicates()
+        grouped = grouped.merge(id_map, on=status_col, how="left")
+    rows = []
+    for _, r in grouped.iterrows():
+        status_val = r[status_col]
+        status = str(status_val) if pd.notna(status_val) else "Unknown"
+        status_id = None
+        if status_id_col and status_id_col in r.index:
+            try:
+                status_id = int(r[status_id_col]) if pd.notna(r[status_id_col]) else None
+            except Exception:
+                status_id = None
+        rows.append({"status": status, "statusId": status_id, "count": int(r["count"])})
+    return rows
+
+@app.get("/betting/betslips-by-type")
+def betslips_by_type(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    df = load_betslips_raw()
+    if df.empty:
+        return []
+    df, bcol = normalize_cols(df)
+    type_col = bcol.get("betsliptype") or bcol.get("betsliptypeid") or bcol.get("bettype") or bcol.get("bettypeid") or bcol.get("type")
+    type_id_col = bcol.get("betsliptypeid") or bcol.get("bettypeid")
+    placement_col = bcol.get("placementdate") or bcol.get("placedate") or bcol.get("betdate") or bcol.get("date")
+    if not type_col or not placement_col:
+        return []
+    df["_date"] = to_dt(df[placement_col]).dt.date
+    df = _filter_range(df, start, end)
+    if df.empty:
+        return []
+    grouped = df.groupby(type_col).size().reset_index(name="count")
+    if type_id_col and type_id_col in df.columns and type_id_col != type_col:
+        id_map = df[[type_col, type_id_col]].dropna().drop_duplicates()
+        grouped = grouped.merge(id_map, on=type_col, how="left")
+    rows = []
+    for _, r in grouped.iterrows():
+        type_val = r[type_col]
+        type_name = str(type_val) if pd.notna(type_val) else "Unknown"
+        type_id = None
+        if type_id_col and type_id_col in r.index:
+            try:
+                type_id = int(r[type_id_col]) if pd.notna(r[type_id_col]) else None
+            except Exception:
+                type_id = None
+        rows.append({"type": type_name, "typeId": type_id, "count": int(r["count"])})
+    return rows
+
 # Transactions
 # ---------------------------------------------------------------------------
 @app.get("/transactions/kpis")

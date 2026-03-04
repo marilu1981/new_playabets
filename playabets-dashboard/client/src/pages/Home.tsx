@@ -13,7 +13,7 @@
  * - Segment Performance KPI row
  * - Summary Metrics Table (4 tabs + Export to CSV)
  * - Original: Revenue Trend (Stake vs Revenue), Betslip Status pie,
- *   Top Sports bar, By Platform bars, User Status list, Upcoming Events table
+ *   User Status list, Upcoming Events table
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -34,8 +34,6 @@ import {
   overviewKPIs as baseOverviewKPIs,
   revenueTrend as baseRevenueTrend,
   betslipsByStatus as baseBetslipsByStatus,
-  topSports as baseTopSports,
-  betsByApplication as baseBetsByApplication,
   usersByStatus as baseUsersByStatus,
   playerAcquisition as basePlayerAcquisition,
   revenueMetricsTrend as baseRevenueMetricsTrend,
@@ -45,7 +43,6 @@ import {
   summaryMetrics as baseSummaryMetrics,
   transactionSummary as baseTransactionSummary,
   geographicDistribution as baseGeographicDistribution,
-  trafficSourceBreakdown as baseTrafficSourceBreakdown,
   trendBySegment as baseTrendBySegment,
   dailyTrendWithMA as baseDailyTrendWithMA,
   detailedBreakdown as baseDetailedBreakdown,
@@ -331,12 +328,24 @@ export default function Home() {
   const [liveRangeKpis, setLiveRangeKpis] = useState<{ registrations: number; ftds: number } | null>(null);
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
+  const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
+  const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
+  const betslipStatusPending = !hasBetslipStatusData;
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
     return Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear();
   }, [filters.dateTo]);
+
+  const resetFilters = useMemo(() => {
+    if (!latestDataDate || !/^\d{4}-\d{2}-\d{2}$/.test(latestDataDate)) {
+      return defaultFilters;
+    }
+    const dateTo = latestDataDate;
+    const dateFrom = `${dateTo.slice(0, 7)}-01`;
+    return { ...defaultFilters, dateFrom, dateTo };
+  }, [latestDataDate]);
 
   const multiplier = 1;
 
@@ -387,6 +396,7 @@ export default function Home() {
         bonusDailyRes,
         regsRes,
         txRes,
+        betslipStatusRes,
       ] = await Promise.allSettled([
         fetchJson<{
           registrations?: number;
@@ -427,6 +437,9 @@ export default function Home() {
           tx_count_accepted?: number;
           tx_count_other_status?: number;
         }>(`/transactions/kpis?${query}`),
+        fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
+          `/betting/betslips-by-status?${query}`
+        ),
       ]);
 
       if (cancelled) {
@@ -584,6 +597,21 @@ export default function Home() {
         setHasTransactionsData(false);
       }
 
+      if (betslipStatusRes.status === "fulfilled") {
+        const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
+        setLiveBetslipsByStatus(
+          rows.map((row) => ({
+            status: row.status ? String(row.status) : "Unknown",
+            statusId: row.statusId ?? null,
+            count: Number(row.count ?? 0),
+          }))
+        );
+        setHasBetslipStatusData(true);
+      } else {
+        setLiveBetslipsByStatus(null);
+        setHasBetslipStatusData(false);
+      }
+
       if (regsRes.status === "fulfilled") {
         const regs = regsRes.value.registrations ?? [];
         const ftds = regsRes.value.ftds ?? [];
@@ -683,6 +711,7 @@ export default function Home() {
   const sourcePlayerAcquisition = livePlayerAcquisition ?? basePlayerAcquisition;
   const sourceConversionRateTrend = liveConversionRateTrend ?? baseConversionRateTrend;
   const sourceTransactionSummary = liveTransactionSummary ?? baseTransactionSummary;
+  const sourceBetslipsByStatus = liveBetslipsByStatus ?? baseBetslipsByStatus;
 
   const overviewKPIs = useMemo(
     () => scaleObjectNumericFields(sourceOverviewKPIs, multiplier, ["currency"]),
@@ -700,16 +729,8 @@ export default function Home() {
     });
   }, [fallbackYear, filters, multiplier, sourceRevenueTrend]);
   const betslipsByStatus = useMemo(
-    () => scaleArrayNumericFields(baseBetslipsByStatus, multiplier, ["status", "statusId"]),
-    [multiplier],
-  );
-  const topSports = useMemo(
-    () => scaleArrayNumericFields(baseTopSports, multiplier, ["sport", "sportId"]),
-    [multiplier],
-  );
-  const betsByApplication = useMemo(
-    () => scaleArrayNumericFields(baseBetsByApplication, multiplier, ["app", "percentage"]),
-    [multiplier],
+    () => scaleArrayNumericFields(sourceBetslipsByStatus, multiplier, ["status", "statusId"]),
+    [multiplier, sourceBetslipsByStatus],
   );
   const usersByStatus = useMemo(
     () => scaleArrayNumericFields(baseUsersByStatus, multiplier, ["status", "statusId"]),
@@ -812,17 +833,6 @@ export default function Home() {
     );
     return scaleArrayNumericFields(filtered, multiplier, ["name", "territory", "pct"]);
   }, [filters, multiplier]);
-  const trafficSourceBreakdown = useMemo(() => {
-    const filtered = baseTrafficSourceBreakdown.filter((row) =>
-      matchesRowFilters(filters, { trafficSource: row.source }),
-    );
-    const scaled = scaleArrayNumericFields(filtered, multiplier, ["source", "color", "pct"]);
-    const total = scaled.reduce((sum, row) => sum + row.count, 0) || 1;
-    return scaled.map((row) => ({
-      ...row,
-      pct: Number(((row.count / total) * 100).toFixed(1)),
-    }));
-  }, [filters, multiplier]);
   const trendBySegment = useMemo(() => {
     const monthFiltered = filterMonthRows(baseTrendBySegment, filters, (row) => row.month, fallbackYear);
     const scaled = scaleArrayNumericFields(monthFiltered, multiplier, ["month"]);
@@ -894,9 +904,7 @@ export default function Home() {
   const granularityLabel = `${filters.granularity.charAt(0).toUpperCase()}${filters.granularity.slice(1)}`;
   const pendingDataItems = [
     !hasTransactionsData ? "transactions" : null,
-    "betslip status",
-    "top sports",
-    "platform mix",
+    !hasBetslipStatusData ? "betslip status" : null,
     "segment and geographic widgets",
   ].filter((item): item is string => Boolean(item));
   const ngrCardValue =
@@ -1050,7 +1058,7 @@ export default function Home() {
     <DashboardLayout
       title="Executive Overview"
       subtitle="All bets are on! — Live platform summary"
-      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
       {/* ── HERO BANNER ─────────────────────────────────────────────────── */}
       <div
@@ -1330,10 +1338,10 @@ export default function Home() {
       </div>
 
       {/* ── SUMMARY METRICS TABLE ────────────────────────────────────────── */}
-      {/* Summary Metrics moved below Top Sports by request */}
+      {/* Summary Metrics */}
 
-      {/* ── GEOGRAPHIC DISTRIBUTION + TRAFFIC SOURCE ───────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      {/* ── GEOGRAPHIC DISTRIBUTION ────────────────────────────────────── */}
+      <div className="grid grid-cols-1 gap-4 mb-4">
         {/* Geographic Distribution */}
           <div className="relative rounded-xl p-5" style={CARD_BG}>
             <MockOverlay active={geoPending} description="Mock data - geographic pending" />
@@ -1363,51 +1371,6 @@ export default function Home() {
           ) : (
             <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
               No geographic rows for current filter combination.
-            </div>
-          )}
-        </div>
-
-        {/* Traffic Source Breakdown */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={showPendingOverlay} description="Traffic source data mock" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Traffic Source Breakdown</h3>
-              <p className="text-xs text-white/40">Player acquisition by channel</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>Mock</span>
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.55 0.22 25 / 15%)", color: CHART_COLORS.red }}>Brand filter pending</span>
-            </div>
-          </div>
-          {trafficSourceBreakdown.length > 0 ? (
-            <div className="flex items-center gap-4">
-              <ResponsiveContainer width={160} height={160}>
-                <PieChart>
-                  <Pie data={trafficSourceBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="count" nameKey="source" paddingAngle={2}>
-                    {trafficSourceBreakdown.map((s, i) => <Cell key={i} fill={s.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex-1 space-y-2.5">
-                {trafficSourceBreakdown.map((s) => (
-                  <div key={s.source} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
-                      <span className="text-xs text-white/70 font-medium">{s.source}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-mono text-white/80" style={FONT_MONO}>{formatCompact(s.count)}</span>
-                      <span className="text-xs text-white/40 ml-1">({s.pct}%)</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="h-[160px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
-              No traffic-source rows for current filter combination.
             </div>
           )}
         </div>
@@ -1505,7 +1468,7 @@ export default function Home() {
 
         {/* Betslip Status pie */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={showPendingOverlay} description="Betslip status pending live data" />
+          <MockOverlay active={betslipStatusPending} description="Betslip status pending live data" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Betslip Status</h3>
@@ -1539,57 +1502,17 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Top Sports + Platform + User Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={showPendingOverlay} description="Top sports pending live data" />
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Top Sports by Revenue</h3>
-            <p className="text-xs text-white/40">Gross revenue by sport type</p>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={topSports.slice(0, 6)} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 70 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="sport" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={70} />
-              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Revenue"]} contentStyle={TT_STYLE} />
-              <Bar dataKey="revenue" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="space-y-4">
-          <div className="relative rounded-xl p-4" style={CARD_BG}>
-            <MockOverlay active={showPendingOverlay} description="Platform mix pending live data" />
-            <h3 className="text-sm font-semibold text-white mb-3" style={FONT_SERIF}>By Platform</h3>
-            <div className="space-y-2">
-              {betsByApplication.map((a) => (
-                <div key={a.app}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-white/60">{a.app}</span>
-                    <span className="text-white/80 font-mono" style={FONT_MONO}>{a.percentage}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{
-                      width: `${a.percentage}%`,
-                      background: a.app === "Mobile" ? CHART_COLORS.gold : a.app === "Web Site" ? CHART_COLORS.teal : CHART_COLORS.amber,
-                    }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-xl p-4" style={CARD_BG}>
-            <h3 className="text-sm font-semibold text-white mb-3" style={FONT_SERIF}>User Status</h3>
-            <div className="space-y-2">
-              {usersByStatus.map((u) => (
-                <div key={u.status} className="flex items-center justify-between">
-                  <StatusBadge status={u.status} dot />
-                  <span className="text-white/70 text-xs font-mono" style={FONT_MONO}>{formatNumber(u.count)}</span>
-                </div>
-              ))}
-            </div>
+      {/* User Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 mb-4">
+        <div className="rounded-xl p-4" style={CARD_BG}>
+          <h3 className="text-sm font-semibold text-white mb-3" style={FONT_SERIF}>User Status</h3>
+          <div className="space-y-2">
+            {usersByStatus.map((u) => (
+              <div key={u.status} className="flex items-center justify-between">
+                <StatusBadge status={u.status} dot />
+                <span className="text-white/70 text-xs font-mono" style={FONT_MONO}>{formatNumber(u.count)}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
