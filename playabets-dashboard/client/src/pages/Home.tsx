@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { cachedFetch } from "@/lib/apiCache";
+import { cachedFetch, getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
@@ -314,8 +314,9 @@ export default function Home() {
     const showPendingOverlay = dataMode !== "live";
     const depositFlowPending = true;
     const geoPending = true;
-  const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
+  // Start non-loading when we already have a cached date (return navigation feels instant)
+  const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRevenueTrend, setLiveRevenueTrend] = useState<typeof baseRevenueTrend | null>(null);
@@ -365,6 +366,7 @@ export default function Home() {
         if (!maxDate || !/^\d{4}-\d{2}-\d{2}$/.test(maxDate)) {
           return;
         }
+        persistLatestDate(maxDate);
         setLatestDataDate(maxDate);
         setFilters((prev) => {
           let dateTo = prev.dateTo;

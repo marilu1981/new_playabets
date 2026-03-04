@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { cachedFetch } from "@/lib/apiCache";
+import { cachedFetch, getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -155,7 +155,10 @@ function aggregateByGranularity<T extends Record<string, unknown>>(
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [dataMode, setDataMode] = useState<DataMode>("mock");
-  const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
+  const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
+  // If we already have a cached date the data fetch fires immediately — start non-loading
+  // so returning to this page feels instant. On first load it starts as true.
+  const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRegistrations, setLiveRegistrations] = useState<typeof baseUserRegistrations | null>(null);
   const [liveRegistrationsDaily, setLiveRegistrationsDaily] = useState<Array<{ date: string; value: number }> | null>(null);
@@ -191,6 +194,7 @@ export default function UsersPage() {
         if (!maxDate || !/^\d{4}-\d{2}-\d{2}$/.test(maxDate)) {
           return;
         }
+        persistLatestDate(maxDate);
         setLatestDataDate(maxDate);
         setFilters((prev) => {
           let dateTo = prev.dateTo;
@@ -251,6 +255,7 @@ export default function UsersPage() {
       const hasKpis = kpisRes.status === "fulfilled";
       const hasRegs = regsRes.status === "fulfilled";
       setDataMode(hasKpis && hasRegs ? "live" : hasKpis || hasRegs ? "partial" : "mock");
+      setIsLoading(false);
 
       if (hasKpis) {
         setLiveOverview({
@@ -321,6 +326,7 @@ export default function UsersPage() {
     loadLiveData().catch(() => {
       if (!cancelled) {
         setDataMode("mock");
+        setIsLoading(false);
       }
     });
 
@@ -425,10 +431,10 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" />
-        <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" />
-        <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" />
-        <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle={`${selfExclusionSummary.inProgress} in progress`} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" />
+        <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" loading={isLoading} />
+        <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
+        <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle={`${selfExclusionSummary.inProgress} in progress`} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
