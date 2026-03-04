@@ -47,6 +47,7 @@ export const defaultFilters: DashboardFilters = {
 interface TopFiltersBarProps {
   filters: DashboardFilters;
   onChange: (filters: DashboardFilters) => void;
+  resetFilters?: DashboardFilters;
 }
 
 // ── Shared style constants ────────────────────────────────────────────────────
@@ -151,9 +152,10 @@ function GranularityToggle({
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function TopFiltersBar({ filters, onChange }: TopFiltersBarProps) {
+export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFiltersBarProps) {
   const set = (key: keyof DashboardFilters, value: string) =>
     onChange({ ...filters, [key]: value });
+  const resetTo = resetFilters ?? defaultFilters;
 
   const hasActiveFilters =
     filters.brand !== "all" ||
@@ -400,7 +402,7 @@ export default function TopFiltersBar({ filters, onChange }: TopFiltersBarProps)
           {hasActiveFilters && (
             <div className="flex flex-col justify-end flex-shrink-0">
               <button
-                onClick={() => onChange(defaultFilters)}
+                onClick={() => onChange(resetTo)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
                 style={{
                   background: "oklch(0.55 0.22 25 / 15%)",
