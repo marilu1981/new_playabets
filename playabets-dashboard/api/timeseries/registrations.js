@@ -8,12 +8,17 @@ module.exports = async function handler(req, res) {
   const headers = corsHeaders();
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
   try {
-    const start = String(req.query.start ?? "");
-    const end   = String(req.query.end   ?? "");
+    const start    = String(req.query.start     ?? "");
+    const end      = String(req.query.end       ?? "");
+    // reg_start lets callers extend the registration lookback (e.g. for rolling-window
+    // warm-up) without also pulling extra FTDs from before the real start date.
+    const regStart = String(req.query.reg_start ?? start);
+
     const kpiFilters = [];
     const ftdFilters = [];
-    if (start) { kpiFilters.push(`date=gte.${start}`); ftdFilters.push(`date=gte.${start}`); }
-    if (end)   { kpiFilters.push(`date=lte.${end}`);   ftdFilters.push(`date=lte.${end}`); }
+    if (regStart) kpiFilters.push(`date=gte.${regStart}`);
+    if (start)    ftdFilters.push(`date=gte.${start}`);
+    if (end)      { kpiFilters.push(`date=lte.${end}`); ftdFilters.push(`date=lte.${end}`); }
 
     const [kpiRows, ftdRows] = await Promise.all([
       supaQuery("daily_kpis", { select: "date,registrations", filters: kpiFilters, order: "date.asc" }),

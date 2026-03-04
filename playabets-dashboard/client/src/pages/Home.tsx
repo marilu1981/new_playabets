@@ -408,6 +408,23 @@ export default function Home() {
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
 
+      // For the conversion rate rolling window, registrations must start 30 days
+      // before dateFrom so the 30-day rolling average has a proper warm-up period.
+      // Without this, early data points show 100% because FTDs from users who
+      // registered before the filter start inflate the rate.
+      // reg_start extends ONLY the registration fetch; FTDs still use the normal start.
+      const regsStartDate = (() => {
+        const d = new Date(`${filters.dateFrom}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - 30);
+        return d.toISOString().slice(0, 10);
+      })();
+      const regsParams = new URLSearchParams({
+        start: filters.dateFrom,
+        end: filters.dateTo,
+        reg_start: regsStartDate,
+      });
+      const regsQuery = regsParams.toString();
+
       const [
         kpisRes,
         dailyRes,
@@ -448,7 +465,7 @@ export default function Home() {
         ),
         fetchJson<{ points: Array<{ date: string; bonus_credited?: number }> }>(`/bonus/daily?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
-          `/timeseries/registrations?${query}`
+          `/timeseries/registrations?${regsQuery}`
         ),
         fetchJson<{
           has_data?: boolean;
@@ -718,9 +735,6 @@ export default function Home() {
           if (Number.isNaN(dt.getTime())) {
             continue;
           }
-          const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
-          const month = dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-          const bucket = byMonth.get(key) ?? { month, registrations: 0, ftds: 0 };
           // registration rows may use { date, registrations } or { date, value }
           const regValue = Number(
             (row as { date: string; registrations?: number; value?: number; count?: number }).registrations
@@ -728,7 +742,15 @@ export default function Home() {
               ?? (row as { date: string; registrations?: number; value?: number; count?: number }).count
               ?? 0,
           );
+          // Always populate regByDate — even pre-filter dates — so the 30-day
+          // rolling conversion rate has a proper warm-up window.
           regByDate.set(date, (regByDate.get(date) ?? 0) + regValue);
+          // Only include dates within the requested range in the monthly bar chart
+          // so the extended lookback doesn't add extra months.
+          if (date < filters.dateFrom) continue;
+          const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
+          const month = dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+          const bucket = byMonth.get(key) ?? { month, registrations: 0, ftds: 0 };
           bucket.registrations += regValue;
           bucket.ftds += Number(ftdByDate.get(date) ?? 0);
           byMonth.set(key, bucket);
