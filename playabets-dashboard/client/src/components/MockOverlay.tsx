@@ -19,10 +19,8 @@ export default function MockOverlay({
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-black/40 text-[11px] uppercase tracking-[0.25em] text-white/70"
+      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-black/60 text-[11px] uppercase tracking-[0.25em] text-white/70"
       style={{
-        backdropFilter: "saturate(180%) blur(6px)",
-        textShadow: "0 0 8px rgba(0,0,0,0.3)",
         ...style,
       }}
     >

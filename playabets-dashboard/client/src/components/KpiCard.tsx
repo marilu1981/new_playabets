@@ -8,13 +8,14 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface KpiCardProps {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   subtitle?: string;
   change?: number; // percentage change
   changeLabel?: string;
   icon?: React.ReactNode;
   accent?: "gold" | "green" | "red" | "teal" | "amber";
   className?: string;
+  valueClassName?: string;
   formatter?: (v: number) => string;
 }
 
@@ -35,6 +36,7 @@ export default function KpiCard({
   icon,
   accent = "gold",
   className,
+  valueClassName,
 }: KpiCardProps) {
   const color = accentColors[accent];
   const isPositive = change !== undefined && change > 0;
@@ -61,8 +63,7 @@ export default function KpiCard({
             {title}
           </div>
           <div
-            className="text-2xl font-bold text-white leading-none mb-1"
-           
+            className={cn("text-2xl font-bold text-white leading-none mb-1", valueClassName)}
           >
             {value}
           </div>

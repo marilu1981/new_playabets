@@ -273,7 +273,12 @@ export const depositWithdrawalFlow = Array.from({ length: 12 }, (_, i) => {
 // ─── Conversion Rate Trend ────────────────────────────────────────────────────
 export const conversionRateTrend = Array.from({ length: 30 }, (_, i) => {
   const date = new Date(2026, 1, i + 1);
-  return { date: date.toISOString().split("T")[0], rate: parseFloat((38 + Math.sin(i / 5) * 4 + Math.random() * 3).toFixed(1)) };
+  const base = 38 + Math.sin(i / 5) * 4 + Math.random() * 3;
+  return {
+    date: date.toISOString().split("T")[0],
+    rate7d: parseFloat(base.toFixed(1)),
+    rate30d: parseFloat((base + 1.8).toFixed(1)),
+  };
 });
 
 // ─── Summary Metrics Table ────────────────────────────────────────────────────
