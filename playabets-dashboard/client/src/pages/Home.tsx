@@ -319,6 +319,7 @@ export default function Home() {
     const showPendingOverlay = dataMode !== "live";
     const segmentPending = true;
     const depositFlowPending = true;
+    const geoPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
@@ -846,17 +847,31 @@ export default function Home() {
     });
   }, [fallbackYear, filters, multiplier]);
   const dailyTrendWithMA = useMemo(() => {
-    const scaled = scaleArrayNumericFields(
-      filterByDateRange(baseDailyTrendWithMA, filters, (row) => row.date),
-      multiplier,
-      ["date"],
-    );
+    const base =
+      sourceRevenueMetricsTrend.length > 0
+        ? sourceRevenueMetricsTrend.map((row) => ({
+            date: row.date,
+            value: Number(row.ggr ?? 0),
+          }))
+        : baseDailyTrendWithMA;
+    const filtered = filterByDateRange(base, filters, (row) => row.date).sort((a, b) => a.date.localeCompare(b.date));
+    const withMa = filtered.map((row, idx) => {
+      const start = Math.max(0, idx - 6);
+      const window = filtered.slice(start, idx + 1);
+      const avg = window.reduce((sum, r) => sum + Number(r.value ?? 0), 0) / window.length;
+      return {
+        ...row,
+        value: Number(row.value ?? 0),
+        ma7: Number(avg.toFixed(2)),
+      };
+    });
+    const scaled = scaleArrayNumericFields(withMa, multiplier, ["date"]);
     return aggregateByGranularity(scaled, filters.granularity, (row) => row.date, {
       labelKey: "date",
       fallbackYear,
       avgFields: ["value", "ma7"],
     });
-  }, [fallbackYear, filters, multiplier]);
+  }, [fallbackYear, filters, multiplier, sourceRevenueMetricsTrend]);
   const detailedBreakdown = useMemo(() => {
     const dateFiltered = filterByDateRange(baseDetailedBreakdown, filters, (row) => row.date);
     const categorized = dateFiltered.filter((row) =>
@@ -910,16 +925,30 @@ export default function Home() {
   const periodConvRate =
     kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
 
+  const fromDt = parseIsoDate(filters.dateFrom);
+  const toDt = parseIsoDate(filters.dateTo);
+  const skipFirstMoM = Boolean(fromDt && fromDt.getUTCDate() !== 1);
+  const skipLastMoM = (() => {
+    if (!toDt) return false;
+    const end = new Date(Date.UTC(toDt.getUTCFullYear(), toDt.getUTCMonth() + 1, 0));
+    return toDt.getUTCDate() !== end.getUTCDate();
+  })();
   const momData = playerAcquisition.slice(1).map((d, i) => {
+    if (skipFirstMoM && i === 0) {
+      return { month: d.month, registrations: null, ftds: null };
+    }
+    if (skipLastMoM && i === playerAcquisition.length - 2) {
+      return { month: d.month, registrations: null, ftds: null };
+    }
     const prev = playerAcquisition[i];
     const prevRegs = prev.registrations;
     const prevFtds = prev.ftds;
     const registrationsChange = prevRegs > 0
       ? parseFloat((((d.registrations - prevRegs) / prevRegs) * 100).toFixed(1))
-      : 0;
+      : null;
     const ftdsChange = prevFtds > 0
       ? parseFloat((((d.ftds - prevFtds) / prevFtds) * 100).toFixed(1))
-      : 0;
+      : null;
     return {
       month: d.month,
       registrations: registrationsChange,
@@ -1068,7 +1097,7 @@ export default function Home() {
           icon={<UserPlus size={18} />} accent="teal" />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
           icon={<Users size={18} />} accent="gold" />
-        <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Unique active players"
+        <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Sports + Casino actives"
           icon={<Activity size={18} />} accent="green" />
         <KpiCard
           title="Total Deposits"
@@ -1178,7 +1207,7 @@ export default function Home() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
                   <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${v}%`} />
+                  <Tooltip contentStyle={TT_STYLE} formatter={(v: number | null) => (v == null ? "n/a" : `${v}%`)} />
                   <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
                   <Bar dataKey="registrations" name="Regs MoM%"  fill={CHART_COLORS.teal} radius={[2, 2, 0, 0]} />
                   <Bar dataKey="ftds"          name="FTDs MoM%"  fill={CHART_COLORS.gold} radius={[2, 2, 0, 0]} />
@@ -1306,8 +1335,8 @@ export default function Home() {
       {/* ── GEOGRAPHIC DISTRIBUTION + TRAFFIC SOURCE ───────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Geographic Distribution */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={showPendingOverlay} description="Geographic data still mocked" />
+          <div className="relative rounded-xl p-5" style={CARD_BG}>
+            <MockOverlay active={geoPending} description="Mock data - geographic pending" />
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Geographic Distribution</h3>
