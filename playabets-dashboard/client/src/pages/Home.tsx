@@ -315,7 +315,7 @@ export default function Home() {
     const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
     const [dataMode, setDataMode] = useState<DataMode>("mock");
     const showPendingOverlay = dataMode !== "live";
-    const segmentPending = true;
+    const segmentPending = !hasSegmentData;
     const depositFlowPending = true;
     const geoPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
@@ -336,6 +336,8 @@ export default function Home() {
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
   const betslipStatusPending = !hasBetslipStatusData;
   const userStatusPending = !hasUserStatusData;
+  const [liveSegmentDistribution, setLiveSegmentDistribution] = useState<typeof baseSegmentDistribution | null>(null);
+  const [hasSegmentData, setHasSegmentData] = useState<boolean>(false);
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
@@ -414,6 +416,7 @@ export default function Home() {
         txRes,
         betslipStatusRes,
         userStatusRes,
+        rfmSegmentsRes,
       ] = await Promise.allSettled([
         fetchJson<{
           registrations?: number;
@@ -460,6 +463,9 @@ export default function Home() {
         fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(
           `/users/status-breakdown?${query}`
         ),
+        fetchJson<{ rows: Array<{ date: string; rfm_champions?: number; rfm_loyal?: number; rfm_big_spenders?: number; rfm_mid?: number; rfm_at_risk?: number; rfm_dormant?: number }> }>(
+          `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
+        ),
       ]);
 
       if (cancelled) {
@@ -499,6 +505,52 @@ export default function Home() {
       } else {
         setLiveUsersByStatus(null);
         setHasUserStatusData(false);
+      }
+
+      // Wire RFM segment distribution from live data
+      // Segment colours match the design system palette
+      const SEGMENT_COLORS: Record<string, string> = {
+        rfm_champions:   "oklch(0.72 0.17 60)",   // gold — Champions
+        rfm_loyal:       "oklch(0.65 0.15 195)",  // teal — Loyal
+        rfm_big_spenders:"oklch(0.62 0.17 145)",  // green — Big Spenders
+        rfm_mid:         "oklch(0.72 0.14 85)",   // amber — Mid
+        rfm_at_risk:     "oklch(0.65 0.15 30)",   // orange — At Risk
+        rfm_dormant:     "oklch(0.45 0.05 0)",    // muted red — Dormant
+      };
+      const SEGMENT_LABELS: Record<string, string> = {
+        rfm_champions:   "Champions",
+        rfm_loyal:       "Loyal",
+        rfm_big_spenders:"Big Spenders",
+        rfm_mid:         "Mid",
+        rfm_at_risk:     "At Risk",
+        rfm_dormant:     "Dormant",
+      };
+      if (rfmSegmentsRes.status === "fulfilled") {
+        const rfmRows = rfmSegmentsRes.value.rows ?? [];
+        // Use the latest row (highest date) that has non-zero data
+        const latestRow = rfmRows
+          .filter((r) => Object.keys(SEGMENT_LABELS).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+        if (latestRow) {
+          const segments = Object.keys(SEGMENT_LABELS)
+            .map((key) => ({
+              segment: SEGMENT_LABELS[key],
+              count: Number(latestRow[key as keyof typeof latestRow] ?? 0),
+              color: SEGMENT_COLORS[key],
+              pct: 0,
+            }))
+            .filter((s) => s.count > 0);
+          const total = segments.reduce((sum, s) => sum + s.count, 0) || 1;
+          const withPct = segments.map((s) => ({ ...s, pct: Number(((s.count / total) * 100).toFixed(1)) }));
+          setLiveSegmentDistribution(withPct);
+          setHasSegmentData(true);
+        } else {
+          setLiveSegmentDistribution(null);
+          setHasSegmentData(false);
+        }
+      } else {
+        setLiveSegmentDistribution(null);
+        setHasSegmentData(false);
       }
 
       if (!hasDaily) {
@@ -814,16 +866,19 @@ export default function Home() {
     return revenueTrend;
   }, [revenueMetricsTrend, revenueTrend]);
   const segmentDistribution = useMemo(() => {
-    const filtered = baseSegmentDistribution.filter((row) =>
+    const source = liveSegmentDistribution ?? baseSegmentDistribution;
+    const filtered = source.filter((row) =>
       matchesRowFilters(filters, { segment: row.segment }),
     );
-    const scaled = scaleArrayNumericFields(filtered, multiplier, ["segment", "color", "pct"]);
+    const scaled = liveSegmentDistribution
+      ? filtered  // live data is already computed — don't scale with mock multiplier
+      : scaleArrayNumericFields(filtered, multiplier, ["segment", "color", "pct"]);
     const total = scaled.reduce((sum, row) => sum + row.count, 0) || 1;
     return scaled.map((row) => ({
       ...row,
       pct: Number(((row.count / total) * 100).toFixed(1)),
     }));
-  }, [filters, multiplier]);
+  }, [filters, liveSegmentDistribution, multiplier]);
   const depositWithdrawalFlow = useMemo(
     () => scaleArrayNumericFields(
       filterMonthRows(baseDepositWithdrawalFlow, filters, (row) => row.month, fallbackYear),
