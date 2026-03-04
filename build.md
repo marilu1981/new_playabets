@@ -376,3 +376,61 @@ Browser → Vercel Edge (React SPA)
 - [ ] Add NGR calculation (GGR − bonus_credited) to `build_daily_kpis.py`
 - [ ] Consider adding Redis or file-based caching for the API if response times are slow
 - [ ] Set up a `.env` file for local development (use `python-dotenv`)
+
+---
+
+## Session 5 — New Repo + Hosted FastAPI Backend (Mar 2026)
+
+### What Changed
+- **New clean GitHub repo:** https://github.com/marilu1981/new_playabets (full codebase pushed)
+- **FastAPI backend live on Manus:** `https://8080-ikjo3kdzsmrwuwfknbtvl-6b787de5.us2.manus.computer`
+  - All 16 endpoints implemented in `playabets-api/main.py`
+  - Connected directly to Supabase via REST + service role key
+  - 60-second in-memory cache on all queries
+  - CORS enabled for all origins
+
+### Hosted Backend Endpoints (Manus)
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Health check |
+| `GET /kpis?start=&end=` | Combined KPIs (registrations, actives, turnover, GGR, NGR, FTDs) |
+| `GET /kpis/daily?start=&end=` | Daily sportsbook KPI rows |
+| `GET /kpis/latest` | Latest single-day KPI row |
+| `GET /casino/daily?start=&end=` | Daily casino rows |
+| `GET /casino/kpis?start=&end=` | Casino KPI totals |
+| `GET /bonus/daily?start=&end=` | Daily bonus rows |
+| `GET /bonus/kpis?start=&end=` | Bonus KPI totals |
+| `GET /ftd/daily?start=&end=` | Daily FTD rows |
+| `GET /rfm/segments` | RFM segment counts |
+| `GET /rfm/users?limit=` | RFM user records |
+| `GET /sportsbook/kpis?start=&end=` | Sportsbook KPI totals |
+| `GET /timeseries/registrations?start=&end=` | Daily registration counts |
+| `GET /transactions/kpis` | Returns null (pending DWH export) |
+| `GET /users/status-breakdown` | User status counts from rfm_users |
+| `GET /betting/betslips-by-status?start=&end=` | Derived betslip status breakdown |
+
+### Verified Live Numbers (Feb 01–27, 2026)
+- Registrations: 44,795
+- FTDs: 12,034
+- Actives (Sports + Casino): 148,432
+- Turnover: 437.8M
+- GGR: 18.1M
+- NGR: 17.8M
+
+### Pending Items
+1. **RFM recency fix** — delete line 203 in `src/kpis/rfm_kpis.py`, re-run pipeline, re-upload `rfm_users.parquet`
+2. **Country/Territory filters** — pending DWH country grouping confirmation
+3. **Transactions** — `view_Transactions` extract needed
+4. **Betslip status** — currently derived approximation, needs dedicated extract
+5. **New Vercel deployment** — connect `new_playabets` repo to a fresh Vercel project (see setup steps above)
+6. **Auth** — disable public sign-ups in Supabase: Authentication → Providers → Email → Disable sign-ups
+
+### To Restart the Backend After Sandbox Hibernation
+```bash
+cd /home/ubuntu/playabets-api
+SUPABASE_URL=https://guaeohezgweuhomyweld.supabase.co \
+SUPABASE_SERVICE_KEY=<service_role_key> \
+nohup uvicorn main:app --host 0.0.0.0 --port 8080 --workers 2 > api.log 2>&1 &
+```
+Then re-expose port 8080 via Manus.
