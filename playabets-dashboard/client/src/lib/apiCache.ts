@@ -1,11 +1,11 @@
 /**
  * PLAYA BETS — Client-Side API Cache
  * In-memory cache that persists across React page navigations (component unmounts).
- * Cache entries expire after TTL_MS (default 5 minutes).
+ * Cache entries expire after TTL_MS (30 minutes).
  * This prevents re-fetching the same data every time the user navigates between pages.
  */
 
-const TTL_MS = 5 * 60 * 1000; // 5 minutes
+const TTL_MS = 30 * 60 * 1000; // 30 minutes — DWH data updates once daily, no need to re-fetch frequently
 
 interface CacheEntry<T> {
   data: T;
