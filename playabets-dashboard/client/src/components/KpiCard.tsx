@@ -17,6 +17,7 @@ interface KpiCardProps {
   className?: string;
   valueClassName?: string;
   formatter?: (v: number) => string;
+  loading?: boolean;
 }
 
 const accentColors = {
@@ -37,6 +38,7 @@ export default function KpiCard({
   accent = "gold",
   className,
   valueClassName,
+  loading = false,
 }: KpiCardProps) {
   const color = accentColors[accent];
   const isPositive = change !== undefined && change > 0;
@@ -65,10 +67,14 @@ export default function KpiCard({
           <div
             className={cn("text-2xl font-bold text-white leading-none mb-1", valueClassName)}
           >
-            {value}
+            {loading ? (
+              <div className="h-7 w-24 rounded animate-pulse" style={{ background: "oklch(1 0 0 / 8%)" }} />
+            ) : value}
           </div>
           {subtitle && (
-            <div className="text-xs text-white/35 mt-1">{subtitle}</div>
+            <div className="text-xs text-white/35 mt-1">
+              {loading ? <div className="h-3 w-16 rounded animate-pulse" style={{ background: "oklch(1 0 0 / 6%)" }} /> : subtitle}
+            </div>
           )}
           {change !== undefined && (
             <div className={cn("flex items-center gap-1 mt-2 text-xs font-medium")}>
