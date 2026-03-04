@@ -17,6 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { cachedFetch } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
@@ -93,11 +94,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$
 type DataMode = "mock" | "partial" | "live";
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`);
-  if (!res.ok) {
-    throw new Error(`HTTP ${res.status} for ${path}`);
-  }
-  return res.json() as Promise<T>;
+  return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
 
 function toIsoDate(d: Date): string {
@@ -318,6 +315,7 @@ export default function Home() {
     const depositFlowPending = true;
     const geoPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveRevenueTrend, setLiveRevenueTrend] = useState<typeof baseRevenueTrend | null>(null);
@@ -502,6 +500,7 @@ export default function Home() {
       const hasRegs = regsRes.status === "fulfilled";
       const mode: DataMode = hasKpis && hasDaily && hasRegs ? "live" : hasKpis || hasDaily || hasRegs ? "partial" : "mock";
       setDataMode(mode);
+      setIsLoading(false);
 
       if (betslipStatusRes.status === "fulfilled") {
         const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
@@ -814,6 +813,7 @@ export default function Home() {
     loadLiveData().catch(() => {
       if (!cancelled) {
         setDataMode("mock");
+        setIsLoading(false);
       }
     });
 
@@ -1228,17 +1228,18 @@ export default function Home() {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
         <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range"
-          icon={<UserPlus size={18} />} accent="teal" />
+          icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
-          icon={<Users size={18} />} accent="gold" />
+          icon={<Users size={18} />} accent="gold" loading={isLoading} />
         <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Sports + Casino actives"
-          icon={<Activity size={18} />} accent="green" />
+          icon={<Activity size={18} />} accent="green" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
           value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
           subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
           icon={<DollarSign size={18} />}
           accent="amber"
+          loading={isLoading}
         />
       </div>
 
@@ -1250,17 +1251,18 @@ export default function Home() {
           subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
           icon={<ArrowUpRight size={18} />}
           accent="red"
+          loading={isLoading}
         />
         <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Sports + Casino"
-          icon={<TrendingUp size={18} />} accent="teal" />
+          icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`Sports + Casino · ${margin}% margin`}
-          icon={<BarChart2 size={18} />} accent="gold" />
+          icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
       </div>
 
       {/* ── PRIMARY KPIs — ROW 3 ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle}
-          icon={<Percent size={18} />} accent="green" />
+          icon={<Percent size={18} />} accent="green" loading={isLoading} />
         <KpiCard
           title="Top_FTDs (TBC from RFM)"
           value="TBC"
@@ -1268,9 +1270,10 @@ export default function Home() {
           subtitle="High-value FTDs"
           icon={<Zap size={18} />}
           accent="gold"
+          loading={isLoading}
         />
         <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD"
-          icon={<Percent size={18} />} accent="amber" />
+          icon={<Percent size={18} />} accent="amber" loading={isLoading} />
       </div>
 
       {/* ── REVENUE TRENDS — GGR/NGR/TURNOVER TOGGLE ────────────────────── */}

@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
  * Data source: Supabase daily_kpis table via /api/sportsbook/kpis
  */
 
+import { useEffect, useMemo, useState } from "react";
+import { cachedFetch } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
@@ -34,9 +36,7 @@ import {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<T>;
+  return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
 
 const CHART_COLORS = {
