@@ -11,7 +11,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
-import MockOverlay from "@/components/MockOverlay";
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -119,7 +119,12 @@ export default function BettingPage() {
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <MockOverlay active={dataMode === "mock"} label="Mock Data — Betting & Events data not yet available from DWH" />
+      {/* MOCK DATA ONLY banner */}
+      <div className="w-full mb-5 rounded-xl px-6 py-4" style={{ background: "oklch(0.22 0.08 50 / 0.9)", border: "2px solid oklch(0.72 0.14 85 / 0.6)" }}>
+        <p className="text-center font-bold tracking-widest uppercase" style={{ color: "oklch(0.72 0.14 85)", fontSize: "1rem", letterSpacing: "0.15em" }}>
+          ⚠ MOCK DATA ONLY — Betting &amp; Events data not yet connected to DWH
+        </p>
+      </div>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
