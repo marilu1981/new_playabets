@@ -329,9 +329,12 @@ export default function Home() {
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
+  const [liveUsersByStatus, setLiveUsersByStatus] = useState<typeof baseUsersByStatus | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
+  const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
   const betslipStatusPending = !hasBetslipStatusData;
+  const userStatusPending = !hasUserStatusData;
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
@@ -397,6 +400,7 @@ export default function Home() {
         regsRes,
         txRes,
         betslipStatusRes,
+        userStatusRes,
       ] = await Promise.allSettled([
         fetchJson<{
           registrations?: number;
@@ -440,6 +444,9 @@ export default function Home() {
         fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
           `/betting/betslips-by-status?${query}`
         ),
+        fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(
+          "/users/status-breakdown"
+        ),
       ]);
 
       if (cancelled) {
@@ -451,6 +458,35 @@ export default function Home() {
       const hasRegs = regsRes.status === "fulfilled";
       const mode: DataMode = hasKpis && hasDaily && hasRegs ? "live" : hasKpis || hasDaily || hasRegs ? "partial" : "mock";
       setDataMode(mode);
+
+      if (betslipStatusRes.status === "fulfilled") {
+        const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
+        setLiveBetslipsByStatus(
+          rows.map((row) => ({
+            status: row.status ? String(row.status) : "Unknown",
+            statusId: row.statusId ?? null,
+            count: Number(row.count ?? 0),
+          }))
+        );
+        setHasBetslipStatusData(true);
+      } else {
+        setLiveBetslipsByStatus(null);
+        setHasBetslipStatusData(false);
+      }
+
+      if (userStatusRes.status === "fulfilled") {
+        const rows = userStatusRes.value.statuses ?? [];
+        setLiveUsersByStatus(
+          rows.map((row) => ({
+            status: row.status ? String(row.status) : "Unknown",
+            count: Number(row.count ?? 0),
+          }))
+        );
+        setHasUserStatusData(true);
+      } else {
+        setLiveUsersByStatus(null);
+        setHasUserStatusData(false);
+      }
 
       if (!hasDaily) {
         return;
@@ -597,20 +633,6 @@ export default function Home() {
         setHasTransactionsData(false);
       }
 
-      if (betslipStatusRes.status === "fulfilled") {
-        const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
-        setLiveBetslipsByStatus(
-          rows.map((row) => ({
-            status: row.status ? String(row.status) : "Unknown",
-            statusId: row.statusId ?? null,
-            count: Number(row.count ?? 0),
-          }))
-        );
-        setHasBetslipStatusData(true);
-      } else {
-        setLiveBetslipsByStatus(null);
-        setHasBetslipStatusData(false);
-      }
 
       if (regsRes.status === "fulfilled") {
         const regs = regsRes.value.registrations ?? [];
@@ -712,6 +734,7 @@ export default function Home() {
   const sourceConversionRateTrend = liveConversionRateTrend ?? baseConversionRateTrend;
   const sourceTransactionSummary = liveTransactionSummary ?? baseTransactionSummary;
   const sourceBetslipsByStatus = liveBetslipsByStatus ?? baseBetslipsByStatus;
+  const sourceUsersByStatus = liveUsersByStatus ?? baseUsersByStatus;
 
   const overviewKPIs = useMemo(
     () => scaleObjectNumericFields(sourceOverviewKPIs, multiplier, ["currency"]),
@@ -733,8 +756,8 @@ export default function Home() {
     [multiplier, sourceBetslipsByStatus],
   );
   const usersByStatus = useMemo(
-    () => scaleArrayNumericFields(baseUsersByStatus, multiplier, ["status", "statusId"]),
-    [multiplier],
+    () => scaleArrayNumericFields(sourceUsersByStatus, multiplier, ["status", "statusId"]),
+    [multiplier, sourceUsersByStatus],
   );
   const playerAcquisition = useMemo(
     () => scaleArrayNumericFields(
@@ -1436,9 +1459,8 @@ export default function Home() {
       </div>
 
       {/* ── ORIGINAL CHARTS ─────────────────────────────────────────────── */}
-      {/* Trend by Segment (Stake vs Revenue) + Betslip Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-        <div className="lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
+      {/* Stake vs Revenue */}
+      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
             <p className="text-xs text-white/40">Same GGR basis as Revenue Trends chart</p>
@@ -1464,8 +1486,10 @@ export default function Home() {
               <Area type="monotone" dataKey="revenue" name="Revenue" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2}   dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+      </div>
 
+      {/* Betslip Status + User Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Betslip Status pie */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
           <MockOverlay active={betslipStatusPending} description="Betslip status pending live data" />
@@ -1474,9 +1498,15 @@ export default function Home() {
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Betslip Status</h3>
               <p className="text-xs text-white/40">Distribution by status</p>
             </div>
-            <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.72 0.17 60 / 15%)", color: CHART_COLORS.amber }}>
-              Pending filter dims
-            </span>
+            {betslipStatusPending ? (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
+                Mock
+              </span>
+            ) : (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>
+                Live
+              </span>
+            )}
           </div>
           <ResponsiveContainer width="100%" height={140}>
             <PieChart>
@@ -1500,17 +1530,43 @@ export default function Home() {
             ))}
           </div>
         </div>
-      </div>
 
-      {/* User Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 mb-4">
-        <div className="rounded-xl p-4" style={CARD_BG}>
-          <h3 className="text-sm font-semibold text-white mb-3" style={FONT_SERIF}>User Status</h3>
-          <div className="space-y-2">
-            {usersByStatus.map((u) => (
-              <div key={u.status} className="flex items-center justify-between">
-                <StatusBadge status={u.status} dot />
-                <span className="text-white/70 text-xs font-mono" style={FONT_MONO}>{formatNumber(u.count)}</span>
+        {/* User Status pie */}
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={userStatusPending} description="User status pending live data" />
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>User Status</h3>
+              <p className="text-xs text-white/40">Distribution by status</p>
+            </div>
+            {userStatusPending ? (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
+                Mock
+              </span>
+            ) : (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>
+                Live
+              </span>
+            )}
+          </div>
+          <ResponsiveContainer width="100%" height={140}>
+            <PieChart>
+              <Pie data={usersByStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="count" nameKey="status" paddingAngle={2}>
+                {usersByStatus.map((_, i) => (
+                  <Cell key={i} fill={[CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="space-y-1.5 mt-2">
+            {usersByStatus.map((u, i) => (
+              <div key={u.status} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: [CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5] }} />
+                  <span className="text-white/60 truncate max-w-[110px]">{u.status}</span>
+                </div>
+                <span className="text-white/70 font-mono text-xs" style={FONT_MONO}>{formatCompact(u.count)}</span>
               </div>
             ))}
           </div>
