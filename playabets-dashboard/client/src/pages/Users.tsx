@@ -36,7 +36,7 @@ const CHART_COLORS = {
   red: "oklch(0.55 0.22 25)",
 };
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/+$/, "");
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 type DataMode = "mock" | "partial" | "live";
 
