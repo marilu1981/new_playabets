@@ -29,7 +29,7 @@ import * as mock from "./mockData";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 const API_ENABLED = import.meta.env.VITE_API_ENABLED === "true"; // controlled via env (VITE_API_ENABLED)
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const DEFAULT_API_BASE_URL = "";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 const API_TIMEOUT_MS = Number.parseInt(import.meta.env.VITE_API_TIMEOUT_MS ?? "10000", 10) || 10_000;
 

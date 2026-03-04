@@ -4,8 +4,9 @@
  * Fixed 240px sidebar + top bar + main content area
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { supabase } from "../lib/supabase";
 import {
   LayoutDashboard,
   Users,
@@ -22,6 +23,7 @@ import {
   X,
   Activity,
   Network,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,62 @@ const ICON_AVIATOR_URL = "https://files.manuscdn.com/user_upload_by_module/sessi
 const ICON_LOTTO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/NfZtMAIBTwiiYSra.webp";
 
 const SIDEBAR_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-1_1771727906000_na1fn_cGxheWFiZXRzLXNpZGViYXItYmc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTFfMTc3MTcyNzkwNjAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMWE5wWkdWaVlYSXRZbWMucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=pA3ZsPLcJLMkqkREcWT7Rd9tENWAsrsx9Ru083kHTN4aFF5tN2T7jqaVZPKjBsWtApcwGBmct60iicQph7tC~NmVWsY3VQZDWMhIvCRTc~JzKnbOKqStYxb4aNbVbnwi2aD3OkcOl8RoOb7N-WPikZ618dX699qOzcBxJvcV2w-yFcegNZnzWfp5yyDkRRZaOcL5q244vfRhWpDV-ge-IOl-E-wg80lUuDO-fsvkoTMRVfjMeZQsVApScGPyFz102jRAD3H8fHiZRQ1mMmnyLxy25Lfxib4AfxFAiG8zS6H-wh9RbIPOUE~QPf2FgmELJWYVznZUEetqzaP869oijA__";
+
+// ── Sidebar footer with user info + sign out ─────────────────────────────────
+function SidebarFooter({ collapsed }: { collapsed: boolean }) {
+  const [email, setEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setEmail(data.session?.user?.email ?? null);
+    });
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const initials = email ? email[0].toUpperCase() : "A";
+
+  return (
+    <div className="relative border-t border-white/5 px-3 py-3">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold"
+          style={{ background: "oklch(0.72 0.14 85 / 20%)", color: "oklch(0.72 0.14 85)" }}
+        >
+          {initials}
+        </div>
+        {!collapsed && (
+          <>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-white/70 truncate">
+                {email ?? "Admin"}
+              </div>
+              <div className="text-xs text-white/30 truncate">Playa Bets</div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              title="Sign out"
+              className="text-white/30 hover:text-white/70 transition-colors flex-shrink-0"
+            >
+              <LogOut size={14} />
+            </button>
+          </>
+        )}
+        {collapsed && (
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="text-white/30 hover:text-white/70 transition-colors"
+          >
+            <LogOut size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Nav item type supports either a lucide icon or an image URL
 type NavItem = {
@@ -220,20 +278,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
         </nav>
 
         {/* Footer */}
-        <div className="relative border-t border-white/5 px-3 py-3">
-          {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs text-white/60">
-                A
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-white/70 truncate">Admin User</div>
-                <div className="text-xs text-white/30 truncate">Playa Bets</div>
-              </div>
-              <Activity size={14} className="text-white/30 flex-shrink-0" />
-            </div>
-          )}
-        </div>
+        <SidebarFooter collapsed={collapsed} />
       </aside>
 
       {/* Main content */}

@@ -42,7 +42,8 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       registrations: sum(kpiRows, "registrations"),
-      actives:       sum(kpiRows, "actives_sports"),
+      // Actives = Sports actives + Casino actives (Sports + Casino combined)
+      actives:       sum(kpiRows, "actives_sports") + sum(casinoRows, "casino_actives"),
       turnover:      total_turnover,
       winnings:      sum(kpiRows, "settled_winnings") + sum(casinoRows, "casino_winnings"),
       ggr:           total_ggr,

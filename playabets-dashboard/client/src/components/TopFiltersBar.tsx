@@ -247,12 +247,13 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-          <Field label="Territory">
+          <Field label="Territory (Confirm grouping)">
             <select
               value={filters.territory}
               onChange={(e) => set("territory", e.target.value)}
               className={selectCls}
               style={SELECT_STYLE}
+              title="Confirm Country grouping — territory mapping pending DWH confirmation"
             >
               <option value="all">All Territories</option>
               <option value="west_africa">West Africa</option>
@@ -261,12 +262,13 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-          <Field label="Country">
+          <Field label="Country (Confirm grouping)">
             <select
               value={filters.country}
               onChange={(e) => set("country", e.target.value)}
               className={selectCls}
               style={SELECT_STYLE}
+              title="Confirm Country grouping — country filter pending DWH column mapping"
             >
               <option value="all">All Countries</option>
               <option value="NG">Nigeria</option>
