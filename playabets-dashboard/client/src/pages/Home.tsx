@@ -315,7 +315,6 @@ export default function Home() {
     const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
     const [dataMode, setDataMode] = useState<DataMode>("mock");
     const showPendingOverlay = dataMode !== "live";
-    const segmentPending = !hasSegmentData;
     const depositFlowPending = true;
     const geoPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(null);
@@ -338,6 +337,8 @@ export default function Home() {
   const userStatusPending = !hasUserStatusData;
   const [liveSegmentDistribution, setLiveSegmentDistribution] = useState<typeof baseSegmentDistribution | null>(null);
   const [hasSegmentData, setHasSegmentData] = useState<boolean>(false);
+  // segmentPending must be declared AFTER hasSegmentData to avoid TDZ error
+  const segmentPending = !hasSegmentData;
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
