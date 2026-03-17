@@ -14,6 +14,7 @@ interface CacheEntry<T> {
 
 // Module-level map — survives React component unmounts/remounts
 const cache = new Map<string, CacheEntry<unknown>>();
+const inFlight = new Map<string, Promise<unknown>>();
 
 export function getCached<T>(key: string): T | null {
   const entry = cache.get(key) as CacheEntry<T> | undefined;
@@ -31,6 +32,7 @@ export function setCached<T>(key: string, data: T): void {
 
 export function invalidateCache(): void {
   cache.clear();
+  inFlight.clear();
   _latestDataDate = null;
 }
 
@@ -55,9 +57,23 @@ export async function cachedFetch<T>(url: string): Promise<T> {
   const cached = getCached<T>(url);
   if (cached !== null) return cached;
 
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data: T = await res.json();
-  setCached(url, data);
-  return data;
+  const pending = inFlight.get(url) as Promise<T> | undefined;
+  if (pending) {
+    return pending;
+  }
+
+  const request = (async () => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: T = await res.json();
+    setCached(url, data);
+    return data;
+  })();
+
+  inFlight.set(url, request as Promise<unknown>);
+  try {
+    return await request;
+  } finally {
+    inFlight.delete(url);
+  }
 }

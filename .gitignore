@@ -54,3 +54,7 @@ docs/_tmp_*/
 .vercel
 
 playabets-dashboard/AWS_rework_later.md
+
+data/raw/
+data/serving/
+data/csv/

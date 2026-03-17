@@ -1,5 +1,5 @@
 'use strict';
-const { supaQuery, sum, corsHeaders } = require("./_supabase");
+const { supaQuery, sum, corsHeaders, cacheGet, cacheSet } = require("./_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
@@ -10,6 +10,12 @@ module.exports = async function handler(req, res) {
   const headers = corsHeaders();
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
   try {
+    const cacheKey = `kpis:${req.url ?? JSON.stringify(req.query ?? {})}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return res.status(200).json(cached);
+    }
+
     const start = String(req.query.start ?? "");
     const end   = String(req.query.end   ?? "");
     const dateFilters = () => {
@@ -20,11 +26,15 @@ module.exports = async function handler(req, res) {
     };
 
     // Fetch sportsbook KPIs, FTDs, bonus, and casino in parallel
-    const [kpiRows, ftdRows, bonusRows, casinoRows] = await Promise.all([
+    const [kpiRows, ftdRows, bonusRows, casinoRows, txRows] = await Promise.all([
       supaQuery("daily_kpis",  { filters: dateFilters() }),
       supaQuery("ftd_daily",   { filters: dateFilters() }),
       supaQuery("bonus_daily", { filters: dateFilters() }),
       supaQuery("casino_daily", { filters: dateFilters() }),
+      supaQuery("transactions_daily", { filters: dateFilters() }).catch((err) => {
+        console.warn("[/api/kpis] transactions_daily lookup failed", err);
+        return [];
+      }),
     ]);
 
     // Sportsbook metrics
@@ -40,7 +50,7 @@ module.exports = async function handler(req, res) {
     const total_ggr      = sportsbook_ggr + casino_ggr;
     const bonusSpent     = sum(bonusRows, "bonus_credited");
 
-    return res.status(200).json({
+    const payload = {
       registrations: sum(kpiRows, "registrations"),
       // Actives = Sports actives + Casino actives (Sports + Casino combined)
       actives:       sum(kpiRows, "actives_sports") + sum(casinoRows, "casino_actives"),
@@ -50,9 +60,15 @@ module.exports = async function handler(req, res) {
       ngr:           total_ggr - bonusSpent,
       bonus_spent:   bonusSpent,
       ftds:          sum(ftdRows, "ftds"),
-      deposits:      null,
-      withdrawals:   null,
-    });
+      deposits:      sum(txRows, "total_deposits"),
+      withdrawals:   sum(txRows, "total_withdrawals"),
+      has_transactions_data: Array.isArray(txRows) && txRows.length > 0,
+      tx_count_pending: sum(txRows, "tx_count_pending"),
+      tx_count_accepted: sum(txRows, "tx_count_accepted"),
+      tx_count_other_status: sum(txRows, "tx_count_other_status"),
+    };
+    cacheSet(cacheKey, payload);
+    return res.status(200).json(payload);
   } catch (err) {
     console.error("[/api/kpis]", err);
     return res.status(500).json({ error: String(err) });

@@ -33,10 +33,13 @@ def main() -> None:
     tx_dir = RAW / "transactions"
     if tx_dir.exists():
         tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")
-        tx_daily = compute_transactions_daily(tx_raw)
         out = SERVING / "transactions_daily.parquet"
-        tx_daily.to_parquet(out, index=False)
-        print(f"[domain_kpis] Transactions daily: {len(tx_daily)} rows -> {out}")
+        if tx_raw.empty:
+            print("[domain_kpis] Transactions raw is empty - keeping existing serving file")
+        else:
+            tx_daily = compute_transactions_daily(tx_raw)
+            tx_daily.to_parquet(out, index=False)
+            print(f"[domain_kpis] Transactions daily: {len(tx_daily)} rows -> {out}")
     else:
         print("[domain_kpis] No transactions raw dir - skipping")
 
@@ -46,10 +49,13 @@ def main() -> None:
         bonus_raw = read_all_parquets(bonus_dir, "bonuses_increment_*.parquet")
         campaigns_latest = bonus_dir / "campaigns_latest.parquet"
         campaigns_raw = pd.read_parquet(campaigns_latest) if campaigns_latest.exists() else pd.DataFrame()
-        bonus_daily = compute_bonus_daily(bonus_raw, campaigns=campaigns_raw)
         out = SERVING / "bonus_daily.parquet"
-        bonus_daily.to_parquet(out, index=False)
-        print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
+        if bonus_raw.empty:
+            print("[domain_kpis] Bonus raw is empty - keeping existing serving file")
+        else:
+            bonus_daily = compute_bonus_daily(bonus_raw, campaigns=campaigns_raw)
+            bonus_daily.to_parquet(out, index=False)
+            print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
     else:
         print("[domain_kpis] No bonus raw dir - skipping")
 
@@ -57,10 +63,13 @@ def main() -> None:
     ftd_dir = RAW / "first_deposits"
     if ftd_dir.exists():
         ftd_raw = read_all_parquets(ftd_dir, "first_deposits_increment_*.parquet")
-        ftd_daily = compute_ftd_daily(ftd_raw)
         out = SERVING / "ftd_daily.parquet"
-        ftd_daily.to_parquet(out, index=False)
-        print(f"[domain_kpis] FTD daily: {len(ftd_daily)} rows -> {out}")
+        if ftd_raw.empty:
+            print("[domain_kpis] FTD raw is empty - keeping existing serving file")
+        else:
+            ftd_daily = compute_ftd_daily(ftd_raw)
+            ftd_daily.to_parquet(out, index=False)
+            print(f"[domain_kpis] FTD daily: {len(ftd_daily)} rows -> {out}")
     else:
         print("[domain_kpis] No first_deposits raw dir - skipping")
 
@@ -68,10 +77,13 @@ def main() -> None:
     casino_dir = RAW / "casino"
     if casino_dir.exists():
         casino_raw = read_all_parquets(casino_dir, "casino_increment_*.parquet")
-        casino_daily = compute_casino_daily(casino_raw)
         out = SERVING / "casino_daily.parquet"
-        casino_daily.to_parquet(out, index=False)
-        print(f"[domain_kpis] Casino daily: {len(casino_daily)} rows -> {out}")
+        if casino_raw.empty:
+            print("[domain_kpis] Casino raw is empty - keeping existing serving file")
+        else:
+            casino_daily = compute_casino_daily(casino_raw)
+            casino_daily.to_parquet(out, index=False)
+            print(f"[domain_kpis] Casino daily: {len(casino_daily)} rows -> {out}")
     else:
         print("[domain_kpis] No casino raw dir - skipping")
 

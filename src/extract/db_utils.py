@@ -41,6 +41,7 @@ def _default_watermark() -> str:
 SERVER   = "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com"
 PORT     = 1433
 DATABASE = "isbets_bi"
+QUERY_TIMEOUT_SECONDS = int(os.environ.get("DWH_QUERY_TIMEOUT_SECONDS", "900"))
 
 
 def _odbc_conn_str() -> str:
@@ -68,7 +69,10 @@ def build_engine():
     conn_str = _odbc_conn_str()
 
     def creator():
-        return pyodbc.connect(conn_str)
+        conn = pyodbc.connect(conn_str)
+        # Query timeout is separate from connection timeout; use 0 to disable.
+        conn.timeout = max(0, QUERY_TIMEOUT_SECONDS)
+        return conn
 
     return create_engine("mssql+pyodbc://", creator=creator)
 

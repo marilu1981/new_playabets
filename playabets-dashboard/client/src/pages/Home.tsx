@@ -432,18 +432,8 @@ export default function Home() {
       });
       const regsQuery = regsParams.toString();
 
-      const [
-        kpisRes,
-        dailyRes,
-        casinoDailyRes,
-        bonusDailyRes,
-        regsRes,
-        txRes,
-        betslipStatusRes,
-        userStatusRes,
-        rfmSegmentsRes,
-      ] = await Promise.allSettled([
-        fetchJson<{
+      const requests = {
+        kpis: fetchJson<{
           registrations?: number;
           actives?: number;
           turnover?: number;
@@ -454,8 +444,12 @@ export default function Home() {
           withdrawals?: number;
           bonus_spent?: number;
           ftds?: number;
+          has_transactions_data?: boolean;
+          tx_count_pending?: number;
+          tx_count_accepted?: number;
+          tx_count_other_status?: number;
         }>(`/kpis?${query}`),
-        fetchJson<{
+        daily: fetchJson<{
           rows: Array<{
             date: string;
             placed_stake?: number;
@@ -467,30 +461,36 @@ export default function Home() {
         }>(
           `/kpis/daily?${query}&metrics=placed_stake,settled_stake,settled_winnings,ggr,betslips_count`
         ),
-        fetchJson<{ points: Array<{ date: string; stake?: number; winnings?: number; ggr?: number }> }>(
+        casinoDaily: fetchJson<{ points: Array<{ date: string; stake?: number; winnings?: number; ggr?: number }> }>(
           `/casino/daily?${query}`
         ),
-        fetchJson<{ points: Array<{ date: string; bonus_credited?: number }> }>(`/bonus/daily?${query}`),
-        fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
+        bonusDaily: fetchJson<{ points: Array<{ date: string; bonus_credited?: number }> }>(`/bonus/daily?${query}`),
+        registrations: fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
           `/timeseries/registrations?${regsQuery}`
         ),
-        fetchJson<{
-          has_data?: boolean;
-          deposits?: number;
-          withdrawals?: number;
-          tx_count_pending?: number;
-          tx_count_accepted?: number;
-          tx_count_other_status?: number;
-        }>(`/transactions/kpis?${query}`),
-        fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
+        betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
           `/betting/betslips-by-status?${query}`
         ),
-        fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(
+        userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(
           `/users/status-breakdown?${query}`
         ),
-        fetchJson<{ rows: Array<{ date: string; rfm_champions?: number; rfm_loyal?: number; rfm_big_spenders?: number; rfm_mid?: number; rfm_at_risk?: number; rfm_dormant?: number }> }>(
+        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_champions?: number; rfm_loyal?: number; rfm_big_spenders?: number; rfm_mid?: number; rfm_at_risk?: number; rfm_dormant?: number }> }>(
           `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
+      };
+
+      const [
+        kpisRes,
+        dailyRes,
+        casinoDailyRes,
+        bonusDailyRes,
+        regsRes,
+      ] = await Promise.allSettled([
+        requests.kpis,
+        requests.daily,
+        requests.casinoDaily,
+        requests.bonusDaily,
+        requests.registrations,
       ]);
 
       if (cancelled) {
@@ -504,79 +504,35 @@ export default function Home() {
       setDataMode(mode);
       setIsLoading(false);
 
-      if (betslipStatusRes.status === "fulfilled") {
-        const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
-        setLiveBetslipsByStatus(
-          rows.map((row) => ({
-            status: row.status ? String(row.status) : "Unknown",
-            statusId: row.statusId ?? null,
-            count: Number(row.count ?? 0),
-          }))
-        );
-        setHasBetslipStatusData(true);
+      if (kpisRes.status === "fulfilled") {
+        const k = kpisRes.value;
+        setLiveRangeKpis({
+          registrations: Number(k.registrations ?? 0),
+          ftds: Number(k.ftds ?? 0),
+        });
+        setLiveNgr(Number(k.ngr ?? 0));
+        setLiveOverviewKPIs((prev) => ({
+          ...baseOverviewKPIs,
+          activeUsers: Number(k.actives ?? 0),
+          totalBetslips: prev?.totalBetslips ?? baseOverviewKPIs.totalBetslips,
+          totalStake: Number(k.turnover ?? 0),
+          totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
+          grossRevenue: Number(k.ggr ?? 0),
+        }));
+        setHasTransactionsData(Boolean(k.has_transactions_data));
+        setLiveTransactionSummary({
+          ...baseTransactionSummary,
+          totalDeposits: Number(k.deposits ?? 0),
+          totalWithdrawals: Number(k.withdrawals ?? 0),
+          pendingTransactions: Number(k.tx_count_pending ?? 0),
+          acceptedToday: Number(k.tx_count_accepted ?? 0),
+          refusedToday: Number(k.tx_count_other_status ?? 0),
+        });
       } else {
-        setLiveBetslipsByStatus(null);
-        setHasBetslipStatusData(false);
-      }
-
-      if (userStatusRes.status === "fulfilled") {
-        const rows = userStatusRes.value.statuses ?? [];
-        setLiveUsersByStatus(
-          rows.map((row) => ({
-            status: row.status ? String(row.status) : "Unknown",
-            count: Number(row.count ?? 0),
-          }))
-        );
-        setHasUserStatusData(true);
-      } else {
-        setLiveUsersByStatus(null);
-        setHasUserStatusData(false);
-      }
-
-      // Wire RFM segment distribution from live data
-      // Segment colours match the design system palette
-      const SEGMENT_COLORS: Record<string, string> = {
-        rfm_champions:   "oklch(0.72 0.17 60)",   // gold — Champions
-        rfm_loyal:       "oklch(0.65 0.15 195)",  // teal — Loyal
-        rfm_big_spenders:"oklch(0.62 0.17 145)",  // green — Big Spenders
-        rfm_mid:         "oklch(0.72 0.14 85)",   // amber — Mid
-        rfm_at_risk:     "oklch(0.65 0.15 30)",   // orange — At Risk
-        rfm_dormant:     "oklch(0.45 0.05 0)",    // muted red — Dormant
-      };
-      const SEGMENT_LABELS: Record<string, string> = {
-        rfm_champions:   "Champions",
-        rfm_loyal:       "Loyal",
-        rfm_big_spenders:"Big Spenders",
-        rfm_mid:         "Mid",
-        rfm_at_risk:     "At Risk",
-        rfm_dormant:     "Dormant",
-      };
-      if (rfmSegmentsRes.status === "fulfilled") {
-        const rfmRows = rfmSegmentsRes.value.rows ?? [];
-        // Use the latest row (highest date) that has non-zero data
-        const latestRow = rfmRows
-          .filter((r) => Object.keys(SEGMENT_LABELS).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
-        if (latestRow) {
-          const segments = Object.keys(SEGMENT_LABELS)
-            .map((key) => ({
-              segment: SEGMENT_LABELS[key],
-              count: Number(latestRow[key as keyof typeof latestRow] ?? 0),
-              color: SEGMENT_COLORS[key],
-              pct: 0,
-            }))
-            .filter((s) => s.count > 0);
-          const total = segments.reduce((sum, s) => sum + s.count, 0) || 1;
-          const withPct = segments.map((s) => ({ ...s, pct: Number(((s.count / total) * 100).toFixed(1)) }));
-          setLiveSegmentDistribution(withPct);
-          setHasSegmentData(true);
-        } else {
-          setLiveSegmentDistribution(null);
-          setHasSegmentData(false);
-        }
-      } else {
-        setLiveSegmentDistribution(null);
-        setHasSegmentData(false);
+        setLiveNgr(null);
+        setLiveBonusCoverage(null);
+        setHasTransactionsData(false);
+        setLiveTransactionSummary(null);
       }
 
       if (!hasDaily) {
@@ -691,11 +647,6 @@ export default function Home() {
       if (kpisRes.status === "fulfilled") {
         const k = kpisRes.value;
         const totalBetslips = Array.from(sportsbookByDate.values()).reduce((sum, r) => sum + r.betslipsCount, 0);
-        setLiveRangeKpis({
-          registrations: Number(k.registrations ?? 0),
-          ftds: Number(k.ftds ?? 0),
-        });
-        setLiveNgr(Number(k.ngr ?? 0));
         setLiveOverviewKPIs({
           ...baseOverviewKPIs,
           activeUsers: Number(k.actives ?? 0),
@@ -704,24 +655,6 @@ export default function Home() {
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
           grossRevenue: Number(k.ggr ?? 0),
         });
-      } else {
-        setLiveNgr(null);
-        setLiveBonusCoverage(null);
-      }
-
-      if (txRes.status === "fulfilled") {
-        const tx = txRes.value;
-        setHasTransactionsData(Boolean(tx.has_data));
-        setLiveTransactionSummary({
-          ...baseTransactionSummary,
-          totalDeposits: Number(tx.deposits ?? 0),
-          totalWithdrawals: Number(tx.withdrawals ?? 0),
-          pendingTransactions: Number(tx.tx_count_pending ?? 0),
-          acceptedToday: Number(tx.tx_count_accepted ?? 0),
-          refusedToday: Number(tx.tx_count_other_status ?? 0),
-        });
-      } else {
-        setHasTransactionsData(false);
       }
 
 
@@ -809,6 +742,95 @@ export default function Home() {
           rate30d: rate30d[idx],
         }));
         setLiveConversionRateTrend(conversion.length > 0 ? conversion : null);
+      }
+
+      const [
+        betslipStatusRes,
+        userStatusRes,
+        rfmSegmentsRes,
+      ] = await Promise.allSettled([
+        requests.betslipStatus,
+        requests.userStatus,
+        requests.rfmSegments,
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (betslipStatusRes.status === "fulfilled") {
+        const rows = Array.isArray(betslipStatusRes.value) ? betslipStatusRes.value : [];
+        setLiveBetslipsByStatus(
+          rows.map((row) => ({
+            status: row.status ? String(row.status) : "Unknown",
+            statusId: row.statusId ?? null,
+            count: Number(row.count ?? 0),
+          }))
+        );
+        setHasBetslipStatusData(true);
+      } else {
+        setLiveBetslipsByStatus(null);
+        setHasBetslipStatusData(false);
+      }
+
+      if (userStatusRes.status === "fulfilled") {
+        const rows = userStatusRes.value.statuses ?? [];
+        setLiveUsersByStatus(
+          rows.map((row) => ({
+            status: row.status ? String(row.status) : "Unknown",
+            count: Number(row.count ?? 0),
+          }))
+        );
+        setHasUserStatusData(true);
+      } else {
+        setLiveUsersByStatus(null);
+        setHasUserStatusData(false);
+      }
+
+      // Wire RFM segment distribution from live data
+      // Segment colours match the design system palette
+      const SEGMENT_COLORS: Record<string, string> = {
+        rfm_champions:   "oklch(0.72 0.17 60)",   // gold — Champions
+        rfm_loyal:       "oklch(0.65 0.15 195)",  // teal — Loyal
+        rfm_big_spenders:"oklch(0.62 0.17 145)",  // green — Big Spenders
+        rfm_mid:         "oklch(0.72 0.14 85)",   // amber — Mid
+        rfm_at_risk:     "oklch(0.65 0.15 30)",   // orange — At Risk
+        rfm_dormant:     "oklch(0.45 0.05 0)",    // muted red — Dormant
+      };
+      const SEGMENT_LABELS: Record<string, string> = {
+        rfm_champions:   "Champions",
+        rfm_loyal:       "Loyal",
+        rfm_big_spenders:"Big Spenders",
+        rfm_mid:         "Mid",
+        rfm_at_risk:     "At Risk",
+        rfm_dormant:     "Dormant",
+      };
+      if (rfmSegmentsRes.status === "fulfilled") {
+        const rfmRows = rfmSegmentsRes.value.rows ?? [];
+        // Use the latest row (highest date) that has non-zero data
+        const latestRow = rfmRows
+          .filter((r) => Object.keys(SEGMENT_LABELS).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
+          .sort((a, b) => b.date.localeCompare(a.date))[0];
+        if (latestRow) {
+          const segments = Object.keys(SEGMENT_LABELS)
+            .map((key) => ({
+              segment: SEGMENT_LABELS[key],
+              count: Number(latestRow[key as keyof typeof latestRow] ?? 0),
+              color: SEGMENT_COLORS[key],
+              pct: 0,
+            }))
+            .filter((s) => s.count > 0);
+          const total = segments.reduce((sum, s) => sum + s.count, 0) || 1;
+          const withPct = segments.map((s) => ({ ...s, pct: Number(((s.count / total) * 100).toFixed(1)) }));
+          setLiveSegmentDistribution(withPct);
+          setHasSegmentData(true);
+        } else {
+          setLiveSegmentDistribution(null);
+          setHasSegmentData(false);
+        }
+      } else {
+        setLiveSegmentDistribution(null);
+        setHasSegmentData(false);
       }
     }
 

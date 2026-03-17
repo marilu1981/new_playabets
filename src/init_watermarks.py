@@ -1,38 +1,17 @@
-import sqlite3
-from datetime import datetime
-from pathlib import Path
+"""
+init_watermarks.py
+------------------
+Backward-compatible wrapper for seeding missing watermark rows.
 
-# Same path as incremental_users.py, set_safe_watermark.py, set_betslips_safe_watermark.py
-DB_PATH = "data/watermarks.db"
+Prefer:
+    python -m src.seed_watermarks
 
-DEFAULTS = [
-    ("Dwh_en.view_users", "DateVersion", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_betslips", "DateVersion", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_transactions", "DateVersion", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_payments", "paymentenddate", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_casino", "insertdate", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_bonustransactions", "date", "1900-01-01 00:00:00"),
-    ("Dwh_en.view_bonuscampaigns", "insertdate", "1900-01-01 00:00:00"),
-]
+Use reset_watermarks.py for explicit backfill resets.
+"""
+from __future__ import annotations
 
-Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-with sqlite3.connect(DB_PATH) as conn:
-    cur = conn.cursor()
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS watermarks (
-        view_name TEXT PRIMARY KEY,
-        cursor_column TEXT NOT NULL,
-        last_value TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-    )
-    """)
-    now = datetime.utcnow().isoformat(timespec="seconds")
-    for view_name, cursor_column, last_value in DEFAULTS:
-        cur.execute("""
-        INSERT INTO watermarks(view_name, cursor_column, last_value, updated_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(view_name) DO NOTHING
-        """, (view_name, cursor_column, last_value, now))
-    conn.commit()
+from src.seed_watermarks import main
 
-print("Initialized watermarks.db")
+
+if __name__ == "__main__":
+    main()

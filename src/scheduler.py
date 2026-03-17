@@ -45,6 +45,11 @@ log = logging.getLogger("scheduler")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INTERVAL_MINUTES = int(os.environ.get("SCHEDULE_INTERVAL_MINUTES", "120"))
 SKIP_EXTRACT = os.environ.get("SKIP_EXTRACT", "0") == "1"
+MODULE_TIMEOUT_SECONDS = int(os.environ.get("MODULE_TIMEOUT_SECONDS", "1800"))
+
+# Evironment variables for timeouts can be set in the shell 
+# set MODULE_TIMEOUT_SECONDS=1800
+# set DWH_QUERY_TIMEOUT_SECONDS=900
 
 EXTRACT_MODULES = [
     "src.extract.incremental_users",
@@ -60,17 +65,39 @@ TRANSFORM_MODULES = [
     "src.kpis.build_domain_kpis",  # builds transactions/bonus/casino serving files
 ]
 
+TRANSFORM_DEPENDENCIES = {
+    "src.kpis.build_daily_kpis": {
+        "src.extract.incremental_users",
+        "src.extract.incremental_betslips",
+    },
+    "src.kpis.build_domain_kpis": {
+        "src.extract.incremental_transactions",
+        "src.extract.incremental_first_deposits",
+        "src.extract.incremental_bonus",
+        "src.extract.incremental_casino",
+    },
+}
+
 
 def _run_module(module: str) -> bool:
     """Run a Python module as a subprocess. Returns True on success."""
     cmd = [sys.executable, "-m", module]
     log.info("Running: %s", " ".join(cmd))
-    result = subprocess.run(
-        cmd,
-        cwd=str(PROJECT_ROOT),
-        capture_output=False,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(PROJECT_ROOT),
+            capture_output=False,
+            text=True,
+            timeout=None if MODULE_TIMEOUT_SECONDS <= 0 else MODULE_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        log.error(
+            "Module %s timed out after %d seconds",
+            module,
+            MODULE_TIMEOUT_SECONDS,
+        )
+        return False
     if result.returncode != 0:
         log.error("Module %s exited with code %d", module, result.returncode)
         return False
@@ -85,6 +112,7 @@ def run_pipeline() -> None:
     log.info("Pipeline started at %s", started.isoformat())
 
     errors: list[str] = []
+    failed_extracts: set[str] = set()
 
     # --- Extract ---
     if not SKIP_EXTRACT:
@@ -94,15 +122,26 @@ def run_pipeline() -> None:
                 ok = _run_module(module)
                 if not ok:
                     errors.append(f"extract:{module}")
+                    failed_extracts.add(module)
             except Exception as exc:
                 log.exception("Unexpected error in %s: %s", module, exc)
                 errors.append(f"extract:{module}:{exc}")
+                failed_extracts.add(module)
     else:
         log.info("SKIP_EXTRACT=1 — skipping extract phase")
 
     # --- Transform ---
     log.info("--- TRANSFORM PHASE ---")
     for module in TRANSFORM_MODULES:
+        blocked_by = sorted(TRANSFORM_DEPENDENCIES.get(module, set()) & failed_extracts)
+        if blocked_by:
+            log.warning(
+                "Skipping transform %s because required extract(s) failed: %s",
+                module,
+                ", ".join(blocked_by),
+            )
+            errors.append(f"transform_skipped:{module}")
+            continue
         try:
             ok = _run_module(module)
             if not ok:
