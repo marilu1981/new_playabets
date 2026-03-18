@@ -17,11 +17,10 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { cachedFetch, getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
+import { getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
-import StatusBadge from "@/components/StatusBadge";
 import MockOverlay from "@/components/MockOverlay";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -57,263 +56,64 @@ import {
   scaleNumber,
   scaleObjectNumericFields,
 } from "@/lib/filterUtils";
+import {
+  CARD_BG,
+  CHART_COLORS,
+  COUNTRY_BRAND_MAP,
+  FONT_MONO,
+  FONT_SERIF,
+  HERO_BG,
+  TT_STYLE,
+  aggregateByGranularity,
+  fetchJson,
+  filterMonthRows,
+  parseIsoDate,
+  parseSeriesDate,
+  toggleBtn,
+  type DataMode,
+  type MetricRow,
+} from "./home/homeUtils";
+import { useHomeData } from "./home/useHomeData";
+import {
+  DetailedBreakdownTable,
+  HomeHeroBanner,
+  HomePrimaryKpis,
+  StatusPiePanels,
+  SummaryMetricsTable,
+} from "./home/HomeSections";
 
-const HERO_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-2_1771727908000_na1fn_cGxheWFiZXRzLWhlcm8tYmFubmVy.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTJfMTc3MTcyNzkwODAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMV2hsY204dFltRnVibVZ5LnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=LHsnks1NO7SQ87OPqfr8X3UCWGKR~-4dFr0yVglkj0GAbZntP4Bq2VV88L-8FWkj-8edRLrlOJK73a4zD7Y7gnEAI9d6hcIeI7KCSJrwwvRW6UB4wYIBKcBGFFUxVdkuimzCKyEvj9PaaWLFw9ouP3Vbvp~P0BXrFkfjceNgumru40JCmdXs7tF5ZUtwpNldD~AWzgTIY-AdzkE4FML0W4RYJRXT7w~1Qnz5onsasdZIf27SUcyL1J0I-hug5HoXudlGMHMVhXBfL68bTeaaUTETPQLgYKwGeKSdDqRDAWfCqjgqLVzCnAKBODZh2PIZGvl4Na8qo18vldMjr9oPZg__";
-
-const CHART_COLORS = {
-  gold:  "oklch(0.72 0.14 85)",
-  green: "oklch(0.62 0.17 145)",
-  teal:  "oklch(0.65 0.15 195)",
-  amber: "oklch(0.72 0.17 60)",
-  red:   "oklch(0.55 0.22 25)",
-};
-
-const CARD_BG: React.CSSProperties = {
-  background: "oklch(0.19 0.04 155)",
-  border: "1px solid oklch(1 0 0 / 6%)",
-};
-const FONT_SERIF: React.CSSProperties = {};
-const FONT_MONO: React.CSSProperties  = {};
-
-const TT_STYLE: React.CSSProperties = {
-  background: "oklch(0.22 0.04 155)",
-  border: "1px solid oklch(1 0 0 / 10%)",
-  fontSize: 11,
-};
-
-const COUNTRY_BRAND_MAP: Record<string, string> = {
-  Nigeria: "PlayaBets NG",
-  Ghana: "PlayaBets GH",
-  Kenya: "PlayaBets KE",
-  Uganda: "PlayaBets UG",
-  Zambia: "PlayaBets ZM",
-};
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
-
-type DataMode = "mock" | "partial" | "live";
-
-async function fetchJson<T>(path: string): Promise<T> {
-  return cachedFetch<T>(`${API_BASE_URL}${path}`);
-}
-
-function toIsoDate(d: Date): string {
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function parseSeriesDate(value: string | undefined, fallbackYear: number): Date | null {
-  if (!value) {
-    return null;
-  }
-  const raw = value.trim();
-  if (!raw) {
-    return null;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
-    const dt = new Date(`${raw}T00:00:00Z`);
-    return Number.isNaN(dt.getTime()) ? null : dt;
-  }
-  if (/^\d{4}-\d{2}-\d{2}\s/.test(raw)) {
-    const dt = new Date(raw.replace(" ", "T"));
-    return Number.isNaN(dt.getTime()) ? null : dt;
-  }
-  if (/^[A-Za-z]{3}$/.test(raw)) {
-    const dt = new Date(`${raw} 1, ${fallbackYear} UTC`);
-    return Number.isNaN(dt.getTime()) ? null : dt;
-  }
-  const dt = new Date(raw);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-
-function parseIsoDate(value: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    if (/^\d{4}\/\d{2}\/\d{2}$/.test(value)) {
-      const normalized = value.replace(/\//g, "-");
-      const dt = new Date(`${normalized}T00:00:00Z`);
-      return Number.isNaN(dt.getTime()) ? null : dt;
-    }
-    return null;
-  }
-  const dt = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-
-function monthKey(date: Date): number {
-  return date.getUTCFullYear() * 12 + date.getUTCMonth();
-}
-
-function filterMonthRows<T>(
-  rows: T[],
-  filters: DashboardFilters,
-  getMonthValue: (row: T) => string | undefined,
-  fallbackYear: number,
-): T[] {
-  const from = parseIsoDate(filters.dateFrom);
-  const to = parseIsoDate(filters.dateTo);
-  if (!from || !to) {
-    return rows;
-  }
-  const min = Math.min(monthKey(from), monthKey(to));
-  const max = Math.max(monthKey(from), monthKey(to));
-  const monthOnly = rows.every((row) => /^[A-Za-z]{3}$/.test((getMonthValue(row) ?? "").trim()));
-  if (!monthOnly) {
-    return rows.filter((row) => {
-      const dt = parseSeriesDate(getMonthValue(row), fallbackYear);
-      if (!dt) {
-        return true;
-      }
-      const mk = monthKey(dt);
-      return mk >= min && mk <= max;
-    });
-  }
-
-  const monthIndex = (value: string): number =>
-    new Date(`${value} 1, 2000 UTC`).getUTCMonth();
-
-  const resolved: number[] = new Array(rows.length).fill(fallbackYear);
-  for (let i = rows.length - 1; i >= 0; i -= 1) {
-    if (i === rows.length - 1) {
-      resolved[i] = fallbackYear;
-    } else {
-      const current = monthIndex(String(getMonthValue(rows[i]) ?? "Jan"));
-      const next = monthIndex(String(getMonthValue(rows[i + 1]) ?? "Jan"));
-      resolved[i] = current > next ? resolved[i + 1] - 1 : resolved[i + 1];
-    }
-  }
-
-  return rows.filter((row, idx) => {
-    const m = String(getMonthValue(row) ?? "").trim();
-    const dt = parseSeriesDate(m, resolved[idx]);
-    if (!dt) {
-      return true;
-    }
-    const mk = monthKey(dt);
-    return mk >= min && mk <= max;
-  });
-}
-
-function bucketStart(date: Date, granularity: DashboardFilters["granularity"]): Date {
-  const out = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  if (granularity === "monthly") {
-    return new Date(Date.UTC(out.getUTCFullYear(), out.getUTCMonth(), 1));
-  }
-  if (granularity === "weekly") {
-    const day = out.getUTCDay();
-    const mondayOffset = (day + 6) % 7;
-    out.setUTCDate(out.getUTCDate() - mondayOffset);
-  }
-  return out;
-}
-
-function aggregateByGranularity<T extends Record<string, unknown>>(
-  rows: T[],
-  granularity: DashboardFilters["granularity"],
-  getDate: (row: T) => string | undefined,
-  options?: {
-    fallbackYear?: number;
-    labelKey?: string;
-    avgFields?: string[];
-  },
-): T[] {
-  if (granularity === "daily") {
-    return rows;
-  }
-
-  const labelKey = options?.labelKey ?? "date";
-  const avgFields = new Set(options?.avgFields ?? []);
-  const fallbackYear = options?.fallbackYear ?? new Date().getFullYear();
-
-  const grouped = new Map<string, { sample: T; sums: Record<string, number>; counts: Record<string, number> }>();
-
-  rows.forEach((row) => {
-    const date = parseSeriesDate(getDate(row), fallbackYear);
-    if (!date) {
-      return;
-    }
-    const key = toIsoDate(bucketStart(date, granularity));
-    const entry =
-      grouped.get(key) ??
-      {
-        sample: row,
-        sums: {},
-        counts: {},
-      };
-
-    Object.entries(row).forEach(([field, value]) => {
-      if (typeof value === "number" && Number.isFinite(value)) {
-        entry.sums[field] = (entry.sums[field] ?? 0) + value;
-        entry.counts[field] = (entry.counts[field] ?? 0) + 1;
-      }
-    });
-
-    grouped.set(key, entry);
-  });
-
-  return Array.from(grouped.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, entry]) => {
-      const out: Record<string, unknown> = { ...entry.sample, [labelKey]: key };
-      Object.entries(out).forEach(([field, value]) => {
-        if (typeof value === "number" && Number.isFinite(value) && entry.sums[field] !== undefined) {
-          const summed = entry.sums[field];
-          if (avgFields.has(field)) {
-            const avg = summed / Math.max(1, entry.counts[field] ?? 1);
-            out[field] = Number(avg.toFixed(1));
-          } else {
-            out[field] = Number.isInteger(value) ? Math.round(summed) : Number(summed.toFixed(2));
-          }
-        }
-      });
-      return out as T;
-    });
-}
-
-function toggleBtn(active: boolean): React.CSSProperties {
-  return {
-    background: active ? "oklch(0.72 0.14 85)" : "oklch(0.24 0.04 155)",
-    color: active ? "oklch(0.12 0.04 155)" : "oklch(0.55 0.01 155)",
-    border: "1px solid oklch(1 0 0 / 8%)",
-    fontWeight: active ? 700 : 500,
-    transition: "all 0.15s",
-    cursor: "pointer",
-    padding: "3px 10px",
-    borderRadius: "4px",
-    fontSize: "11px",
-  };
-}
-
-type MetricRow = {
-  metric: string;
-  current: number;
-  previous: number;
-  ytd: number;
-  isPercent?: boolean;
-  isCurrency?: boolean;
-};
-
-function pctChange(current: number, previous: number): number {
-  if (previous === 0) return 0;
-  return parseFloat(((current - previous) / previous * 100).toFixed(1));
-}
-
-function fmtMetric(val: number, row: MetricRow): string {
-  if (row.isPercent)  return `${val.toFixed(1)}%`;
-  if (row.isCurrency) return `${formatCompact(val)}`;
-  return formatCompact(val);
-}
 
 export default function Home() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
   const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
-    const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
-    const [dataMode, setDataMode] = useState<DataMode>("mock");
-    const showPendingOverlay = dataMode !== "live";
-    const depositFlowPending = true;
-    const geoPending = true;
+  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
+  const {
+    dataMode,
+    latestDataDate,
+    isLoading,
+    liveOverviewKPIs,
+    liveRevenueTrend,
+    liveRevenueMetricsTrend,
+    livePlayerAcquisition,
+    liveConversionRateTrend,
+    liveTransactionSummary,
+    liveRangeKpis,
+    liveNgr,
+    liveBonusCoverage,
+    liveBetslipsByStatus,
+    liveUsersByStatus,
+    hasTransactionsData,
+    hasBetslipStatusData,
+    hasUserStatusData,
+    liveSegmentDistribution,
+    hasSegmentData,
+  } = useHomeData({ filters, setFilters });
+/*
+  const [dataMode, setDataMode] = useState<DataMode>("mock");
+  const showPendingOverlay = dataMode !== "live";
+  const depositFlowPending = true;
+  const geoPending = true;
   const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
   // Start non-loading when we already have a cached date (return navigation feels instant)
   const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
@@ -336,7 +136,14 @@ export default function Home() {
   const userStatusPending = !hasUserStatusData;
   const [liveSegmentDistribution, setLiveSegmentDistribution] = useState<typeof baseSegmentDistribution | null>(null);
   const [hasSegmentData, setHasSegmentData] = useState<boolean>(false);
-  // segmentPending must be declared AFTER hasSegmentData to avoid TDZ error
+  const segmentPending = !hasSegmentData;
+*/
+
+  const showPendingOverlay = dataMode !== "live";
+  const depositFlowPending = true;
+  const geoPending = true;
+  const betslipStatusPending = !hasBetslipStatusData;
+  const userStatusPending = !hasUserStatusData;
   const segmentPending = !hasSegmentData;
 
   const fallbackYear = useMemo(() => {
@@ -355,6 +162,7 @@ export default function Home() {
 
   const multiplier = dataMode === "mock" ? getFilterMultiplier(filters) : 1;
 
+/*
   useEffect(() => {
     let cancelled = false;
     fetchJson<{ date?: string }>("/kpis/latest")
@@ -857,6 +665,7 @@ export default function Home() {
     filters.customerStatus,
     filters.granularity,
   ]);
+*/
 
   const sourceOverviewKPIs = liveOverviewKPIs ?? baseOverviewKPIs;
   const sourceRevenueTrend = liveRevenueTrend ?? baseRevenueTrend;
@@ -1120,88 +929,18 @@ export default function Home() {
     if (summaryTab === "casino")   return summaryMetrics.casinoDetails;
     return [...summaryMetrics.overview, ...summaryMetrics.sportDetails, ...summaryMetrics.casinoDetails];
   };
-
+  const summaryRows = getSummaryRows();
   const renderSummaryMetricsTable = () => (
-    <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Summary Metrics</h3>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
-        </div>
-        <button
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
-          style={{ background: CHART_COLORS.green, color: "white" }}
-          onClick={() => {
-            const rows = getSummaryRows();
-            const csv = ["Metric,Current Period,Previous Period,Change %,YTD",
-              ...rows.map((r) => `${r.metric},${fmtMetric(r.current, r)},${fmtMetric(r.previous, r)},${pctChange(r.current, r.previous)}%,${fmtMetric(r.ytd, r)}`)
-            ].join("\n");
-            const blob = new Blob([csv], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = `playabets_summary_${summaryTab}_${filters.dateFrom}_${filters.dateTo}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-        >
-          <Download size={12} />
-          Export to Excel
-        </button>
-      </div>
-
-      <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "oklch(1 0 0 / 8%)" }}>
-        {([
-          { key: "overview", label: "Overview" },
-          { key: "sport",    label: "Sport Details" },
-          { key: "casino",   label: "Casino Details" },
-          { key: "all",      label: "All Metrics" },
-        ] as const).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setSummaryTab(key)}
-            className="px-4 py-2 text-xs font-semibold transition-colors relative"
-            style={{
-              color: summaryTab === key ? CHART_COLORS.gold : "oklch(0.55 0.01 155)",
-              borderBottom: summaryTab === key ? `2px solid ${CHART_COLORS.gold}` : "2px solid transparent",
-              marginBottom: "-1px",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-              {["Metric", "Current Period", "Previous Period", "Change %", "YTD"].map((h) => (
-                <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-4 whitespace-nowrap" style={{ color: "oklch(0.45 0.01 155)" }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {getSummaryRows().map((row) => {
-              const chg = pctChange(row.current, row.previous);
-              return (
-                <tr key={row.metric} className="hover:bg-white/2 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/80 text-xs font-medium">{row.metric}</td>
-                  <td className="py-2.5 pr-4 text-white text-xs font-mono"   style={FONT_MONO}>{fmtMetric(row.current,  row)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={FONT_MONO}>{fmtMetric(row.previous, row)}</td>
-                  <td className="py-2.5 pr-4 text-xs font-semibold font-mono" style={{ ...FONT_MONO, color: chg >= 0 ? CHART_COLORS.green : CHART_COLORS.red }}>
-                    {chg >= 0 ? "+" : ""}{chg}%
-                  </td>
-                  <td className="py-2.5 text-white/60 text-xs font-mono" style={FONT_MONO}>{fmtMetric(row.ytd, row)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <SummaryMetricsTable
+      summaryTab={summaryTab}
+      setSummaryTab={setSummaryTab}
+      summaryRows={summaryRows}
+      exportFilename={`playabets_summary_${summaryTab}_${filters.dateFrom}_${filters.dateTo}.csv`}
+      cardBg={CARD_BG}
+      chartColors={CHART_COLORS}
+      fontSerif={FONT_SERIF}
+      fontMono={FONT_MONO}
+    />
   );
 
   return (
@@ -1622,89 +1361,17 @@ export default function Home() {
       </div>
 
       {/* Betslip Status + User Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Betslip Status pie */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={betslipStatusPending} description="Betslip status pending live data" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Betslip Status</h3>
-              <p className="text-xs text-white/40">Distribution by status</p>
-            </div>
-            {betslipStatusPending ? (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
-                Mock
-              </span>
-            ) : (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>
-                Live
-              </span>
-            )}
-          </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie data={betslipsByStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="count" nameKey="status" paddingAngle={2}>
-                {betslipsByStatus.map((_, i) => (
-                  <Cell key={i} fill={[CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {betslipsByStatus.map((s, i) => (
-              <div key={s.status} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: [CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5] }} />
-                  <span className="text-white/60 truncate max-w-[110px]">{s.status}</span>
-                </div>
-                <span className="text-white/70 font-mono text-xs" style={FONT_MONO}>{formatCompact(s.count)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* User Status pie */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={userStatusPending} description="User status pending live data" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>User Status</h3>
-              <p className="text-xs text-white/40">Distribution by status</p>
-            </div>
-            {userStatusPending ? (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
-                Mock
-              </span>
-            ) : (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>
-                Live
-              </span>
-            )}
-          </div>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie data={usersByStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="count" nameKey="status" paddingAngle={2}>
-                {usersByStatus.map((_, i) => (
-                  <Cell key={i} fill={[CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {usersByStatus.map((u, i) => (
-              <div key={u.status} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: [CHART_COLORS.green, CHART_COLORS.red, CHART_COLORS.amber, CHART_COLORS.teal, "#6b7280"][i % 5] }} />
-                  <span className="text-white/60 truncate max-w-[110px]">{u.status}</span>
-                </div>
-                <span className="text-white/70 font-mono text-xs" style={FONT_MONO}>{formatCompact(u.count)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <StatusPiePanels
+        betslipsByStatus={betslipsByStatus}
+        usersByStatus={usersByStatus}
+        betslipStatusPending={betslipStatusPending}
+        userStatusPending={userStatusPending}
+        cardBg={CARD_BG}
+        chartColors={CHART_COLORS}
+        fontSerif={FONT_SERIF}
+        fontMono={FONT_MONO}
+        ttStyle={TT_STYLE}
+      />
 
       {renderSummaryMetricsTable()}
 
