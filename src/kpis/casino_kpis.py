@@ -136,7 +136,7 @@ def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
         casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
         casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
 
-    casino["provider_name"] = casino[provider_col].astype(str)
+    casino["provider_name"] = (casino[provider_col].astype(str).str.replace(r"^Intelligent", "", regex=True).str.strip())
     casino["casino_type"] = casino[type_col].astype(str) if type_col else "Casino"
     casino["stake_num"] = to_num(casino[stake], default=0.0)
     casino["winnings_num"] = to_num(casino[winnings], default=0.0)

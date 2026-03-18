@@ -25,18 +25,39 @@ VIEW_NAME = "Dwh_en.view_transactions"
 START_DATE = "2026-03-15"
 END_DATE = "2026-03-16"
 RUN_DAY_BY_DAY = True
+WINDOW_HOURS: int | None = None
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = PROJECT_ROOT / "data" / "raw" / "transactions"
 
 def _parse_date(value: str) -> datetime:
-    return datetime.strptime(value, "%Y-%m-%d")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    raise ValueError(f"Unsupported date format: {value}")
 
 
 def _windows() -> list[tuple[str, str | None]]:
     if not END_DATE:
         return [(START_DATE, None)]
+    if WINDOW_HOURS and WINDOW_HOURS > 0:
+        start = _parse_date(START_DATE)
+        end = _parse_date(END_DATE)
+        windows: list[tuple[str, str | None]] = []
+        current = start
+        while current < end:
+            nxt = min(current + timedelta(hours=WINDOW_HOURS), end)
+            windows.append(
+                (
+                    current.strftime("%Y-%m-%d %H:%M:%S"),
+                    nxt.strftime("%Y-%m-%d %H:%M:%S"),
+                )
+            )
+            current = nxt
+        return windows
     if not RUN_DAY_BY_DAY:
         return [(START_DATE, END_DATE)]
 
@@ -70,6 +91,8 @@ def main() -> None:
     _log(f"Start date: {START_DATE}")
     if END_DATE:
         _log(f"End date: {END_DATE}")
+    if WINDOW_HOURS and END_DATE:
+        _log(f"Hour window mode: {WINDOW_HOURS}h")
     if RUN_DAY_BY_DAY and END_DATE:
         _log("Day-by-day mode: enabled")
 

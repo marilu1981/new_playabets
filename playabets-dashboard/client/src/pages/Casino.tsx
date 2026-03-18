@@ -11,7 +11,7 @@ import KpiCard from "@/components/KpiCard";
 import MockOverlay from "@/components/MockOverlay";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  LabelList,
 } from "recharts";
 import { Gamepad2, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { casinoProviders as baseCasinoProviders, casinoKPIs as baseCasinoKPIs } from "@/lib/mockData";
@@ -36,8 +36,6 @@ const CHART_COLORS = {
   amber: "oklch(0.72 0.17 60)",
   red: "oklch(0.55 0.22 25)",
 };
-
-const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.amber, CHART_COLORS.red, "oklch(0.60 0.12 270)"];
 
 export default function CasinoPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
@@ -112,6 +110,14 @@ export default function CasinoPage() {
     };
   }, [casinoProviders, multiplier, liveCasinoKPIs]);
   const totalStakeSafe = Math.max(1, casinoKPIs.totalStake);
+  const providerShareData = useMemo(
+    () =>
+      casinoProviders.map((provider) => ({
+        ...provider,
+        sharePct: Number(((provider.stake / totalStakeSafe) * 100).toFixed(1)),
+      })),
+    [casinoProviders, totalStakeSafe],
+  );
   return (
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
@@ -130,43 +136,59 @@ export default function CasinoPage() {
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
           <p className="text-xs text-white/40 mb-4">Gross profit per casino provider</p>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={320}>
             <BarChart data={casinoProviders} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
               <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="provider" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
               <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Profit"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
-              <Bar dataKey="profit" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} />
+              <Bar dataKey="profit" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} barSize={24}>
+                <LabelList
+                  dataKey="profit"
+                  position="right"
+                  formatter={(value: number) => formatCompact(Number(value))}
+                  style={{ fill: "oklch(0.82 0.02 0)", fontSize: 11, fontWeight: 600 }}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Provider share pie */}
+        {/* Provider share bars */}
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
           <p className="text-xs text-white/40 mb-4">By provider</p>
-          <ResponsiveContainer width="100%" height={150}>
-            <PieChart>
-              <Pie data={casinoProviders} cx="50%" cy="50%" innerRadius={35} outerRadius={65} dataKey="stake" nameKey="provider" paddingAngle={2}>
-                {casinoProviders.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
-              </Pie>
-              <Tooltip formatter={(v: number) => `${formatCompact(v)}`} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
-            </PieChart>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={providerShareData} layout="vertical" margin={{ top: 0, right: 22, bottom: 0, left: 100 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
+              <XAxis
+                type="number"
+                domain={[0, 100]}
+                tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }}
+                tickFormatter={(v) => `${v}%`}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                type="category"
+                dataKey="provider"
+                tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={100}
+              />
+              <Tooltip formatter={(v: number) => [`${v}%`, "Stake Share"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Bar dataKey="sharePct" fill={CHART_COLORS.teal} radius={[0, 4, 4, 0]} barSize={20}>
+                <LabelList
+                  dataKey="sharePct"
+                  position="right"
+                  formatter={(value: number) => `${Number(value).toFixed(1)}%`}
+                  style={{ fill: "oklch(0.82 0.02 0)", fontSize: 11, fontWeight: 600 }}
+                />
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
-          <div className="space-y-1.5 mt-2">
-            {casinoProviders.map((p, i) => (
-              <div key={p.provider} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  <span className="text-white/50 truncate max-w-[100px]">{p.provider}</span>
-                </div>
-                <span className="text-white/60 font-mono text-xs">
-                  {(p.stake / totalStakeSafe * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
