@@ -22,10 +22,10 @@ from sqlalchemy import text
 from src.extract.db_utils import build_engine
 
 VIEW_NAME = "Dwh_en.view_transactions"
-START_DATE = "2026-03-15"
-END_DATE = "2026-03-16"
-RUN_DAY_BY_DAY = True
-WINDOW_HOURS: int | None = None
+START_DATE = "2026-03-15 00:00:00"
+END_DATE = "2026-03-15 06:00:00"
+RUN_DAY_BY_DAY = False
+WINDOW_HOURS = 1
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

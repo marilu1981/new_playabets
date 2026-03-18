@@ -14,11 +14,27 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
     const rows = await supaQuery("bonus_daily", { filters });
+    const dailyBonusPerUser = rows
+      .map((row) => {
+        const credited = Number(row.bonus_credited ?? 0);
+        const users = Number(row.unique_bonus_users ?? 0);
+        return users > 0 ? credited / users : 0;
+      });
+    const averageDailyBonusPerUser =
+      dailyBonusPerUser.length > 0
+        ? dailyBonusPerUser.reduce((acc, value) => acc + value, 0) / dailyBonusPerUser.length
+        : 0;
+    const averageDailyUniqueBonusUsers =
+      rows.length > 0
+        ? rows.reduce((acc, row) => acc + Number(row.unique_bonus_users ?? 0), 0) / rows.length
+        : 0;
     return res.status(200).json({
-      bonus_issued:    sum(rows, "bonus_issued"),
-      bonus_credited:  sum(rows, "bonus_credited"),
-      bonus_cancelled: sum(rows, "bonus_cancelled"),
-      players_bonused: sum(rows, "players_bonused"),
+      total_bonuses_credited: sum(rows, "bonus_credited"),
+      average_daily_bonus_per_user: averageDailyBonusPerUser,
+      est_total_bonuses_per_user: dailyBonusPerUser.reduce((acc, value) => acc + value, 0),
+      average_daily_unique_bonus_users: averageDailyUniqueBonusUsers,
+      bonuses_paid_total_count: sum(rows, "bonus_count"),
+      first_deposit_bonus_amount_total: sum(rows, "first_deposit_bonus_amount"),
     });
   } catch (err) {
     console.error("[/api/bonus/kpis]", err);

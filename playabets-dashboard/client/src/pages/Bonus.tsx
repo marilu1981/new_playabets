@@ -12,7 +12,7 @@ import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 import { Gift, Users, Percent, Ticket } from "lucide-react";
 import { bonusCampaigns as baseBonusCampaigns, bonusKPIs as baseBonusKPIs } from "@/lib/mockData";
-import { formatCompact, formatNumber, formatPercent } from "@/lib/formatters";
+import { formatCompact, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -35,35 +35,46 @@ const CHART_COLORS = {
   red: "oklch(0.55 0.22 25)",
 };
 
+type BonusCards = {
+  totalBonusesCredited: number;
+  estTotalBonusesPerUser: number;
+  averageDailyBonusPerUser: number;
+  averageDailyUniqueBonusUsers: number;
+  bonusesPaidTotalCount: number;
+};
+
 export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const [liveBonusKPIs, setLiveBonusKPIs] = useState<typeof baseBonusKPIs | null>(null);
+  const [liveBonusCards, setLiveBonusCards] = useState<BonusCards | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-    fetchJson<{ bonus_credited?: number; bonus_used?: number; bonus_expired?: number; active_campaigns?: number; active_users?: number }>(
+    fetchJson<{
+      total_bonuses_credited?: number;
+      average_daily_bonus_per_user?: number;
+      est_total_bonuses_per_user?: number;
+      average_daily_unique_bonus_users?: number;
+      bonuses_paid_total_count?: number;
+      first_deposit_bonus_amount_total?: number;
+    }>(
       `/bonus/kpis?${query}`
     )
       .then((d) => {
-        const credited = Number(d.bonus_credited ?? 0);
-        const used     = Number(d.bonus_used     ?? 0);
-        const expired  = Number(d.bonus_expired  ?? 0);
-        const users    = Number(d.active_users   ?? 1);
-        if (credited === 0 && used === 0) {
-          setLiveBonusKPIs(null);
+        const credited = Number(d.total_bonuses_credited ?? 0);
+        const totalCount = Number(d.bonuses_paid_total_count ?? 0);
+        if (credited === 0 && totalCount === 0) {
+          setLiveBonusCards(null);
           return;
         }
-        setLiveBonusKPIs({
-          ...baseBonusKPIs,
-          totalBonusBalance: credited,
-          freebetsIssued:    credited,
-          freebetsUsed:      used,
-          freebetsExpired:   expired,
-          activeCampaigns:   Number(d.active_campaigns ?? baseBonusKPIs.activeCampaigns),
-          avgBonusPerUser:   users > 0 ? Number((credited / users).toFixed(2)) : 0,
+        setLiveBonusCards({
+          totalBonusesCredited: credited,
+          estTotalBonusesPerUser: Number(d.est_total_bonuses_per_user ?? 0),
+          averageDailyBonusPerUser: Number(d.average_daily_bonus_per_user ?? 0),
+          averageDailyUniqueBonusUsers: Number(d.average_daily_unique_bonus_users ?? 0),
+          bonusesPaidTotalCount: totalCount,
         });
       })
-      .catch(() => setLiveBonusKPIs(null));
+      .catch(() => setLiveBonusCards(null));
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
@@ -77,9 +88,19 @@ export default function BonusPage() {
     [filters, multiplier],
   );
   const bonusKPIs = useMemo(() => {
-    if (liveBonusKPIs) return liveBonusKPIs;
     return scaleObjectNumericFields(baseBonusKPIs, multiplier);
-  }, [multiplier, liveBonusKPIs]);
+  }, [multiplier]);
+
+  const bonusCards = useMemo<BonusCards>(() => {
+    if (liveBonusCards) return liveBonusCards;
+    return {
+      totalBonusesCredited: Number(bonusKPIs.totalBonusBalance ?? 0),
+      estTotalBonusesPerUser: Number(bonusKPIs.freebetsIssued ?? 0),
+      averageDailyBonusPerUser: Number(bonusKPIs.avgBonusPerUser ?? 0),
+      averageDailyUniqueBonusUsers: Number(bonusKPIs.activeCampaigns ?? 0),
+      bonusesPaidTotalCount: Number((bonusKPIs.freebetsUsed ?? 0) + (bonusKPIs.freebetsExpired ?? 0)),
+    };
+  }, [bonusKPIs, liveBonusCards]);
 
   const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
   const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
@@ -88,17 +109,18 @@ export default function BonusPage() {
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Active Campaigns" value={bonusKPIs.activeCampaigns} subtitle="Running now" icon={<Gift size={18} />} accent="gold" />
-        <KpiCard title="Total Bonus Balance" value={`${formatCompact(bonusKPIs.totalBonusBalance)}`} subtitle="Across all users" change={-4.2} changeLabel="vs last month" icon={<Percent size={18} />} accent="amber" />
-        <KpiCard title="Freebets Issued" value={formatCompact(bonusKPIs.freebetsIssued)} subtitle={`${freebetUsageRate}% usage rate`} icon={<Ticket size={18} />} accent="teal" />
-        <KpiCard title="Avg Bonus / User" value={`${bonusKPIs.avgBonusPerUser.toFixed(1)}`} subtitle="Per active user" change={2.1} changeLabel="vs last month" icon={<Users size={18} />} accent="green" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+        <KpiCard title="Average Daily Unique Bonus Users" value={formatNumber(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
+        <KpiCard title="Total Bonuses Credited" value={`${formatCompact(bonusCards.totalBonusesCredited)}`} subtitle="Total credited in selected range" change={-4.2} changeLabel="vs last month" icon={<Percent size={18} />} accent="amber" />
+        <KpiCard title="Est. Total Bonuses per User" value={formatCompact(bonusCards.estTotalBonusesPerUser)} subtitle="Sum of daily bonus-per-user values" icon={<Ticket size={18} />} accent="teal" />
+        <KpiCard title="Average Daily Bonus per User" value={`${bonusCards.averageDailyBonusPerUser.toFixed(1)}`} subtitle="Mean of daily credited/user" change={2.1} changeLabel="vs last month" icon={<Users size={18} />} accent="green" />
+        <KpiCard title="Bonuses Paid - Total Count" value={formatCompact(bonusCards.bonusesPaidTotalCount)} subtitle="Total bonus count in selected range" icon={<Gift size={18} />} accent="gold" />
       </div>
 
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active={!liveBonusKPIs} badge label="Mock Data" />
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Freebet Funnel</h3>
           <p className="text-xs text-white/40 mb-4">Issued → Used → Expired</p>
           <div className="space-y-4">
