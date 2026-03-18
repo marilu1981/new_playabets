@@ -42,6 +42,7 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CH
 export default function CasinoPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveCasinoKPIs, setLiveCasinoKPIs] = useState<typeof baseCasinoKPIs | null>(null);
+  const [liveCasinoProviders, setLiveCasinoProviders] = useState<typeof baseCasinoProviders | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -65,13 +66,34 @@ export default function CasinoPage() {
         });
       })
       .catch(() => setLiveCasinoKPIs(null));
+
+    fetchJson<{ providers?: Array<{ provider?: string; provider_name?: string; casinoType?: string; casino_type?: string; bets?: number; stake?: number; winnings?: number; profit?: number; ggr?: number }> }>(
+      `/casino/providers?${query}`
+    )
+      .then((d) => {
+        const providers = (d.providers ?? [])
+          .map((row) => ({
+            provider: String(row.provider ?? row.provider_name ?? "Unknown"),
+            casinoType: String(row.casinoType ?? row.casino_type ?? "Casino"),
+            bets: Number(row.bets ?? 0),
+            stake: Number(row.stake ?? 0),
+            winnings: Number(row.winnings ?? 0),
+            profit: Number(row.profit ?? row.ggr ?? (Number(row.stake ?? 0) - Number(row.winnings ?? 0))),
+          }))
+          .filter((row) => row.stake !== 0 || row.winnings !== 0 || row.profit !== 0 || row.bets !== 0);
+
+        setLiveCasinoProviders(providers.length > 0 ? providers : null);
+      })
+      .catch(() => setLiveCasinoProviders(null));
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const casinoProviders = useMemo(
-    () =>
-      scaleArrayNumericFields(baseCasinoProviders, multiplier, ["provider", "casinoType"]),
-    [multiplier],
+    () => {
+      if (liveCasinoProviders) return liveCasinoProviders;
+      return scaleArrayNumericFields(baseCasinoProviders, multiplier, ["provider", "casinoType"]);
+    },
+    [liveCasinoProviders, multiplier],
   );
   const casinoKPIs = useMemo(() => {
     // Use live KPIs if available, otherwise fall back to scaled mock
@@ -105,7 +127,7 @@ export default function CasinoPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Provider bar chart */}
         <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active={!liveCasinoKPIs} badge label="Mock Data" />
+          <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
           <p className="text-xs text-white/40 mb-4">Gross profit per casino provider</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -121,7 +143,7 @@ export default function CasinoPage() {
 
         {/* Provider share pie */}
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
+          <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
           <p className="text-xs text-white/40 mb-4">By provider</p>
           <ResponsiveContainer width="100%" height={150}>
@@ -150,7 +172,7 @@ export default function CasinoPage() {
 
       {/* Provider table */}
       <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <MockOverlay active badge label="Mock Data" />
+        <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">Provider Detail</h3>
         <p className="text-xs text-white/40 mb-4">view_CasinoBets — all providers</p>
         <div className="overflow-x-auto">

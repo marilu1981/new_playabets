@@ -19,7 +19,7 @@ from .io_utils import read_all_parquets
 from .transactions_kpi import compute_transactions_daily
 from .bonus_kpis import compute_bonus_daily
 from .ftd_kpis import compute_ftd_daily
-from .casino_kpis import compute_casino_daily
+from .casino_kpis import compute_casino_daily, compute_casino_provider_daily
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RAW = PROJECT_ROOT / "data" / "raw"
@@ -77,13 +77,18 @@ def main() -> None:
     casino_dir = RAW / "casino"
     if casino_dir.exists():
         casino_raw = read_all_parquets(casino_dir, "casino_increment_*.parquet")
-        out = SERVING / "casino_daily.parquet"
         if casino_raw.empty:
-            print("[domain_kpis] Casino raw is empty - keeping existing serving file")
+            print("[domain_kpis] Casino raw is empty - keeping existing serving files")
         else:
+            out = SERVING / "casino_daily.parquet"
             casino_daily = compute_casino_daily(casino_raw)
             casino_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] Casino daily: {len(casino_daily)} rows -> {out}")
+
+            providers_out = SERVING / "casino_providers_daily.parquet"
+            casino_providers_daily = compute_casino_provider_daily(casino_raw)
+            casino_providers_daily.to_parquet(providers_out, index=False)
+            print(f"[domain_kpis] Casino providers daily: {len(casino_providers_daily)} rows -> {providers_out}")
     else:
         print("[domain_kpis] No casino raw dir - skipping")
 

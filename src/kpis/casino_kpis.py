@@ -104,6 +104,65 @@ def compute_casino_by_provider(casino: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values("ggr", ascending=False)
 
 
+def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
+    """Daily provider-level casino metrics for range-filtered dashboard charts."""
+    if casino.empty:
+        return pd.DataFrame(
+            columns=["date", "provider_name", "casino_type", "stake", "winnings", "ggr", "bets"]
+        )
+
+    casino, ccol = normalize_cols(casino)
+    cols = ensure_cols(
+        ccol,
+        required_lower=["placementdate", "stake", "winnings"],
+        context="Casino provider daily",
+    )
+
+    provider_col = ccol.get("providername") or ccol.get("bookmakerprovider_name") or ccol.get("providerid")
+    if not provider_col:
+        return pd.DataFrame(
+            columns=["date", "provider_name", "casino_type", "stake", "winnings", "ggr", "bets"]
+        )
+
+    type_col = ccol.get("casinotype") or ccol.get("casinotypeid")
+    date_c = cols["placementdate"]
+    stake = cols["stake"]
+    winnings = cols["winnings"]
+    bets_col = ccol.get("betsnumber")
+
+    casino_id_col = ccol.get("casinoid")
+    if casino_id_col:
+        order_col = ccol.get("__cursor__") or ccol.get("insertdate") or date_c
+        casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
+        casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
+
+    casino["provider_name"] = casino[provider_col].astype(str)
+    casino["casino_type"] = casino[type_col].astype(str) if type_col else "Casino"
+    casino["stake_num"] = to_num(casino[stake], default=0.0)
+    casino["winnings_num"] = to_num(casino[winnings], default=0.0)
+    casino["casino_date"] = to_date(casino[date_c])
+
+    agg: dict = {
+        "stake": ("stake_num", "sum"),
+        "winnings": ("winnings_num", "sum"),
+    }
+    if bets_col:
+        casino["bets_num"] = to_num(casino[bets_col], default=0.0)
+        agg["bets"] = ("bets_num", "sum")
+
+    out = (
+        casino.dropna(subset=["casino_date"])
+        .groupby(["casino_date", "provider_name", "casino_type"])
+        .agg(**agg)
+        .reset_index()
+        .rename(columns={"casino_date": "date"})
+    )
+    out["ggr"] = out["stake"] - out["winnings"]
+    if "bets" not in out.columns:
+        out["bets"] = 0
+    return out.sort_values(["date", "ggr"], ascending=[True, False])
+
+
 def compute_casino_by_type(casino: pd.DataFrame) -> pd.DataFrame:
     """Aggregate casino metrics grouped by CasinoType."""
     if casino.empty:

@@ -10,9 +10,10 @@ Run from the project root:
 """
 from __future__ import annotations
 
-from datetime import datetime, UTC
 from pathlib import Path
 from time import perf_counter
+
+from datetime import datetime, UTC, timedelta
 
 import pandas as pd
 from pandas.errors import DatabaseError
@@ -22,10 +23,33 @@ from src.extract.db_utils import build_engine
 
 VIEW_NAME = "Dwh_en.view_transactions"
 START_DATE = "2026-03-15"
-END_DATE = "2026-03-16" # e.g. "2026-03-16"
+END_DATE = "2026-03-16"
+RUN_DAY_BY_DAY = True
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = PROJECT_ROOT / "data" / "raw" / "transactions"
+
+def _parse_date(value: str) -> datetime:
+    return datetime.strptime(value, "%Y-%m-%d")
+
+
+def _windows() -> list[tuple[str, str | None]]:
+    if not END_DATE:
+        return [(START_DATE, None)]
+    if not RUN_DAY_BY_DAY:
+        return [(START_DATE, END_DATE)]
+
+    start = _parse_date(START_DATE)
+    end = _parse_date(END_DATE)
+    windows: list[tuple[str, str | None]] = []
+    current = start
+    while current < end:
+        nxt = current + timedelta(days=1)
+        windows.append((current.strftime("%Y-%m-%d"), nxt.strftime("%Y-%m-%d")))
+        current = nxt
+    return windows
+
 
 
 def _log(msg: str) -> None:
@@ -41,91 +65,96 @@ def _describe_db_error(step: str, exc: Exception) -> None:
         _log(f"{step} lost the SQL connection. Try again later or reduce the date window.")
     else:
         _log(f"{step} failed with a database error.")
-
-
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     _log(f"Start date: {START_DATE}")
     if END_DATE:
         _log(f"End date: {END_DATE}")
-
-    if END_DATE:
-        id_range_query = text(f"""
-            SELECT
-                MinID = MIN(TransactionID),
-                MaxID = MAX(TransactionID)
-            FROM {VIEW_NAME}
-            WHERE Date >= :start_date
-              AND Date < :end_date
-        """)
-        range_params = {"start_date": START_DATE, "end_date": END_DATE}
-    else:
-        id_range_query = text(f"""
-            SELECT
-                MinID = MIN(TransactionID),
-                MaxID = MAX(TransactionID)
-            FROM {VIEW_NAME}
-            WHERE Date >= :start_date
-        """)
-        range_params = {"start_date": START_DATE}
-
-    aggregate_query = text(f"""
-        SELECT
-            CAST(Date AS DATE) AS tx_date,
-            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
-            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
-            COUNT(DISTINCT UserID) AS unique_depositors
-        FROM {VIEW_NAME}
-        WHERE TransactionID BETWEEN :min_id AND :max_id
-        GROUP BY CAST(Date AS DATE)
-        ORDER BY tx_date DESC
-    """)
-
-    count_query = text(f"""
-        SELECT COUNT(*) AS row_count
-        FROM {VIEW_NAME}
-        WHERE TransactionID BETWEEN :min_id AND :max_id
-    """)
+    if RUN_DAY_BY_DAY and END_DATE:
+        _log("Day-by-day mode: enabled")
 
     engine = build_engine()
+    frames: list[pd.DataFrame] = []
     try:
         with engine.connect() as conn:
             t0 = perf_counter()
-            _log("Step 1/3: Querying TransactionID bounds...")
-            id_range = pd.read_sql(id_range_query, conn, params=range_params)
-            _log(f"Step 1/3 complete in {perf_counter() - t0:.1f}s")
 
-            if id_range.empty:
-                _log("No ID range result returned.")
-                return
-            min_id = id_range.loc[0, "MinID"]
-            max_id = id_range.loc[0, "MaxID"]
-            if pd.isna(min_id) or pd.isna(max_id):
-                _log("No data in selected window (min/max TransactionID is NULL).")
-                return
+            for idx, (window_start, window_end) in enumerate(_windows(), start=1):
+                if window_end:
+                    _log(f"Window {idx}: {window_start} -> {window_end}")
+                    aggregate_query = text(f"""
+                        WITH IdRange AS (
+                            SELECT
+                                MinID = MIN(TransactionID),
+                                MaxID = MAX(TransactionID)
+                            FROM {VIEW_NAME}
+                            WHERE Date >= :start_date
+                              AND Date < :end_date
+                        )
+                        SELECT
+                            CAST(Date AS DATE) AS tx_date,
+                            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
+                            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
+                            COUNT(DISTINCT UserID) AS unique_depositors
+                        FROM {VIEW_NAME}
+                        CROSS JOIN IdRange
+                        WHERE TransactionID BETWEEN IdRange.MinID AND IdRange.MaxID
+                        GROUP BY CAST(Date AS DATE)
+                        ORDER BY tx_date DESC
+                    """)
+                    params = {"start_date": window_start, "end_date": window_end}
+                else:
+                    _log(f"Window {idx}: {window_start}+")
+                    aggregate_query = text(f"""
+                        WITH IdRange AS (
+                            SELECT
+                                MinID = MIN(TransactionID),
+                                MaxID = MAX(TransactionID)
+                            FROM {VIEW_NAME}
+                            WHERE Date >= :start_date
+                        )
+                        SELECT
+                            CAST(Date AS DATE) AS tx_date,
+                            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
+                            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
+                            COUNT(DISTINCT UserID) AS unique_depositors
+                        FROM {VIEW_NAME}
+                        CROSS JOIN IdRange
+                        WHERE TransactionID BETWEEN IdRange.MinID AND IdRange.MaxID
+                        GROUP BY CAST(Date AS DATE)
+                        ORDER BY tx_date DESC
+                    """)
+                    params = {"start_date": window_start}
+                t0 = perf_counter()
+                _log("Running aggregate CTE query...")
+                window_df = pd.read_sql(aggregate_query, conn, params=params)
+                _log(f"Window {idx} complete in {perf_counter() - t0:.1f}s | rows: {len(window_df)}")
+                if not window_df.empty:
+                    frames.append(window_df)
 
-            _log(f"ID range: {min_id} -> {max_id}")
-
-            t1 = perf_counter()
-            _log("Step 2/3: Counting rows in ID range...")
-            count_df = pd.read_sql(count_query, conn, params={"min_id": min_id, "max_id": max_id})
-            row_count = int(count_df.loc[0, "row_count"]) if not count_df.empty else 0
-            _log(f"Step 2/3 complete in {perf_counter() - t1:.1f}s | rows: {row_count}")
-
-            t2 = perf_counter()
-            _log("Step 3/3: Running aggregate query...")
-            df = pd.read_sql(aggregate_query, conn, params={"min_id": min_id, "max_id": max_id})
-            _log(f"Step 3/3 complete in {perf_counter() - t2:.1f}s")
     except DatabaseError as exc:
         _describe_db_error("Transaction simple extract", exc)
         raise
 
-    _log(f"Rows pulled: {len(df)}")
-    if df.empty:
+    if not frames:
         _log("No data in this date window.")
         return
 
+    df = pd.concat(frames, ignore_index=True)
+    df = (
+        df.groupby("tx_date", as_index=False)
+        .agg(
+            total_deposits=("total_deposits", "sum"),
+            total_withdrawals=("total_withdrawals", "sum"),
+            unique_depositors=("unique_depositors", "max"),
+        )
+        .sort_values("tx_date", ascending=False)
+    )
+
+    _log(f"Rows pulled: {len(df)}")
+
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+
     out_file = OUT_DIR / f"transactions_simple_daily_{ts}.parquet"
     df.to_parquet(out_file, index=False)
     _log(f"Saved to {out_file}")

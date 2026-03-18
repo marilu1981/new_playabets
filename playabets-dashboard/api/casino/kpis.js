@@ -14,14 +14,19 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
     const rows = await supaQuery("casino_daily", { filters });
-    const ggr = sum(rows, "ggr");
+    const stake = sum(rows, "casino_stake");
+    const winnings = sum(rows, "casino_winnings");
+    const ggr = sum(rows, "casino_ggr");
+    const bets = sum(rows, "casino_bets");
+    const actives = sum(rows, "casino_actives");
     return res.status(200).json({
-      rounds:       sum(rows, "rounds"),
-      actives:      sum(rows, "actives"),
-      turnover:     sum(rows, "turnover"),
-      winnings:     sum(rows, "winnings"),
+      stake,
+      turnover:     stake,
+      winnings,
       ggr,
-      hold_pct:     rows.length > 0 ? (ggr / Math.max(sum(rows, "turnover"), 1)) * 100 : 0,
+      bets,
+      actives,
+      hold_pct:     rows.length > 0 ? (ggr / Math.max(stake, 1)) * 100 : 0,
     });
   } catch (err) {
     console.error("[/api/casino/kpis]", err);
