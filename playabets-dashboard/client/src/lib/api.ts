@@ -12,7 +12,7 @@
  *
  * To point at the live DWH backend (requires VPN):
  *   1. Connect to the Playa Bets VPN
- *   2. Set VITE_API_BASE_URL to the DWH API endpoint (see build.md)
+ *   2. Set VITE_API_BASE_URL to the DWH API endpoint (see docs/dashboard-build-tracker.md)
  *
  * ARCHITECTURE:
  *   Frontend → Vercel API routes (/api/*) → Supabase → pre-loaded parquet data
