@@ -114,21 +114,21 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { path: "/users", label: "Players Breakdown", icon: Users },
       { path: "/betting", label: "Betting & Events", icon: TrendingUp },
-      { path: "/transactions", label: "Transactions", icon: DollarSign, disabled: true },
+      { path: "/transactions", label: "Transactions", icon: DollarSign },
     ],
   },
   {
     label: "Products",
     items: [
-      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL, disabled: true },
-      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift, disabled: true },
+      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
+      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
     ],
   },
   {
     label: "Governance",
     items: [
-      { path: "/compliance", label: "Compliance & Audit", icon: ShieldCheck, disabled: true },
-      { path: "/hierarchy", label: "Hierarchy & Roles", icon: Network, disabled: true },
+      { path: "/compliance", label: "Compliance & Audit", icon: ShieldCheck },
+      { path: "/hierarchy", label: "Hierarchy & Roles", icon: Network },
     ],
   },
 ];

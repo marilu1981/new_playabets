@@ -10,6 +10,7 @@ import { cachedFetch } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
+import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 
 import {
@@ -119,12 +120,6 @@ export default function BettingPage() {
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      {/* MOCK DATA ONLY banner */}
-      <div className="w-full mb-5 rounded-xl px-6 py-4" style={{ background: "oklch(0.22 0.08 50 / 0.9)", border: "2px solid oklch(0.72 0.14 85 / 0.6)" }}>
-        <p className="text-center font-bold tracking-widest uppercase" style={{ color: "oklch(0.72 0.14 85)", fontSize: "1rem", letterSpacing: "0.15em" }}>
-          ⚠ MOCK DATA ONLY — Betting &amp; Events data not yet connected
-        </p>
-      </div>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
@@ -136,7 +131,8 @@ export default function BettingPage() {
       {/* Betslip breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* By Status */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={dataMode === "mock"} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Status</h3>
           <p className="text-xs text-white/40 mb-4">view_Betslips — BetslipStatusId</p>
           <div className="space-y-2">
@@ -158,7 +154,8 @@ export default function BettingPage() {
         </div>
 
         {/* By Type (Normal/Live/Mixed) */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Betslip Type</h3>
           <p className="text-xs text-white/40 mb-4">Normal / Live / Mixed</p>
           <ResponsiveContainer width="100%" height={150}>
@@ -183,7 +180,8 @@ export default function BettingPage() {
         </div>
 
         {/* By Bet Type (Single/Multiple) */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Bet Type</h3>
           <p className="text-xs text-white/40 mb-4">Single / Multiple / Combined</p>
           <div className="space-y-3">
@@ -211,7 +209,8 @@ export default function BettingPage() {
 
       {/* Top Sports */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Top Sports by Stake</h3>
           <p className="text-xs text-white/40 mb-4">Total stake by sport</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -225,7 +224,8 @@ export default function BettingPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Sport Revenue Table</h3>
           <p className="text-xs text-white/40 mb-4">Bets, stake, and gross revenue per sport</p>
           <div className="overflow-x-auto">
@@ -258,7 +258,8 @@ export default function BettingPage() {
       </div>
 
       {/* Event Program */}
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">Event Program</h3>
         <p className="text-xs text-white/40 mb-4">view_EventProgram — upcoming and live events</p>
         <div className="overflow-x-auto">

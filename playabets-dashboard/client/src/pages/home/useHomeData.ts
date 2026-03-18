@@ -35,6 +35,15 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
   const [liveUsersByStatus, setLiveUsersByStatus] = useState<Array<{ status: string; count: number }> | null>(null);
+  const [liveSegmentTrend, setLiveSegmentTrend] = useState<Array<{
+    date: string;
+    Champions: number;
+    Loyal: number;
+    "Big Spenders": number;
+    Mid: number;
+    "At Risk": number;
+    Dormant: number;
+  }> | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
@@ -467,6 +476,18 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       };
       if (rfmSegmentsRes.status === "fulfilled") {
         const rfmRows = rfmSegmentsRes.value.rows ?? [];
+        const trendRows = rfmRows
+          .filter((r) => Object.keys(segmentLabels).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
+          .sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")))
+          .map((row) => ({
+            date: String(row.date ?? ""),
+            Champions: Number(row.rfm_champions ?? 0),
+            Loyal: Number(row.rfm_loyal ?? 0),
+            "Big Spenders": Number(row.rfm_big_spenders ?? 0),
+            Mid: Number(row.rfm_mid ?? 0),
+            "At Risk": Number(row.rfm_at_risk ?? 0),
+            Dormant: Number(row.rfm_dormant ?? 0),
+          }));
         const latestRow = rfmRows
           .filter((r) => Object.keys(segmentLabels).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
           .sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -482,13 +503,28 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           const total = segments.reduce((sum, s) => sum + s.count, 0) || 1;
           const withPct = segments.map((s) => ({ ...s, pct: Number(((s.count / total) * 100).toFixed(1)) }));
           setLiveSegmentDistribution(withPct);
+          setLiveSegmentTrend(
+            trendRows.length > 0
+              ? trendRows
+              : [{
+                  date: String(latestRow.date ?? ""),
+                  Champions: Number(latestRow.rfm_champions ?? 0),
+                  Loyal: Number(latestRow.rfm_loyal ?? 0),
+                  "Big Spenders": Number(latestRow.rfm_big_spenders ?? 0),
+                  Mid: Number(latestRow.rfm_mid ?? 0),
+                  "At Risk": Number(latestRow.rfm_at_risk ?? 0),
+                  Dormant: Number(latestRow.rfm_dormant ?? 0),
+                }]
+          );
           setHasSegmentData(true);
         } else {
           setLiveSegmentDistribution(null);
+          setLiveSegmentTrend(null);
           setHasSegmentData(false);
         }
       } else {
         setLiveSegmentDistribution(null);
+        setLiveSegmentTrend(null);
         setHasSegmentData(false);
       }
     }
@@ -532,6 +568,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
+    liveSegmentTrend,
     hasTransactionsData,
     hasBetslipStatusData,
     hasUserStatusData,

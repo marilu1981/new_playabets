@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
+import MockOverlay from "@/components/MockOverlay";
 import { Network, Users, UserCheck, TrendingUp } from "lucide-react";
 import {
   hierarchySummary as baseHierarchySummary,
@@ -60,7 +61,8 @@ export default function HierarchyPage() {
 
       {/* Hierarchy tree */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Hierarchy Structure</h3>
           <p className="text-xs text-white/40 mb-6">view_Hierarchy — role levels</p>
           <div className="space-y-3">
@@ -93,7 +95,8 @@ export default function HierarchyPage() {
         </div>
 
         {/* Role permissions overview */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Role Permissions Matrix</h3>
           <p className="text-xs text-white/40 mb-4">view_UserRoles — access levels</p>
           <div className="overflow-x-auto">
@@ -136,7 +139,8 @@ export default function HierarchyPage() {
       </div>
 
       {/* Top agents table */}
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">Top Agents by Network Size</h3>
         <p className="text-xs text-white/40 mb-4">view_Hierarchy — agents with most direct users</p>
         <div className="overflow-x-auto">

@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
+import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 import { ShieldCheck, AlertTriangle, UserX, Clock } from "lucide-react";
 import {
@@ -75,7 +76,8 @@ export default function CompliancePage() {
       {/* Self-exclusion detail + Import status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Self-exclusion by period */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion by Period</h3>
           <p className="text-xs text-white/40 mb-4">view_UsersSelfexclusions — active exclusions</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -104,7 +106,8 @@ export default function CompliancePage() {
         </div>
 
         {/* AML / Compliance flags */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Compliance Flags</h3>
           <p className="text-xs text-white/40 mb-4">AML alerts and flagged transactions</p>
           <div className="space-y-3">
@@ -129,7 +132,8 @@ export default function CompliancePage() {
       </div>
 
       {/* DWH Import Status */}
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">DWH Import Status</h3>
         <p className="text-xs text-white/40 mb-4">view_ImportStatus — ETL pipeline health</p>
         <div className="overflow-x-auto">

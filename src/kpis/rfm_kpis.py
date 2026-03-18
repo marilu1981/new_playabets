@@ -13,24 +13,43 @@ class RFMWindow:
     recency_cap_days: int = 365  # cap recency to avoid huge outliers
 
 
-def _score_quantiles(series: pd.Series, ascending: bool, labels=(1, 2, 3, 4, 5)) -> pd.Series:
+def _score_quantiles(
+    series: pd.Series,
+    ascending: bool,
+    labels=(1, 2, 3, 4, 5),
+    zero_is_lowest: bool = False,
+) -> pd.Series:
     """
     Return 1..5 score based on quintiles.
     For recency: smaller is better => ascending=True.
     For frequency/monetary: larger is better => ascending=False.
     """
-    s = series.copy()
-    # handle constant/empty
-    if s.nunique(dropna=True) <= 1:
-        return pd.Series([3] * len(s), index=s.index, dtype=int)
+    s = pd.to_numeric(series.copy(), errors="coerce")
+    scores = pd.Series(3, index=s.index, dtype=int)
 
-    # rank first to reduce ties issues
-    ranks = s.rank(method="first", ascending=ascending)
+    if zero_is_lowest:
+        zero_mask = s.fillna(0) <= 0
+        scores.loc[zero_mask] = 1
+        s = s.loc[~zero_mask]
+
+    # handle constant/empty after removing forced-low rows
+    if s.empty:
+        return scores
+    if s.nunique(dropna=True) <= 1:
+        fill_score = 5 if (not ascending and s.iloc[0] > 0) else 3
+        scores.loc[s.index] = fill_score
+        return scores
+
+    # use average rank so ties stay together instead of being split arbitrarily
+    ranks = s.rank(method="average", ascending=ascending)
     try:
-        return pd.qcut(ranks, 5, labels=labels).astype(int)
+        scored = pd.qcut(ranks, 5, labels=labels).astype(int)
     except ValueError:
         # if qcut fails due to duplicates, fallback to cut on ranks
-        return pd.cut(ranks, bins=5, labels=labels, include_lowest=True).astype(int)
+        scored = pd.cut(ranks, bins=5, labels=labels, include_lowest=True).astype(int)
+
+    scores.loc[scored.index] = scored
+    return scores
 
 
 def build_rfm_users(
@@ -235,8 +254,8 @@ def build_rfm_users(
 
     # Scores
     rfm["r_score"] = _score_quantiles(rfm["recency_days"], ascending=True)
-    rfm["f_score"] = _score_quantiles(rfm["frequency_30d"], ascending=False)
-    rfm["m_score"] = _score_quantiles(rfm["monetary_30d"], ascending=False)
+    rfm["f_score"] = _score_quantiles(rfm["frequency_30d"], ascending=False, zero_is_lowest=True)
+    rfm["m_score"] = _score_quantiles(rfm["monetary_30d"], ascending=False, zero_is_lowest=True)
 
     rfm["rfm_score"] = rfm["r_score"] * 100 + rfm["f_score"] * 10 + rfm["m_score"]
 

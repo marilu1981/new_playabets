@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
+import MockOverlay from "@/components/MockOverlay";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
@@ -103,7 +104,8 @@ export default function CasinoPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Provider bar chart */}
-        <div className="lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={!liveCasinoKPIs} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
           <p className="text-xs text-white/40 mb-4">Gross profit per casino provider</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -118,7 +120,8 @@ export default function CasinoPage() {
         </div>
 
         {/* Provider share pie */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
           <p className="text-xs text-white/40 mb-4">By provider</p>
           <ResponsiveContainer width="100%" height={150}>
@@ -146,7 +149,8 @@ export default function CasinoPage() {
       </div>
 
       {/* Provider table */}
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">Provider Detail</h3>
         <p className="text-xs text-white/40 mb-4">view_CasinoBets — all providers</p>
         <div className="overflow-x-auto">

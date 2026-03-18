@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
+import MockOverlay from "@/components/MockOverlay";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -75,7 +76,8 @@ export default function TransactionsPage() {
 
       {/* Transaction trend */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Deposits vs Withdrawals</h3>
           <p className="text-xs text-white/40 mb-4">Last 30 days daily flow</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -101,7 +103,8 @@ export default function TransactionsPage() {
         </div>
 
         {/* Net flow */}
-        <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Net Cash Flow</h3>
           <p className="text-xs text-white/40 mb-4">Daily net (Deposits - Withdrawals)</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -117,7 +120,8 @@ export default function TransactionsPage() {
       </div>
 
       {/* Transaction by reason */}
-      <div className="rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-white mb-1">Transactions by Reason</h3>
         <p className="text-xs text-white/40 mb-4">view_Transactions — TransactionReasonId breakdown</p>
         <div className="overflow-x-auto">

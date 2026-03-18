@@ -103,6 +103,7 @@ export default function Home() {
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
+    liveSegmentTrend,
     hasTransactionsData,
     hasBetslipStatusData,
     hasUserStatusData,
@@ -731,9 +732,9 @@ export default function Home() {
   }, [revenueMetricsTrend, revenueTrend]);
   const segmentDistribution = useMemo(() => {
     const source = liveSegmentDistribution ?? baseSegmentDistribution;
-    const filtered = source.filter((row) =>
-      matchesRowFilters(filters, { segment: row.segment }),
-    );
+    const filtered = liveSegmentDistribution
+      ? source
+      : source.filter((row) => matchesRowFilters(filters, { segment: row.segment }));
     const scaled = liveSegmentDistribution
       ? filtered  // live data is already computed — don't scale with mock multiplier
       : scaleArrayNumericFields(filtered, multiplier, ["segment", "color", "pct"]);
@@ -800,6 +801,14 @@ export default function Home() {
     return scaleArrayNumericFields(filtered, multiplier, ["name", "territory", "pct"]);
   }, [filters, multiplier]);
   const trendBySegment = useMemo(() => {
+    if (liveSegmentTrend && liveSegmentTrend.length > 0) {
+      const filtered = filterByDateRange(liveSegmentTrend, filters, (row) => row.date);
+      const scaled = scaleArrayNumericFields(filtered, multiplier, ["date"]);
+      return aggregateByGranularity(scaled, filters.granularity, (row) => row.date, {
+        labelKey: "date",
+        fallbackYear,
+      });
+    }
     const monthFiltered = filterMonthRows(baseTrendBySegment, filters, (row) => row.month, fallbackYear);
     const scaled = scaleArrayNumericFields(monthFiltered, multiplier, ["month"]);
     return scaled.map((row) => {
@@ -814,7 +823,7 @@ export default function Home() {
       }
       return out;
     });
-  }, [fallbackYear, filters, multiplier]);
+  }, [fallbackYear, filters, liveSegmentTrend, multiplier]);
   const dailyTrendWithMA = useMemo(() => {
     const base =
       sourceRevenueMetricsTrend.length > 0
@@ -1157,10 +1166,10 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Segment Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
+          <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">TBC — RFM Segments</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending live RFM" : "Live RFM snapshot"}</p>
             <p className="text-xs text-white/40">RFM analysis will categorise players into: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
           </div>
           <div className="flex items-center gap-4">
@@ -1200,7 +1209,7 @@ export default function Home() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={depositWithdrawalFlow} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey={liveSegmentTrend && liveSegmentTrend.length > 0 ? "date" : "month"} tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
                 <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
@@ -1218,9 +1227,9 @@ export default function Home() {
 
       {/* ── SEGMENT PERFORMANCE KPI ROW ─────────────────────────────────── */}
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
-        <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
+        <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">TBC — RFM Segments: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
             <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
@@ -1275,14 +1284,14 @@ export default function Home() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Trend by Segment */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={true} label="RFM Pending" description="TBC — RFM Segments" />
+          <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment trend pending" />
           <div className="mb-4 flex items-center justify-between">
             <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Trend by Segment</h3>
-            <p className="text-xs text-white/40">{granularityLabel} GGR by segment — Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
+            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>RFM Trend by Segment</h3>
+            <p className="text-xs text-white/40">{granularityLabel} active users by RFM segment — Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
-              Segment filters applied
+              Live RFM
             </span>
           </div>
           {trendBySegment.length > 0 ? (
@@ -1293,10 +1302,23 @@ export default function Home() {
                 <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
                 <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                <Bar dataKey="VIP"  fill={CHART_COLORS.gold}  stackId="a" radius={[0,0,0,0]} />
-                <Bar dataKey="PVIP" fill={CHART_COLORS.teal}  stackId="a" radius={[0,0,0,0]} />
-                <Bar dataKey="Mass" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
-                <Bar dataKey="Mix"  fill={CHART_COLORS.amber} stackId="a" radius={[2,2,0,0]} />
+                {liveSegmentTrend && liveSegmentTrend.length > 0 ? (
+                  <>
+                    <Bar dataKey="Champions" fill={CHART_COLORS.gold} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Loyal" fill={CHART_COLORS.teal} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Big Spenders" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Mid" fill={CHART_COLORS.amber} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="At Risk" fill={CHART_COLORS.red} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Dormant" fill="oklch(0.45 0.05 0)" stackId="a" radius={[2,2,0,0]} />
+                  </>
+                ) : (
+                  <>
+                    <Bar dataKey="VIP"  fill={CHART_COLORS.gold}  stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="PVIP" fill={CHART_COLORS.teal}  stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Mass" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Mix"  fill={CHART_COLORS.amber} stackId="a" radius={[2,2,0,0]} />
+                  </>
+                )}
               </BarChart>
             </ResponsiveContainer>
           ) : (
