@@ -46,6 +46,7 @@ import {
   trendBySegment as baseTrendBySegment,
   dailyTrendWithMA as baseDailyTrendWithMA,
   detailedBreakdown as baseDetailedBreakdown,
+  complianceKPIs as baseComplianceKPIs,
 } from "@/lib/mockData";
 import { formatCompact, formatNumber } from "@/lib/formatters";
 import {
@@ -900,6 +901,10 @@ export default function Home() {
   const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
   const periodConvRate =
     kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
+  const complianceAlerts = useMemo(
+    () => scaleObjectNumericFields(baseComplianceKPIs, multiplier),
+    [multiplier],
+  );
 
   const fromDt = parseIsoDate(filters.dateFrom);
   const toDt = parseIsoDate(filters.dateTo);
@@ -1049,6 +1054,18 @@ export default function Home() {
       </div>
 
       {/* ── REVENUE TRENDS — GGR/NGR/TURNOVER TOGGLE ────────────────────── */}
+      <div className="relative rounded-xl p-5 mb-6" style={CARD_BG}>
+        <MockOverlay active badge label="Pending Data" />
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Alerts & Flags</h3>
+          <p className="text-xs text-white/40">Compliance and transaction alerts to fold into the daily monitor</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <KpiCard title="AML Alerts" value={formatCompact(complianceAlerts.amlAlerts)} subtitle="Pending live compliance feed" icon={<Activity size={18} />} accent="red" loading={isLoading} />
+          <KpiCard title="Flagged Transactions" value={formatCompact(complianceAlerts.flaggedTransactions)} subtitle="Pending live transaction-risk feed" icon={<Zap size={18} />} accent="amber" loading={isLoading} />
+        </div>
+      </div>
+
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
           <div>

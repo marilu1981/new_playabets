@@ -26,8 +26,6 @@ COLUMNS = [
     "CampaignID",
     "UserID",
     "LastModifiedDate",
-    "ManagerID",
-    "ManagerSessionID",
 ]
 
 OUT_DIR = raw_dir("bonus")

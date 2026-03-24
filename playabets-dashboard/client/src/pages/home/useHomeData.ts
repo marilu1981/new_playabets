@@ -97,13 +97,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         start: filters.dateFrom,
         end: filters.dateTo,
       });
-      if (filters.brand !== "all") params.set("brand", filters.brand);
       if (filters.territory !== "all") params.set("territory", filters.territory);
       if (filters.country !== "all") params.set("country", filters.country);
-      if (filters.trafficSource !== "all") params.set("traffic_source", filters.trafficSource);
-      if (filters.affiliateId !== "all") params.set("affiliate_id", filters.affiliateId);
       if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
-      if (filters.customerStatus !== "all") params.set("customer_status", filters.customerStatus);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
 
@@ -543,13 +539,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     latestDataDate,
     filters.dateFrom,
     filters.dateTo,
-    filters.brand,
     filters.territory,
     filters.country,
-    filters.trafficSource,
-    filters.affiliateId,
     filters.currentSegment,
-    filters.customerStatus,
     filters.granularity,
   ]);
 

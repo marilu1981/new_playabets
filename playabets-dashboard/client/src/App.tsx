@@ -20,8 +20,6 @@ const UsersPage        = lazy(() => import("./pages/Users"));
 const BettingPage      = lazy(() => import("./pages/Betting"));
 const TransactionsPage = lazy(() => import("./pages/Transactions"));
 const CasinoPage       = lazy(() => import("./pages/Casino"));
-const CompliancePage   = lazy(() => import("./pages/Compliance"));
-const HierarchyPage    = lazy(() => import("./pages/Hierarchy"));
 const BonusPage        = lazy(() => import("./pages/Bonus"));
 const NotFound         = lazy(() => import("./pages/NotFound"));
 
@@ -56,8 +54,6 @@ function Router() {
         <Route path="/transactions" component={TransactionsPage} />
         <Route path="/casino"       component={CasinoPage} />
         <Route path="/bonus"        component={BonusPage} />
-        <Route path="/compliance"   component={CompliancePage} />
-        <Route path="/hierarchy"    component={HierarchyPage} />
         <Route path="/404"          component={NotFound} />
         <Route                      component={NotFound} />
       </Switch>

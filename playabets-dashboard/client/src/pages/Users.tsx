@@ -11,7 +11,7 @@ import StatusBadge from "@/components/StatusBadge";
 import MockOverlay from "@/components/MockOverlay";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
@@ -21,6 +21,7 @@ import {
   usersByCurrency as baseUsersByCurrency,
   recentSessions as baseRecentSessions,
   selfExclusionSummary as baseSelfExclusionSummary,
+  selfExclusionTrend as baseSelfExclusionTrend,
 } from "@/lib/mockData";
 import { formatNumber, formatCompact } from "@/lib/formatters";
 import {
@@ -231,13 +232,9 @@ export default function UsersPage() {
         start: filters.dateFrom,
         end: filters.dateTo,
       });
-      if (filters.brand !== "all") params.set("brand", filters.brand);
       if (filters.territory !== "all") params.set("territory", filters.territory);
       if (filters.country !== "all") params.set("country", filters.country);
-      if (filters.trafficSource !== "all") params.set("traffic_source", filters.trafficSource);
-      if (filters.affiliateId !== "all") params.set("affiliate_id", filters.affiliateId);
       if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
-      if (filters.customerStatus !== "all") params.set("customer_status", filters.customerStatus);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
       const [kpisRes, regsRes, statusRes, dailyRes, casinoRes] = await Promise.allSettled([
@@ -340,13 +337,9 @@ export default function UsersPage() {
     latestDataDate,
     filters.dateFrom,
     filters.dateTo,
-    filters.brand,
     filters.territory,
     filters.country,
-    filters.trafficSource,
-    filters.affiliateId,
     filters.currentSegment,
-    filters.customerStatus,
     filters.granularity,
   ]);
 
@@ -408,6 +401,13 @@ export default function UsersPage() {
       byPeriod: scaledByPeriod,
     };
   }, [multiplier]);
+  const selfExclusionTrend = useMemo(
+    () => {
+      const filtered = filterByDateRange(baseSelfExclusionTrend, filters, (row) => row.date, { fallbackYear });
+      return aggregateByGranularity(filtered, filters.granularity ?? "daily", (row) => row.date, { fallbackYear });
+    },
+    [fallbackYear, filters],
+  );
   const overviewKPIs = useMemo(() => {
     const totalUsers = usersByStatus.reduce((sum, row) => sum + row.count, 0);
     const activeUsers = usersByStatus.find((row) => row.status === "Enabled")?.count ?? 0;
@@ -419,7 +419,7 @@ export default function UsersPage() {
   }, [usersByStatus, liveOverview]);
   const totalUsersSafe = Math.max(1, overviewKPIs.totalUsers);
   const frozenUsers = usersByStatus.find((u) => u.status === "Frozen")?.count ?? 0;
-  const disabledUsers = usersByStatus.find((u) => u.status === "Disabled")?.count ?? 0;
+  const pendingKycUsers = usersByStatus.find((u) => u.status === "Be Validated")?.count ?? 0;
   const selfExclusionTotalSafe = Math.max(1, selfExclusionSummary.total);
 
   return (
@@ -433,13 +433,14 @@ export default function UsersPage() {
         {latestDataDate ? ` · Data through ${latestDataDate}` : ""}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
+        <KpiCard title="Frozen Accounts" value={formatCompact(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
+        <KpiCard title="Pending KYC" value={formatCompact(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
         <div className="relative">
-          <MockOverlay active badge label="Mock Data" />
-          <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle="Pending live self-exclusions" change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+          <MockOverlay active badge label="Pending Data" />
+          <KpiCard title="Self-Exclusions" value={formatCompact(selfExclusionSummary.total)} subtitle="Pending live self-exclusions" change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
         </div>
       </div>
 
@@ -502,7 +503,7 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
           <MockOverlay active={!liveStatusBreakdown} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-2">User Status Breakdown</h3>
@@ -532,7 +533,24 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
+          <MockOverlay active badge label="Pending Data" />
+          <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusions Over Time</h3>
+          <p className="text-xs text-white/40 mb-4">{granularityLabel} responsible-gaming trend</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={selfExclusionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} axisLine={false} tickLine={false} interval={0} />
+              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
+              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Line type="monotone" dataKey="active" name="Active" stroke={CHART_COLORS.red} strokeWidth={2.25} dot={false} />
+              <Line type="monotone" dataKey="started" name="Started" stroke={CHART_COLORS.gold} strokeWidth={1.75} dot={false} />
+              <Line type="monotone" dataKey="completed" name="Completed" stroke={CHART_COLORS.green} strokeWidth={1.75} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active badge label="Pending Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
           <p className="text-xs text-white/40 mb-4">Responsible gaming overview — mock data</p>
           <div className="grid grid-cols-3 gap-3 mb-4">

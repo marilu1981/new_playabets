@@ -66,6 +66,9 @@ export default function TransactionsPage() {
   return (
     <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+      <div className="text-xs text-white/50 mb-3">
+        Data mode: Mock / Pending
+      </div>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Deposits" value={`${formatCompact(transactionSummary.totalDeposits)}`} subtitle="All time" change={11.2} changeLabel="vs last month" icon={<ArrowUpCircle size={18} />} accent="green" />

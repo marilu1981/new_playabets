@@ -4,8 +4,8 @@
  * All controls share a standard width (140px dropdowns, 130px date inputs).
  * Labels sit in small caps above each control — no inline labels, no abbreviations.
  *
- * Row 1: Date From | Date To | Granularity | Brand | Territory | Country
- * Row 2: Traffic Source | Affiliate | User Segment | Customer Status | [Reset]
+ * Row 1: Date From | Date To | Granularity | Territory | Country
+ * Row 2: User Segment | [Reset]
  */
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -152,13 +152,9 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
   const resetTo = resetFilters ?? defaultFilters;
 
   const hasActiveFilters =
-    filters.brand !== "all" ||
     filters.territory !== "all" ||
     filters.country !== "all" ||
-    filters.trafficSource !== "all" ||
-    filters.affiliateId !== "all" ||
-    filters.currentSegment !== "all" ||
-    filters.customerStatus !== "all";
+    filters.currentSegment !== "all";
 
   return (
     <div className="flex flex-shrink-0" style={BAR_BG}>
@@ -231,22 +227,6 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
 
           <Divider />
 
-          <Field label="Brand (TBC)">
-            <select
-              value={filters.brand}
-              onChange={(e) => set("brand", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Brands</option>
-              <option value="playabets_ng">PlayaBets NG</option>
-              <option value="playabets_gh">PlayaBets GH</option>
-              <option value="playabets_zm">PlayaBets ZM</option>
-              <option value="playabets_ug">PlayaBets UG</option>
-              <option value="playabets_ke">PlayaBets KE</option>
-            </select>
-          </Field>
-
           <Field label="Territory (Confirm grouping)">
             <select
               value={filters.territory}
@@ -288,39 +268,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
           style={{ borderTop: "1px solid oklch(1 0 0 / 5%)" }}
         >
 
-          <Field label="Traffic Source (TBC)">
-            <select
-              value={filters.trafficSource}
-              onChange={(e) => set("trafficSource", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Sources</option>
-              <option value="organic">Organic</option>
-              <option value="paid">Paid</option>
-              <option value="affiliate">Affiliate</option>
-              <option value="direct">Direct</option>
-              <option value="social">Social</option>
-            </select>
-          </Field>
-
-          <Field label="Affiliate (TBC)">
-            <select
-              value={filters.affiliateId}
-              onChange={(e) => set("affiliateId", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Affiliates</option>
-              <option value="aff_001">Affiliate 001</option>
-              <option value="aff_002">Affiliate 002</option>
-              <option value="aff_003">Affiliate 003</option>
-            </select>
-          </Field>
-
-          <Divider />
-
-          <Field label="User Segment (TBC)">
+          <Field label="User Segment">
             <select
               value={filters.currentSegment}
               onChange={(e) => set("currentSegment", e.target.value)}
@@ -332,21 +280,6 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               <option value="PVIP">PVIP</option>
               <option value="Mass">Mass</option>
               <option value="Mix">Mix</option>
-            </select>
-          </Field>
-
-          <Field label="Customer Status">
-            <select
-              value={filters.customerStatus}
-              onChange={(e) => set("customerStatus", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="dormant">Dormant</option>
-              <option value="blocked">Blocked</option>
             </select>
           </Field>
 

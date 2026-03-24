@@ -18,8 +18,8 @@ from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
 VIEW_NAME     = "Dwh_en.view_casino"
 CURSOR_COLUMN = "InsertDate"
-FORCE_START_DATE = "2025-12-01 00:00:00" # inclusive
-FORCE_END_DATE = "2026-01-01 00:00:00" # exclusive
+FORCE_START_DATE = None # inclusive
+FORCE_END_DATE = None # exclusive
 UPDATE_WATERMARK_ON_BACKFILL = False
 
 COLUMNS = [

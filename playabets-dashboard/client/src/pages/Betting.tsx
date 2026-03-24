@@ -54,6 +54,13 @@ export default function BettingPage() {
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
   const [liveBetslipsByType, setLiveBetslipsByType] = useState<typeof baseBetslipsByType | null>(null);
+  const [liveSettlementMetrics, setLiveSettlementMetrics] = useState<{
+    settledCount: number;
+    wonCount: number;
+    cancelledCount: number;
+    cancelRate: number;
+    openExposureStake: number;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,8 +78,18 @@ export default function BettingPage() {
       fetchJson<Array<{ type?: string; typeId?: number | null; count?: number }>>(
         `/betting/betslips-by-type?${query}`
       ),
+      fetchJson<{
+        rows: Array<{
+          date: string;
+          open_exposure_stake?: number;
+          betslips_settled_count?: number;
+          betslips_won_count?: number;
+          betslips_cancelled_count?: number;
+          cancel_rate?: number;
+        }>;
+      }>(`/kpis/daily?${query}&metrics=open_exposure_stake,betslips_settled_count,betslips_won_count,betslips_cancelled_count,cancel_rate`),
     ])
-      .then(([kpisRes, statusRes, typeRes]) => {
+      .then(([kpisRes, statusRes, typeRes, settlementRes]) => {
         if (cancelled) {
           return;
         }
@@ -120,12 +137,40 @@ export default function BettingPage() {
         } else {
           setLiveBetslipsByType(null);
         }
+
+        if (settlementRes.status === "fulfilled") {
+          const rows = settlementRes.value.rows ?? [];
+          if (rows.length > 0) {
+            const totals = rows.reduce(
+              (acc, row) => ({
+                settledCount: acc.settledCount + Number(row.betslips_settled_count ?? 0),
+                wonCount: acc.wonCount + Number(row.betslips_won_count ?? 0),
+                cancelledCount: acc.cancelledCount + Number(row.betslips_cancelled_count ?? 0),
+                cancelRateSum: acc.cancelRateSum + Number(row.cancel_rate ?? 0),
+              }),
+              { settledCount: 0, wonCount: 0, cancelledCount: 0, cancelRateSum: 0 },
+            );
+            const latestRow = rows[rows.length - 1];
+            setLiveSettlementMetrics({
+              settledCount: totals.settledCount,
+              wonCount: totals.wonCount,
+              cancelledCount: totals.cancelledCount,
+              cancelRate: rows.length > 0 ? Number((totals.cancelRateSum / rows.length).toFixed(1)) : 0,
+              openExposureStake: Number(latestRow?.open_exposure_stake ?? 0),
+            });
+          } else {
+            setLiveSettlementMetrics(null);
+          }
+        } else {
+          setLiveSettlementMetrics(null);
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setLiveOverviewKPIs(null);
           setLiveBetslipsByStatus(null);
           setLiveBetslipsByType(null);
+          setLiveSettlementMetrics(null);
         }
       });
 
@@ -141,11 +186,11 @@ export default function BettingPage() {
   }, [multiplier, liveOverviewKPIs]);
 
   const pageMode = useMemo(() => {
-    if (liveOverviewKPIs || liveBetslipsByStatus || liveBetslipsByType) {
+    if (liveOverviewKPIs || liveBetslipsByStatus || liveBetslipsByType || liveSettlementMetrics) {
       return "partial";
     }
     return "mock";
-  }, [liveBetslipsByStatus, liveBetslipsByType, liveOverviewKPIs]);
+  }, [liveBetslipsByStatus, liveBetslipsByType, liveOverviewKPIs, liveSettlementMetrics]);
 
   const betslipsByStatus = useMemo(
     () =>
@@ -209,6 +254,21 @@ export default function BettingPage() {
         <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips" change={9.4} changeLabel="vs last month" icon={<Zap size={18} />} accent="teal" />
         <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" change={8.1} changeLabel="vs last month" icon={<Activity size={18} />} accent="amber" />
         <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" change={0.8} changeLabel="vs last month" icon={<Target size={18} />} accent="green" />
+      </div>
+
+      <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <MockOverlay active={!liveSettlementMetrics} badge label="Pending Data" />
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-white mb-1">Bet Settlement Monitor</h3>
+          <p className="text-xs text-white/40">Settlement flow, cancellations, and current exposure</p>
+        </div>
+        <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+          <KpiCard title="Settled Betslips" value={formatCompact(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Won Betslips" value={formatCompact(liveSettlementMetrics?.wonCount ?? 0)} subtitle="Selected range" icon={<Target size={18} />} accent="green" />
+          <KpiCard title="Cancelled Betslips" value={formatCompact(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range" icon={<Activity size={18} />} accent="amber" />
+          <KpiCard title="Cancel Rate" value={`${liveSettlementMetrics?.cancelRate ?? 0}%`} subtitle="Average across selected days" icon={<Zap size={18} />} accent="red" />
+          <KpiCard title="Open Exposure" value={formatCurrency(liveSettlementMetrics?.openExposureStake ?? 0)} subtitle="Latest available day" icon={<TrendingUp size={18} />} accent="teal" />
+        </div>
       </div>
 
       {/* Betslip breakdown */}

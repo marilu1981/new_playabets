@@ -14,7 +14,7 @@ module.exports = async function handler(req, res) {
     if (start) filters.push(`date=gte.${start}`);
     if (end)   filters.push(`date=lte.${end}`);
     const rows = await supaQuery("daily_kpis", {
-      select: "date,registrations,actives_sports,betslips_count,placed_stake,settled_stake,settled_winnings,ggr,hold_pct,win_rate",
+      select: "date,registrations,actives_sports,betslips_count,placed_stake,settled_stake,settled_winnings,ggr,hold_pct,win_rate,open_exposure_stake,betslips_settled_count,betslips_won_count,betslips_cancelled_count,cancel_rate",
       filters,
       order: "date.asc",
     });

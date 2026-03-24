@@ -14,7 +14,6 @@ import {
   DollarSign,
   Gamepad2,
   Gift,
-  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   Bell,
@@ -22,7 +21,6 @@ import {
   Menu,
   X,
   Activity,
-  Network,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -122,13 +120,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
       { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
-    ],
-  },
-  {
-    label: "Governance",
-    items: [
-      { path: "/compliance", label: "Compliance & Audit", icon: ShieldCheck },
-      { path: "/hierarchy", label: "Hierarchy & Roles", icon: Network },
     ],
   },
 ];

@@ -22,23 +22,20 @@ BONUSES_VIEW   = "Dwh_en.view_bonusbonuses"
 CAMPAIGNS_VIEW = "Dwh_en.view_bonuscampaigns"
 FREEBETS_VIEW  = "Dwh_en.view_bonusfreebets"
 CURSOR_COLUMN  = "DateVersion"
+FREEBETS_START_DATE = "2025-11-01 00:00:00"
 
 BONUSES_COLUMNS = [
     "BonusID", "UserID", "CampaignID", "Amount", "CurrencyID",
     "CurrencyExchangeID", "BonusStatusID", "BonusStatus",
-    "CalculationBaseAmount", "BonusTransactionID", "InsertDate", "Manual",
-    "CreationManagerSessionID", "CreditManagerSessionID",
-    "CancellationBonusTransazionID", "CancellationManagerSessionID",
+    "CalculationBaseAmount", "InsertDate", "Manual",
     "ExpiryDate", "MasterCampaignId", "DateVersion",
 ]
 CAMPAIGNS_COLUMNS = [
-    "CampaignID", "BookmakerID", "BonusTypeID", "BonusType",
-    "BonusTypeDescription", "WithdrawalTypeID", "WithdrawalType",
-    "WithdrawalTypeDescription", "CampaignStatusID",
+    "CampaignID", "BonusTypeID", "BonusType",
+    "WithdrawalTypeID", "WithdrawalType", "CampaignStatusID",
     "CampaignStatus", "Name", "Code", "InsertDate",
     "ValidityStartDate", "ValidityEndDate", "ManualBonusEnabled",
-    "RelatedGroupID", "Priority", "AutomaticBalanceTransfer",
-    "AutomaticBonusCredit", "URL", "CreditPriority", "MasterCampaignID",
+    "AutomaticBalanceTransfer", "AutomaticBonusCredit", "MasterCampaignID",
 ]
 FREEBETS_COLUMNS = [
     "FreeBetID", "UserID", "CampaignID", "InsertDate", "Amount",
@@ -79,10 +76,17 @@ def main() -> None:
     df_campaigns.to_parquet(OUT_DIR / "campaigns_latest.parquet", index=False)
 
     # ── 3. BonusFreebets (full-refresh) ──────────────────────────────────────
-    print("[bonus] Pulling BonusFreebets (full-refresh)...")
+    print("[bonus] Pulling BonusFreebets...")
     cols_sql = ", ".join(FREEBETS_COLUMNS)
+    freebets_query = text(
+        f"""
+        SELECT {cols_sql}
+        FROM {FREEBETS_VIEW}
+        WHERE InsertDate >= :start_date
+        """
+    )
     with engine.connect() as conn:
-        df_freebets = pd.read_sql(text(f"SELECT {cols_sql} FROM {FREEBETS_VIEW}"), conn)
+        df_freebets = pd.read_sql(freebets_query, conn, params={"start_date": FREEBETS_START_DATE})
     print(f"[bonus] BonusFreebets rows: {len(df_freebets)}")
     df_freebets.to_parquet(OUT_DIR / "freebets_latest.parquet", index=False)
 

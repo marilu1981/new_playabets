@@ -47,8 +47,6 @@ HISTORICAL_COLUMNS = [
     "SelfExclusionStatus",
     "StartDate",
     "InsertDate",
-    "ManagerInsertionSessionId",
-    "UserInsertionId",
     "ApplicationTypeId",
     "ApplicationType",
     "OldUserStatusId",

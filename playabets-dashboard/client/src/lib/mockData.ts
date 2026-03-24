@@ -136,6 +136,14 @@ export const selfExclusionSummary = {
   ],
 };
 
+export const selfExclusionTrend = [
+  { date: "2025-11-01", active: 162, started: 19, completed: 8 },
+  { date: "2025-12-01", active: 174, started: 22, completed: 10 },
+  { date: "2026-01-01", active: 183, started: 24, completed: 15 },
+  { date: "2026-02-01", active: 198, started: 27, completed: 12 },
+  { date: "2026-03-01", active: 205, started: 25, completed: 18 },
+];
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 export const transactionSummary = {
   totalDeposits: 12_840_200,
