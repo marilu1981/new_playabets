@@ -26,15 +26,19 @@ CURSOR_COLUMN  = "DateVersion"
 BONUSES_COLUMNS = [
     "BonusID", "UserID", "CampaignID", "Amount", "CurrencyID",
     "CurrencyExchangeID", "BonusStatusID", "BonusStatus",
-    "CalculationBaseAmount", "InsertDate", "Manual",
+    "CalculationBaseAmount", "BonusTransactionID", "InsertDate", "Manual",
+    "CreationManagerSessionID", "CreditManagerSessionID",
+    "CancellationBonusTransazionID", "CancellationManagerSessionID",
     "ExpiryDate", "MasterCampaignId", "DateVersion",
 ]
 CAMPAIGNS_COLUMNS = [
     "CampaignID", "BookmakerID", "BonusTypeID", "BonusType",
-    "WithdrawalTypeID", "WithdrawalType", "CampaignStatusID",
+    "BonusTypeDescription", "WithdrawalTypeID", "WithdrawalType",
+    "WithdrawalTypeDescription", "CampaignStatusID",
     "CampaignStatus", "Name", "Code", "InsertDate",
     "ValidityStartDate", "ValidityEndDate", "ManualBonusEnabled",
-    "AutomaticBalanceTransfer", "AutomaticBonusCredit", "MasterCampaignID",
+    "RelatedGroupID", "Priority", "AutomaticBalanceTransfer",
+    "AutomaticBonusCredit", "URL", "CreditPriority", "MasterCampaignID",
 ]
 FREEBETS_COLUMNS = [
     "FreeBetID", "UserID", "CampaignID", "InsertDate", "Amount",

@@ -27,6 +27,7 @@ COLUMNS = [
     "PlacementDate", "PaymentDate",
     "Stake", "Winnings", "UserWinnings",
     "BetslipStatus", "OutcomeType", "BetslipType", "CreditType",
+    "ApplicationType", "Reserve", "BonusCampaignID",
     "DateVersion", "DetailDateVersion",
 ]
 

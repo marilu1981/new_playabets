@@ -28,9 +28,17 @@ CURSOR_COLUMN = "DateVersion"
 # Keep stable, lowercase output column names for downstream transforms.
 SELECT_COLUMNS = [
     "u.userid AS userid",
+    "u.bookmakerid AS bookmakerid",
+    "u.bookmaker AS bookmaker",
+    "u.parentid AS parentid",
+    "u.username AS username",
     "u.userstatus AS userstatus",
     "u.testuser AS testuser",
+    "u.usertypeid AS usertypeid",
     "u.usertype AS usertype",
+    "u.currencyid AS currencyid",
+    "u.currency AS currency",
+    "u.cashier AS cashier",
     "u.userprofileid AS userprofileid",
     "u.userprofile AS userprofile",
     "u.lastlogin AS lastlogin",
