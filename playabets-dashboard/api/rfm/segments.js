@@ -1,4 +1,4 @@
-const { supaQuery, corsHeaders } = require("../_supabase");
+const { supaQuery, supaQueryAll, corsHeaders } = require("../_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
@@ -30,14 +30,13 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const segmentRows = await supaQuery("rfm_users", {
-      select: "rfm_segment,count:count()",
+    const segmentRows = await supaQueryAll("rfm_users", {
+      select: "segment",
     });
     const counts = {};
     for (const row of segmentRows || []) {
-      const key = String(row.rfm_segment ?? "Unknown");
-      const value = Number(row.count ?? 0);
-      counts[key] = value;
+      const key = String(row.segment ?? "Unknown").trim() || "Unknown";
+      counts[key] = (counts[key] ?? 0) + 1;
     }
     const date = end || start || new Date().toISOString().slice(0, 10);
     const snapshot = {

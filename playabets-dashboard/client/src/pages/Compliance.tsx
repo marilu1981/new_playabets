@@ -65,9 +65,16 @@ export default function CompliancePage() {
   return (
     <DashboardLayout title="Compliance & Audit" subtitle="Responsible gaming, KYC, AML alerts, and import status"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+      <div className="text-xs text-white/50 mb-3">
+        Data mode: Mock
+      </div>
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Active Self-Exclusions" value={complianceKPIs.selfExclusionsActive} subtitle="Responsible gaming" change={3.2} changeLabel="vs last month" icon={<UserX size={18} />} accent="red" />
+        <div className="relative">
+          <MockOverlay active badge label="Mock Data" />
+          <KpiCard title="Active Self-Exclusions" value={complianceKPIs.selfExclusionsActive} subtitle="Pending live self-exclusions" change={3.2} changeLabel="vs last month" icon={<UserX size={18} />} accent="red" />
+        </div>
         <KpiCard title="Frozen Accounts" value={formatNumber(complianceKPIs.frozenAccounts)} subtitle="Requires review" icon={<ShieldCheck size={18} />} accent="teal" />
         <KpiCard title="Pending KYC" value={formatNumber(complianceKPIs.pendingKYC)} subtitle="Be Validated status" icon={<Clock size={18} />} accent="amber" />
         <KpiCard title="AML Alerts" value={complianceKPIs.amlAlerts} subtitle={`${complianceKPIs.flaggedTransactions} flagged txns`} icon={<AlertTriangle size={18} />} accent="gold" />

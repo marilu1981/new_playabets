@@ -43,9 +43,22 @@ type BonusCards = {
   bonusesPaidTotalCount: number;
 };
 
+type BonusCampaignRow = {
+  campaignId: number;
+  name: string;
+  status: string;
+  bonusType: string;
+  startDate: string;
+  endDate: string;
+  usersEnrolled: number | null;
+  totalPaid: number | null;
+  roi: number | null;
+};
+
 export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveBonusCards, setLiveBonusCards] = useState<BonusCards | null>(null);
+  const [liveCampaigns, setLiveCampaigns] = useState<BonusCampaignRow[] | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -75,17 +88,40 @@ export default function BonusPage() {
         });
       })
       .catch(() => setLiveBonusCards(null));
+
+    fetchJson<{ campaigns?: Array<Partial<BonusCampaignRow>> }>(`/bonus/campaigns`)
+      .then((d) => {
+        const campaigns = (d.campaigns ?? [])
+          .map((row) => ({
+            campaignId: Number(row.campaignId ?? 0),
+            name: String(row.name ?? "Unknown Campaign"),
+            status: String(row.status ?? "Unknown"),
+            bonusType: String(row.bonusType ?? "Unknown"),
+            startDate: String(row.startDate ?? ""),
+            endDate: String(row.endDate ?? ""),
+            usersEnrolled: row.usersEnrolled == null ? null : Number(row.usersEnrolled),
+            totalPaid: row.totalPaid == null ? null : Number(row.totalPaid),
+            roi: row.roi == null ? null : Number(row.roi),
+          }))
+          .filter((row) => row.campaignId > 0 || row.name !== "Unknown Campaign");
+        setLiveCampaigns(campaigns.length > 0 ? campaigns : null);
+      })
+      .catch(() => setLiveCampaigns(null));
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
-  const bonusCampaigns = useMemo(
-    () =>
-      scaleArrayNumericFields(
+  const bonusCampaigns = useMemo<BonusCampaignRow[]>(
+    () => {
+      if (liveCampaigns) {
+        return filterByDateRange(liveCampaigns, filters, (row) => row.startDate);
+      }
+      return scaleArrayNumericFields(
         filterByDateRange(baseBonusCampaigns, filters, (row) => row.startDate),
         multiplier,
         ["campaignId", "name", "status", "bonusType", "startDate", "endDate", "roi"],
-      ),
-    [filters, multiplier],
+      ) as BonusCampaignRow[];
+    },
+    [filters, liveCampaigns, multiplier],
   );
   const bonusKPIs = useMemo(() => {
     return scaleObjectNumericFields(baseBonusKPIs, multiplier);
@@ -104,7 +140,7 @@ export default function BonusPage() {
 
   const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
   const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
-  const pageMode = liveBonusCards ? "partial" : "mock";
+  const pageMode = liveBonusCards || liveCampaigns ? "partial" : "mock";
 
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
@@ -151,7 +187,7 @@ export default function BonusPage() {
 
         {/* Campaign stats */}
         <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
+          <MockOverlay active={!liveCampaigns} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Campaign Performance</h3>
           <p className="text-xs text-white/40 mb-4">view_BonusCampaigns — recent campaigns</p>
           <div className="overflow-x-auto">
@@ -170,14 +206,18 @@ export default function BonusPage() {
                     <td className="py-2.5 pr-4 text-white/80 font-medium text-sm max-w-[180px] truncate">{c.name}</td>
                     <td className="py-2.5 pr-4 text-white/50 text-xs">{c.bonusType}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={c.status} dot /></td>
-                    <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(c.usersEnrolled)}</td>
-                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{ formatCompact(c.totalPaid)}</td>
+                    <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{c.usersEnrolled == null ? "—" : formatCompact(c.usersEnrolled)}</td>
+                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{c.totalPaid == null ? "—" : formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
-                      <span className="text-xs font-mono font-semibold" style={{
-                        color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,
-                      }}>
-                        {c.roi >= 0 ? "+" : ""}{c.roi.toFixed(1)}%
-                      </span>
+                      {c.roi == null ? (
+                        <span className="text-xs font-mono text-white/35">—</span>
+                      ) : (
+                        <span className="text-xs font-mono font-semibold" style={{
+                          color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,
+                        }}>
+                          {c.roi >= 0 ? "+" : ""}{c.roi.toFixed(1)}%
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

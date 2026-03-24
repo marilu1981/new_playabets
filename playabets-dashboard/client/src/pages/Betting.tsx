@@ -53,6 +53,7 @@ export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
+  const [liveBetslipsByType, setLiveBetslipsByType] = useState<typeof baseBetslipsByType | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,8 +68,11 @@ export default function BettingPage() {
       fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
         `/betting/betslips-by-status?${query}`
       ),
+      fetchJson<Array<{ type?: string; typeId?: number | null; count?: number }>>(
+        `/betting/betslips-by-type?${query}`
+      ),
     ])
-      .then(([kpisRes, statusRes]) => {
+      .then(([kpisRes, statusRes, typeRes]) => {
         if (cancelled) {
           return;
         }
@@ -103,11 +107,25 @@ export default function BettingPage() {
         } else {
           setLiveBetslipsByStatus(null);
         }
+
+        if (typeRes.status === "fulfilled") {
+          const rows = typeRes.value
+            .map((row) => ({
+              type: String(row.type ?? "Unknown"),
+              typeId: Number(row.typeId ?? 0),
+              count: Number(row.count ?? 0),
+            }))
+            .filter((row) => row.count > 0);
+          setLiveBetslipsByType(rows.length > 0 ? rows : null);
+        } else {
+          setLiveBetslipsByType(null);
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setLiveOverviewKPIs(null);
           setLiveBetslipsByStatus(null);
+          setLiveBetslipsByType(null);
         }
       });
 
@@ -123,11 +141,11 @@ export default function BettingPage() {
   }, [multiplier, liveOverviewKPIs]);
 
   const pageMode = useMemo(() => {
-    if (liveOverviewKPIs || liveBetslipsByStatus) {
+    if (liveOverviewKPIs || liveBetslipsByStatus || liveBetslipsByType) {
       return "partial";
     }
     return "mock";
-  }, [liveBetslipsByStatus, liveOverviewKPIs]);
+  }, [liveBetslipsByStatus, liveBetslipsByType, liveOverviewKPIs]);
 
   const betslipsByStatus = useMemo(
     () =>
@@ -139,8 +157,13 @@ export default function BettingPage() {
     [liveBetslipsByStatus, multiplier],
   );
   const betslipsByType = useMemo(
-    () => scaleArrayNumericFields(baseBetslipsByType, multiplier, ["type", "typeId"]),
-    [multiplier],
+    () =>
+      scaleArrayNumericFields(
+        liveBetslipsByType ?? baseBetslipsByType,
+        liveBetslipsByType ? 1 : multiplier,
+        ["type", "typeId"],
+      ),
+    [liveBetslipsByType, multiplier],
   );
   const betsByType = useMemo(
     () => scaleArrayNumericFields(baseBetsByType, multiplier, ["betType"]),
@@ -215,7 +238,7 @@ export default function BettingPage() {
 
         {/* By Type (Normal/Live/Mixed) */}
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
+          <MockOverlay active={!liveBetslipsByType} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Betslip Type</h3>
           <p className="text-xs text-white/40 mb-4">Normal / Live / Mixed</p>
           <ResponsiveContainer width="100%" height={150}>

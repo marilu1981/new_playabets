@@ -20,6 +20,7 @@ module.exports = async function handler(req, res) {
       stake: r.casino_stake,
       winnings: r.casino_winnings,
       ggr: r.casino_ggr,
+      casino_actives: r.casino_actives,
       actives: r.casino_actives,
       bets: r.casino_bets,
     }));

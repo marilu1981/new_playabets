@@ -245,7 +245,7 @@ export default function UsersPage() {
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
-        fetchJson<{ points: Array<{ date: string; casino_actives?: number }> }>(`/casino/daily?${query}`),
+        fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(`/casino/daily?${query}`),
       ]);
 
       if (cancelled) {
@@ -254,7 +254,10 @@ export default function UsersPage() {
 
       const hasKpis = kpisRes.status === "fulfilled";
       const hasRegs = regsRes.status === "fulfilled";
-      setDataMode(hasKpis && hasRegs ? "live" : hasKpis || hasRegs ? "partial" : "mock");
+      const hasStatus = statusRes.status === "fulfilled";
+      const hasActives = dailyRes.status === "fulfilled" || casinoRes.status === "fulfilled";
+      const hasAnyLive = hasKpis || hasRegs || hasStatus || hasActives;
+      setDataMode(hasAnyLive ? "partial" : "mock");
       setIsLoading(false);
 
       if (hasKpis) {
@@ -312,7 +315,7 @@ export default function UsersPage() {
         }
         for (const row of casinoRows) {
           const prev = byDate.get(row.date) ?? 0;
-          byDate.set(row.date, prev + Number(row.casino_actives ?? 0));
+          byDate.set(row.date, prev + Number(row.casino_actives ?? row.actives ?? 0));
         }
         const merged = Array.from(byDate.entries())
           .sort(([a], [b]) => a.localeCompare(b))
@@ -434,7 +437,10 @@ export default function UsersPage() {
         <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
         <KpiCard title="Frozen / Disabled" value={formatCompact(frozenUsers + disabledUsers)} subtitle="Requires attention" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
-        <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle={`${selfExclusionSummary.inProgress} in progress`} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+        <div className="relative">
+          <MockOverlay active badge label="Mock Data" />
+          <KpiCard title="Self-Exclusions" value={selfExclusionSummary.total} subtitle="Pending live self-exclusions" change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

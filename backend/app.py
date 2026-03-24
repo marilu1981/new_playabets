@@ -791,13 +791,51 @@ def users_status_breakdown(
 # RFM
 # ---------------------------------------------------------------------------
 @app.get("/rfm/segments")
-def rfm_segments():
+def rfm_segments(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    mode: Optional[str] = Query(None),
+):
+    if str(mode or "").lower() != "snapshot":
+        daily = load_daily_df()
+        wanted = [
+            "date",
+            "rfm_champions",
+            "rfm_loyal",
+            "rfm_big_spenders",
+            "rfm_mid",
+            "rfm_at_risk",
+            "rfm_dormant",
+        ]
+        if not daily.empty and all(col in daily.columns for col in wanted):
+            d = daily[wanted].copy()
+            if start and end:
+                d = _filter_range(d, start, end)
+            rows = d.to_dict(orient="records")
+            if rows:
+                return {"rows": rows, "source": "daily_kpis"}
+
     df = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
     if df.empty or "segment" not in df.columns:
-        return {"segments": []}
-    counts = df["segment"].astype(str).value_counts().reset_index()
-    counts.columns = ["segment", "users"]
-    return {"segments": counts.to_dict(orient="records")}
+        return {"rows": [], "source": "rfm_users"}
+
+    counts = df["segment"].fillna("Unknown").astype(str).str.strip()
+    counts.loc[counts == ""] = "Unknown"
+    grouped = counts.value_counts().to_dict()
+    daily = load_daily_df()
+    snapshot_date = str(end or start or (daily["date"].max() if not daily.empty else date.today()))
+    return {
+        "rows": [{
+            "date": snapshot_date,
+            "rfm_champions": int(grouped.get("Champions", 0)),
+            "rfm_loyal": int(grouped.get("Loyal", 0)),
+            "rfm_big_spenders": int(grouped.get("Big Spenders", 0)),
+            "rfm_mid": int(grouped.get("Mid", 0)),
+            "rfm_at_risk": int(grouped.get("At Risk", 0)),
+            "rfm_dormant": int(grouped.get("Dormant", 0)),
+        }],
+        "source": "rfm_users",
+    }
 
 
 @app.get("/rfm/users")
@@ -819,7 +857,15 @@ def rfm_users(
             d = d[keep]
     if "rfm_score" in d.columns:
         d = d.sort_values("rfm_score", ascending=False)
-    return {"users": d.head(limit).to_dict(orient="records")}
+    users = d.head(limit).to_dict(orient="records")
+    for row in users:
+        if "segment" in row and "rfm_segment" not in row:
+            row["rfm_segment"] = row["segment"]
+        if "frequency_30d" in row and "frequency" not in row:
+            row["frequency"] = row["frequency_30d"]
+        if "monetary_30d" in row and "monetary" not in row:
+            row["monetary"] = row["monetary_30d"]
+    return {"users": users}
 
 
 # ---------------------------------------------------------------------------
