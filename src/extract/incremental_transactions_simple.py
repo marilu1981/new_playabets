@@ -86,6 +86,60 @@ def _describe_db_error(step: str, exc: Exception) -> None:
         _log(f"{step} lost the SQL connection. Try again later or reduce the date window.")
     else:
         _log(f"{step} failed with a database error.")
+
+
+def _fetch_id_range(conn, window_start: str, window_end: str | None) -> tuple[int | None, int | None]:
+    if window_end:
+        id_range_query = text(f"""
+            SELECT
+                MIN(TransactionID) AS min_id,
+                MAX(TransactionID) AS max_id
+            FROM {VIEW_NAME}
+            WHERE Date >= :start_date
+              AND Date < :end_date
+        """)
+        params = {"start_date": window_start, "end_date": window_end}
+    else:
+        id_range_query = text(f"""
+            SELECT
+                MIN(TransactionID) AS min_id,
+                MAX(TransactionID) AS max_id
+            FROM {VIEW_NAME}
+            WHERE Date >= :start_date
+        """)
+        params = {"start_date": window_start}
+
+    t0 = perf_counter()
+    _log("Running TransactionID MIN/MAX lookup...")
+    row = conn.execute(id_range_query, params).fetchone()
+    elapsed = perf_counter() - t0
+
+    min_id = row[0] if row else None
+    max_id = row[1] if row else None
+    _log(f"TransactionID MIN/MAX lookup complete in {elapsed:.1f}s | min_id={min_id} | max_id={max_id}")
+    return min_id, max_id
+
+
+def _run_aggregate_query(conn, min_id: int, max_id: int) -> pd.DataFrame:
+    aggregate_query = text(f"""
+        SELECT
+            CAST(Date AS DATE) AS tx_date,
+            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
+            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
+            COUNT(DISTINCT UserID) AS unique_depositors
+        FROM {VIEW_NAME}
+        WHERE TransactionID BETWEEN :min_id AND :max_id
+        GROUP BY CAST(Date AS DATE)
+        ORDER BY tx_date DESC
+    """)
+
+    t0 = perf_counter()
+    _log("Running aggregate query for resolved TransactionID range...")
+    df = pd.read_sql(aggregate_query, conn, params={"min_id": min_id, "max_id": max_id})
+    _log(f"Aggregate query complete in {perf_counter() - t0:.1f}s | rows: {len(df)}")
+    return df
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     _log(f"Start date: {START_DATE}")
@@ -105,53 +159,14 @@ def main() -> None:
             for idx, (window_start, window_end) in enumerate(_windows(), start=1):
                 if window_end:
                     _log(f"Window {idx}: {window_start} -> {window_end}")
-                    aggregate_query = text(f"""
-                        WITH IdRange AS (
-                            SELECT
-                                MinID = MIN(TransactionID),
-                                MaxID = MAX(TransactionID)
-                            FROM {VIEW_NAME}
-                            WHERE Date >= :start_date
-                              AND Date < :end_date
-                        )
-                        SELECT
-                            CAST(Date AS DATE) AS tx_date,
-                            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
-                            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
-                            COUNT(DISTINCT UserID) AS unique_depositors
-                        FROM {VIEW_NAME}
-                        CROSS JOIN IdRange
-                        WHERE TransactionID BETWEEN IdRange.MinID AND IdRange.MaxID
-                        GROUP BY CAST(Date AS DATE)
-                        ORDER BY tx_date DESC
-                    """)
-                    params = {"start_date": window_start, "end_date": window_end}
                 else:
                     _log(f"Window {idx}: {window_start}+")
-                    aggregate_query = text(f"""
-                        WITH IdRange AS (
-                            SELECT
-                                MinID = MIN(TransactionID),
-                                MaxID = MAX(TransactionID)
-                            FROM {VIEW_NAME}
-                            WHERE Date >= :start_date
-                        )
-                        SELECT
-                            CAST(Date AS DATE) AS tx_date,
-                            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
-                            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
-                            COUNT(DISTINCT UserID) AS unique_depositors
-                        FROM {VIEW_NAME}
-                        CROSS JOIN IdRange
-                        WHERE TransactionID BETWEEN IdRange.MinID AND IdRange.MaxID
-                        GROUP BY CAST(Date AS DATE)
-                        ORDER BY tx_date DESC
-                    """)
-                    params = {"start_date": window_start}
-                t0 = perf_counter()
-                _log("Running aggregate CTE query...")
-                window_df = pd.read_sql(aggregate_query, conn, params=params)
-                _log(f"Window {idx} complete in {perf_counter() - t0:.1f}s | rows: {len(window_df)}")
+                min_id, max_id = _fetch_id_range(conn, window_start, window_end)
+                if min_id is None or max_id is None:
+                    _log(f"Window {idx} has no matching TransactionID range. Skipping.")
+                    continue
+                window_df = _run_aggregate_query(conn, min_id, max_id)
+                _log(f"Window {idx} complete | rows: {len(window_df)}")
                 if not window_df.empty:
                     frames.append(window_df)
 
