@@ -29,6 +29,8 @@ import time
 from datetime import datetime, UTC
 from pathlib import Path
 
+from src.app_config import ENABLE_TRANSACTIONS
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -45,6 +47,7 @@ log = logging.getLogger("scheduler")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 INTERVAL_MINUTES = int(os.environ.get("SCHEDULE_INTERVAL_MINUTES", "120"))
 SKIP_EXTRACT = os.environ.get("SKIP_EXTRACT", "0") == "1"
+RUN_ONCE = os.environ.get("SCHEDULER_RUN_ONCE", "0") == "1"
 MODULE_TIMEOUT_SECONDS = int(os.environ.get("MODULE_TIMEOUT_SECONDS", "1800"))
 
 # Evironment variables for timeouts can be set in the shell 
@@ -54,11 +57,12 @@ MODULE_TIMEOUT_SECONDS = int(os.environ.get("MODULE_TIMEOUT_SECONDS", "1800"))
 EXTRACT_MODULES = [
     "src.extract.incremental_users",
     "src.extract.incremental_betslips",
-    "src.extract.incremental_transactions",
     "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",
 ]
+if ENABLE_TRANSACTIONS:
+    EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions")
 
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",   # builds daily_kpis.parquet + rfm_users.parquet
@@ -71,12 +75,13 @@ TRANSFORM_DEPENDENCIES = {
         "src.extract.incremental_betslips",
     },
     "src.kpis.build_domain_kpis": {
-        "src.extract.incremental_transactions",
         "src.extract.incremental_first_deposits",
         "src.extract.incremental_bonus",
         "src.extract.incremental_casino",
     },
 }
+if ENABLE_TRANSACTIONS:
+    TRANSFORM_DEPENDENCIES["src.kpis.build_domain_kpis"].add("src.extract.incremental_transactions")
 
 
 def _run_module(module: str) -> bool:
@@ -161,9 +166,15 @@ def run_pipeline() -> None:
 def main() -> None:
     log.info("Playa Bets Scheduler starting — interval: %d minutes", INTERVAL_MINUTES)
     log.info("Project root: %s", PROJECT_ROOT)
+    log.info("Run once: %s", RUN_ONCE)
+    log.info("Transactions enabled: %s", ENABLE_TRANSACTIONS)
 
     # Run immediately on start
     run_pipeline()
+
+    if RUN_ONCE:
+        log.info("SCHEDULER_RUN_ONCE=1 - exiting after single pipeline run")
+        return
 
     # Then loop
     interval_seconds = INTERVAL_MINUTES * 60

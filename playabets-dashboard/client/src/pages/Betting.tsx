@@ -52,27 +52,68 @@ const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
 export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
-  const [dataMode, setDataMode] = useState<"mock" | "live">("mock");
+  const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-    fetchJson<{ stake?: number; winnings?: number; ggr?: number; bets?: number; actives?: number }>(
-      `/sportsbook/kpis?${query}`
-    )
-      .then((d) => {
-        const stake    = Number(d.stake    ?? 0);
-        const winnings = Number(d.winnings ?? 0);
-        const bets     = Number(d.bets     ?? 0);
-        if (stake === 0 && bets === 0) { setLiveOverviewKPIs(null); setDataMode("mock"); return; }
-        setLiveOverviewKPIs({
-          ...baseOverviewKPIs,
-          totalStake:    stake,
-          totalWinnings: winnings,
-          totalBetslips: bets,
-        });
-        setDataMode("live");
+    Promise.allSettled([
+      fetchJson<{
+        settled_stake?: number;
+        winnings?: number;
+        ggr?: number;
+        betslips?: number;
+      }>(`/sportsbook/kpis?${query}`),
+      fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(
+        `/betting/betslips-by-status?${query}`
+      ),
+    ])
+      .then(([kpisRes, statusRes]) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (kpisRes.status === "fulfilled") {
+          const stake = Number(kpisRes.value.settled_stake ?? 0);
+          const winnings = Number(kpisRes.value.winnings ?? 0);
+          const bets = Number(kpisRes.value.betslips ?? 0);
+          if (stake > 0 || bets > 0) {
+            setLiveOverviewKPIs({
+              ...baseOverviewKPIs,
+              totalStake: stake,
+              totalWinnings: winnings,
+              totalBetslips: bets,
+            });
+          } else {
+            setLiveOverviewKPIs(null);
+          }
+        } else {
+          setLiveOverviewKPIs(null);
+        }
+
+        if (statusRes.status === "fulfilled") {
+          const rows = statusRes.value
+            .map((row) => ({
+              status: String(row.status ?? "Unknown"),
+              statusId: Number(row.statusId ?? 0),
+              count: Number(row.count ?? 0),
+            }))
+            .filter((row) => row.count > 0);
+          setLiveBetslipsByStatus(rows.length > 0 ? rows : null);
+        } else {
+          setLiveBetslipsByStatus(null);
+        }
       })
-      .catch(() => { setLiveOverviewKPIs(null); setDataMode("mock"); });
+      .catch(() => {
+        if (!cancelled) {
+          setLiveOverviewKPIs(null);
+          setLiveBetslipsByStatus(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
@@ -81,9 +122,21 @@ export default function BettingPage() {
     return scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]);
   }, [multiplier, liveOverviewKPIs]);
 
+  const pageMode = useMemo(() => {
+    if (liveOverviewKPIs || liveBetslipsByStatus) {
+      return "partial";
+    }
+    return "mock";
+  }, [liveBetslipsByStatus, liveOverviewKPIs]);
+
   const betslipsByStatus = useMemo(
-    () => scaleArrayNumericFields(baseBetslipsByStatus, multiplier, ["status", "statusId"]),
-    [multiplier],
+    () =>
+      scaleArrayNumericFields(
+        liveBetslipsByStatus ?? baseBetslipsByStatus,
+        liveBetslipsByStatus ? 1 : multiplier,
+        ["status", "statusId"],
+      ),
+    [liveBetslipsByStatus, multiplier],
   );
   const betslipsByType = useMemo(
     () => scaleArrayNumericFields(baseBetslipsByType, multiplier, ["type", "typeId"]),
@@ -110,7 +163,12 @@ export default function BettingPage() {
       ),
     [filters, multiplier],
   );
-  const totalBetslipsSafe = Math.max(1, overviewKPIs.totalBetslips);
+  const totalBetslipsSafe = Math.max(
+    1,
+    liveBetslipsByStatus
+      ? betslipsByStatus.reduce((sum, row) => sum + row.count, 0)
+      : overviewKPIs.totalBetslips,
+  );
   const totalBetTypeCount = Math.max(1, betsByType.reduce((sum, row) => sum + row.count, 0));
   const margin = overviewKPIs.totalStake > 0
     ? ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1)
@@ -119,6 +177,9 @@ export default function BettingPage() {
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+      <div className="text-xs text-white/50 mb-3">
+        Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
+      </div>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
@@ -131,7 +192,7 @@ export default function BettingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* By Status */}
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active={dataMode === "mock"} badge label="Mock Data" />
+          <MockOverlay active={!liveBetslipsByStatus} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Status</h3>
           <p className="text-xs text-white/40 mb-4">view_Betslips — BetslipStatusId</p>
           <div className="space-y-2">

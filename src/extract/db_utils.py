@@ -38,9 +38,16 @@ def _default_watermark() -> str:
     return cutoff.strftime("%Y-%m-%d %H:%M:%S")
 
 # ── Connection config (read from env) ────────────────────────────────────────
-SERVER   = "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com"
-PORT     = 1433
-DATABASE = "isbets_bi"
+SERVER = os.environ.get(
+    "DWH_SERVER",
+    "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com",
+)
+PORT = int(os.environ.get("DWH_PORT", "1433"))
+DATABASE = os.environ.get("DWH_DATABASE", "isbets_bi")
+ODBC_DRIVER = os.environ.get("DWH_ODBC_DRIVER", "ODBC Driver 18 for SQL Server")
+ENCRYPT = os.environ.get("DWH_ENCRYPT", "yes")
+TRUST_SERVER_CERTIFICATE = os.environ.get("DWH_TRUST_SERVER_CERTIFICATE", "yes")
+CONNECTION_TIMEOUT_SECONDS = int(os.environ.get("DWH_CONNECTION_TIMEOUT_SECONDS", "30"))
 QUERY_TIMEOUT_SECONDS = int(os.environ.get("DWH_QUERY_TIMEOUT_SECONDS", "900"))
 
 
@@ -49,14 +56,14 @@ def _odbc_conn_str() -> str:
     username = os.environ["DWH_USER"]
     password = os.environ["DWH_PASS"]
     return (
-        "DRIVER={ODBC Driver 18 for SQL Server};"
+        f"DRIVER={{{ODBC_DRIVER}}};"
         f"SERVER={SERVER},{PORT};"
         f"DATABASE={DATABASE};"
         f"UID={username};"
         f"PWD={password};"
-        "Encrypt=yes;"
-        "TrustServerCertificate=yes;"
-        "Connection Timeout=30;"
+        f"Encrypt={ENCRYPT};"
+        f"TrustServerCertificate={TRUST_SERVER_CERTIFICATE};"
+        f"Connection Timeout={CONNECTION_TIMEOUT_SECONDS};"
     )
 
 

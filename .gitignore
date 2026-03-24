@@ -58,3 +58,17 @@ playabets-dashboard/AWS_rework_later.md
 data/raw/
 data/serving/
 data/csv/
+
+# Azure set up 
+docs/azure-container-apps-deployment-guide.md
+docs/azure-container-apps-execution-checklist.md
+docs/azure-parallel-backend-rollout.md
+docs/azure-vm-first-deployment-guide.md
+docs/azure-vm-first-execution-checklist.md
+infra/azure/Dockerfile
+infra/azure/containerapp-api.yaml
+infra/azure/containerapp-job.yaml
+infra/azure/vm/playabets-pipeline.service
+infra/azure/vm/playabets-pipeline.timer
+infra/azure/vm/playabets.env.example
+.dockerignore

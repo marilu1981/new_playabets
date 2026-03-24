@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-from pathlib import Path
 import pandas as pd
 
+from src.app_config import PROJECT_ROOT, SERVING_ROOT, raw_dir
 from .io_utils import read_all_parquets
 from .users_kpis import compute_registrations_daily
 from .betslips_kpis import compute_betslips_daily_kpis
 from .rfm_kpis import build_rfm_users, RFMWindow
 from .users_and_segments_kpi import compute_users_segments_daily, compute_users_segments_latest
 
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-USERS_DIR = PROJECT_ROOT / "data" / "raw" / "users"
-BETSLIPS_DIR = PROJECT_ROOT / "data" / "raw" / "betslips"
+USERS_DIR = raw_dir("users")
+BETSLIPS_DIR = raw_dir("betslips")
 SESSIONS_DIR = None
 
-SERVING_DIR = PROJECT_ROOT / "data" / "serving"
+SERVING_DIR = SERVING_ROOT
 OUT_KPIS = SERVING_DIR / "daily_kpis.parquet"
 OUT_RFM = SERVING_DIR / "rfm_users.parquet"
 OUT_USERS_SEG_DAILY = SERVING_DIR / "users_segments_daily.parquet"

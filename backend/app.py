@@ -38,6 +38,7 @@ Endpoints:
 from __future__ import annotations
 
 import sys
+import os
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Literal
@@ -50,6 +51,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.app_config import ENABLE_TRANSACTIONS, RAW_ROOT, SERVING_ROOT
 from src.kpis.io_utils import normalize_cols, read_all_parquets, to_dt
 
 # ---------------------------------------------------------------------------
@@ -66,10 +68,12 @@ def _first_existing_path(*paths: Path) -> Path:
 
 
 _SERVING = _first_existing_path(
+    SERVING_ROOT,
     _ROOT / "data" / "serving",
     _ROOT / "backend" / "data" / "serving",
 )
 _RAW = _first_existing_path(
+    RAW_ROOT,
     _ROOT / "data" / "raw",
     _ROOT / "backend" / "data" / "raw",
 )
@@ -472,7 +476,7 @@ def _build_conversion_cohorts() -> tuple[pd.DataFrame, Optional[date]]:
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Playa Bets Local API", version="0.2")
+app = FastAPI(title="Playa Bets Analytics API", version="0.3")
 
 # ---------------------------------------------------------------------------
 # CORS — only used when the frontend is NOT behind the same-origin reverse proxy.
@@ -508,6 +512,12 @@ def _i(df: pd.DataFrame, col: str) -> int:
     return int(df[col].sum()) if col in df.columns else 0
 
 
+def _load_transactions_df(start: date, end: date) -> pd.DataFrame:
+    if not ENABLE_TRANSACTIONS:
+        return pd.DataFrame()
+    return _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
+
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -515,6 +525,10 @@ def _i(df: pd.DataFrame, col: str) -> int:
 def health():
     return {
         "ok": True,
+        "environment": os.environ.get("PLAYABETS_ENV", "local"),
+        "serving_root": str(_SERVING),
+        "raw_root": str(_RAW),
+        "transactions_enabled": ENABLE_TRANSACTIONS,
         "daily_kpis": DATA_PATH.exists(),
         "rfm_users": RFM_USERS_PATH.exists(),
         "tx_daily": TX_DAILY_PATH.exists(),
@@ -536,7 +550,7 @@ def kpis(
     customer_status: Optional[str] = Query(None),
 ):
     df = _filter_range(load_daily_df(), start, end)
-    tx = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
+    tx = _load_transactions_df(start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
     casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
@@ -583,7 +597,8 @@ def kpis(
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),
         "bonus_spent": bonus_spent,
-        "has_transactions_data": not tx.empty,
+        "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
+        "transactions_enabled": ENABLE_TRANSACTIONS,
         "filters_applied": {
             "territory": bool(_normalize_value(territory)),
             "country": bool(_normalize_value(country)),
@@ -901,10 +916,27 @@ def transactions_kpis(
     start: date = Query(...),
     end: date = Query(...),
 ):
-    df = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
+    if not ENABLE_TRANSACTIONS:
+        return {
+            "range": {"start": str(start), "end": str(end)},
+            "has_data": False,
+            "disabled": True,
+            "message": "Transactions are temporarily disabled while the source export is unavailable.",
+            "deposits": 0.0,
+            "withdrawals": 0.0,
+            "net_deposits": 0.0,
+            "tx_count": 0,
+            "unique_depositors": 0,
+            "tx_count_accepted": 0,
+            "tx_count_pending": 0,
+            "tx_count_system": 0,
+            "tx_count_other_status": 0,
+        }
+    df = _load_transactions_df(start, end)
     return {
         "range": {"start": str(start), "end": str(end)},
         "has_data": not df.empty,
+        "disabled": False,
         "deposits": _s(df, "deposits"),
         "withdrawals": _s(df, "withdrawals"),
         "net_deposits": _s(df, "net_deposits"),
@@ -922,12 +954,21 @@ def transactions_trend(
     start: date = Query(...),
     end: date = Query(...),
 ):
-    df = _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
+    if not ENABLE_TRANSACTIONS:
+        return {
+            "has_data": False,
+            "disabled": True,
+            "message": "Transactions are temporarily disabled while the source export is unavailable.",
+            "deposits": [],
+            "withdrawals": [],
+        }
+    df = _load_transactions_df(start, end)
     if df.empty:
-        return {"has_data": False, "deposits": [], "withdrawals": []}
+        return {"has_data": False, "disabled": False, "deposits": [], "withdrawals": []}
     df = df.sort_values("date")
     return {
         "has_data": True,
+        "disabled": False,
         "deposits": [{"date": str(r["date"]), "value": float(r.get("deposits", 0))} for _, r in df.iterrows()],
         "withdrawals": [{"date": str(r["date"]), "value": float(r.get("withdrawals", 0))} for _, r in df.iterrows()],
     }

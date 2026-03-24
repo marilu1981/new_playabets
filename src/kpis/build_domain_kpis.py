@@ -12,36 +12,38 @@ Run from project root:
 """
 from __future__ import annotations
 
-from pathlib import Path
 import pandas as pd
 
+from src.app_config import ENABLE_TRANSACTIONS, RAW_ROOT, SERVING_ROOT
 from .io_utils import read_all_parquets
 from .transactions_kpi import compute_transactions_daily
 from .bonus_kpis import compute_bonus_daily
 from .ftd_kpis import compute_ftd_daily
 from .casino_kpis import compute_casino_daily, compute_casino_provider_daily
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-RAW = PROJECT_ROOT / "data" / "raw"
-SERVING = PROJECT_ROOT / "data" / "serving"
+RAW = RAW_ROOT
+SERVING = SERVING_ROOT
 
 
 def main() -> None:
     SERVING.mkdir(parents=True, exist_ok=True)
 
-    # Transactions
-    tx_dir = RAW / "transactions"
-    if tx_dir.exists():
-        tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")
-        out = SERVING / "transactions_daily.parquet"
-        if tx_raw.empty:
-            print("[domain_kpis] Transactions raw is empty - keeping existing serving file")
+    # Transactions are temporarily paused while the source export is unavailable.
+    if ENABLE_TRANSACTIONS:
+        tx_dir = RAW / "transactions"
+        if tx_dir.exists():
+            tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")
+            out = SERVING / "transactions_daily.parquet"
+            if tx_raw.empty:
+                print("[domain_kpis] Transactions raw is empty - keeping existing serving file")
+            else:
+                tx_daily = compute_transactions_daily(tx_raw)
+                tx_daily.to_parquet(out, index=False)
+                print(f"[domain_kpis] Transactions daily: {len(tx_daily)} rows -> {out}")
         else:
-            tx_daily = compute_transactions_daily(tx_raw)
-            tx_daily.to_parquet(out, index=False)
-            print(f"[domain_kpis] Transactions daily: {len(tx_daily)} rows -> {out}")
+            print("[domain_kpis] No transactions raw dir - skipping")
     else:
-        print("[domain_kpis] No transactions raw dir - skipping")
+        print("[domain_kpis] Transactions disabled - skipping transactions_daily build")
 
     # Bonus
     bonus_dir = RAW / "bonus"

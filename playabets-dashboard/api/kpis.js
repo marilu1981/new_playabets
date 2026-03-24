@@ -1,6 +1,8 @@
 'use strict';
 const { supaQuery, sum, corsHeaders, cacheGet, cacheSet } = require("./_supabase");
 
+const TRANSACTIONS_ENABLED = process.env.PLAYABETS_ENABLE_TRANSACTIONS === "1";
+
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -31,10 +33,12 @@ module.exports = async function handler(req, res) {
       supaQuery("ftd_daily",   { filters: dateFilters() }),
       supaQuery("bonus_daily", { filters: dateFilters() }),
       supaQuery("casino_daily", { filters: dateFilters() }),
-      supaQuery("transactions_daily", { filters: dateFilters() }).catch((err) => {
-        console.warn("[/api/kpis] transactions_daily lookup failed", err);
-        return [];
-      }),
+      TRANSACTIONS_ENABLED
+        ? supaQuery("transactions_daily", { filters: dateFilters() }).catch((err) => {
+            console.warn("[/api/kpis] transactions_daily lookup failed", err);
+            return [];
+          })
+        : Promise.resolve([]),
     ]);
 
     // Sportsbook metrics
@@ -62,7 +66,8 @@ module.exports = async function handler(req, res) {
       ftds:          sum(ftdRows, "ftds"),
       deposits:      sum(txRows, "total_deposits"),
       withdrawals:   sum(txRows, "total_withdrawals"),
-      has_transactions_data: Array.isArray(txRows) && txRows.length > 0,
+      has_transactions_data: TRANSACTIONS_ENABLED && Array.isArray(txRows) && txRows.length > 0,
+      transactions_enabled: TRANSACTIONS_ENABLED,
       tx_count_pending: sum(txRows, "tx_count_pending"),
       tx_count_accepted: sum(txRows, "tx_count_accepted"),
       tx_count_other_status: sum(txRows, "tx_count_other_status"),

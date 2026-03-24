@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import pandas as pd
 from datetime import datetime, UTC
-from pathlib import Path
 from sqlalchemy import text
 
+from src.app_config import WATERMARK_DB_PATH, raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
 VIEW_NAME     = "Dwh_en.view_casino"
@@ -31,9 +31,8 @@ COLUMNS = [
     "JackpotContribution", "ThirdpartiesJackpotContribution",
 ]
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-WATERMARK_DB = PROJECT_ROOT / "data" / "watermarks.db"
-OUT_DIR      = PROJECT_ROOT / "data" / "raw" / "casino"
+WATERMARK_DB = WATERMARK_DB_PATH
+OUT_DIR = raw_dir("casino")
 
 
 def main() -> None:

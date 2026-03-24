@@ -104,10 +104,14 @@ export default function BonusPage() {
 
   const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
   const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
+  const pageMode = liveBonusCards ? "partial" : "mock";
 
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+      <div className="text-xs text-white/50 mb-3">
+        Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
+      </div>
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         <KpiCard title="Average Daily Unique Bonus Users" value={formatNumber(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />

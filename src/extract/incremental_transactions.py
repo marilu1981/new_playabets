@@ -24,10 +24,10 @@ from __future__ import annotations
 import os
 import pandas as pd
 from datetime import datetime, UTC
-from pathlib import Path
 from sqlalchemy import text
 from pandas.errors import DatabaseError
 
+from src.app_config import TX_WATERMARK_DB_PATH, raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
 VIEW_NAME     = "Dwh_en.view_transactions"
@@ -42,9 +42,8 @@ COLUMNS = [
     "ManagerID", "ManagerUsername", "DateVersion",
 ]
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-WATERMARK_DB = PROJECT_ROOT / "data" / "watermarks_transactions.db"
-OUT_DIR      = PROJECT_ROOT / "data" / "raw" / "transactions"
+WATERMARK_DB = TX_WATERMARK_DB_PATH
+OUT_DIR = raw_dir("transactions")
 
 # Optional backfill controls. Leave unset for normal incremental mode.
 BACKFILL_START_DATE = os.environ.get("TX_BACKFILL_START_DATE")

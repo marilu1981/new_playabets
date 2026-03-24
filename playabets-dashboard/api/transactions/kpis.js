@@ -1,5 +1,7 @@
 const { supaQuery, sum, corsHeaders, cacheGet, cacheSet } = require("../_supabase");
 
+const TRANSACTIONS_ENABLED = process.env.PLAYABETS_ENABLE_TRANSACTIONS === "1";
+
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -12,6 +14,22 @@ module.exports = async function handler(req, res) {
     const cached = cacheGet(cacheKey);
     if (cached) {
       return res.status(200).json(cached);
+    }
+
+    if (!TRANSACTIONS_ENABLED) {
+      const payload = {
+        has_data: false,
+        disabled: true,
+        message: "Transactions are temporarily disabled while the source export is unavailable.",
+        deposits: 0,
+        withdrawals: 0,
+        net: 0,
+        tx_count_pending: 0,
+        tx_count_accepted: 0,
+        tx_count_other_status: 0,
+      };
+      cacheSet(cacheKey, payload);
+      return res.status(200).json(payload);
     }
 
     const start = String(req.query.start ?? "");
@@ -27,6 +45,7 @@ module.exports = async function handler(req, res) {
 
     const payload = {
       has_data: Array.isArray(rows) && rows.length > 0,
+      disabled: false,
       deposits: sum(rows, "total_deposits"),
       withdrawals: sum(rows, "total_withdrawals"),
       net: sum(rows, "total_deposits") - sum(rows, "total_withdrawals"),
