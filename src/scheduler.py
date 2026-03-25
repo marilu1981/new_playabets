@@ -57,6 +57,7 @@ MODULE_TIMEOUT_SECONDS = int(os.environ.get("MODULE_TIMEOUT_SECONDS", "1800"))
 EXTRACT_MODULES = [
     "src.extract.incremental_users",
     "src.extract.incremental_betslips",
+    "src.extract.incremental_sessions",
     "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",

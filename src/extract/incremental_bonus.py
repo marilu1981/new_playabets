@@ -11,6 +11,7 @@ Run from the project root:
 """
 from __future__ import annotations
 
+import argparse
 import pandas as pd
 from datetime import datetime, UTC
 from sqlalchemy import text
@@ -46,26 +47,79 @@ WATERMARK_DB = WATERMARK_DB_PATH
 OUT_DIR = raw_dir("bonus")
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Extract bonus datasets from DWH.")
+    parser.add_argument("--window-start", help="Inclusive lower bound for BonusBonuses DateVersion.")
+    parser.add_argument("--window-end", help="Exclusive upper bound for BonusBonuses DateVersion.")
+    parser.add_argument(
+        "--update-watermark",
+        action="store_true",
+        help="Update the BonusBonuses watermark after a bounded window run.",
+    )
+    parser.add_argument(
+        "--freebets-start",
+        default=FREEBETS_START_DATE,
+        help="Inclusive lower bound for BonusFreebets InsertDate.",
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     engine = build_engine()
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
     # ── 1. BonusBonuses (incremental) ────────────────────────────────────────
-    last_value = get_watermark(WATERMARK_DB, BONUSES_VIEW)
-    print(f"[bonus] BonusBonuses watermark: {last_value}")
     cols_sql = ", ".join(BONUSES_COLUMNS)
-    query = text(
-        f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
-        f"FROM {BONUSES_VIEW} WHERE {CURSOR_COLUMN} > :last_value"
-    )
+    window_start = args.window_start
+    window_end = args.window_end
+
+    if bool(window_start) != bool(window_end):
+        raise SystemExit("Use both --window-start and --window-end together.")
+
+    if window_start and window_end:
+        print(f"[bonus] Running bounded window: {window_start} <= {CURSOR_COLUMN} < {window_end}")
+        last_value = get_watermark(WATERMARK_DB, BONUSES_VIEW)
+        print(f"[bonus] Stored watermark remains: {last_value}")
+        query = text(
+            f"""
+            SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql}
+            FROM {BONUSES_VIEW}
+            WHERE {CURSOR_COLUMN} >= :window_start
+              AND {CURSOR_COLUMN} < :window_end
+            """
+        )
+        bonuses_params = {"window_start": window_start, "window_end": window_end}
+        file_window_start = window_start.replace("-", "").replace(":", "").replace(" ", "_")
+        file_window_end = window_end.replace("-", "").replace(":", "").replace(" ", "_")
+        bonuses_filename = f"bonuses_increment_window_{file_window_start}_{file_window_end}_{ts}.parquet"
+    else:
+        last_value = get_watermark(WATERMARK_DB, BONUSES_VIEW)
+        print(f"[bonus] BonusBonuses watermark: {last_value}")
+        query = text(
+            f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
+            f"FROM {BONUSES_VIEW} WHERE {CURSOR_COLUMN} > :last_value"
+        )
+        bonuses_params = {"last_value": last_value}
+        bonuses_filename = f"bonuses_increment_{ts}.parquet"
+
     with engine.connect() as conn:
-        df_bonuses = pd.read_sql(query, conn, params={"last_value": last_value})
+        df_bonuses = pd.read_sql(query, conn, params=bonuses_params)
     print(f"[bonus] BonusBonuses rows: {len(df_bonuses)}")
     if not df_bonuses.empty:
-        df_bonuses.to_parquet(OUT_DIR / f"bonuses_increment_{ts}.parquet", index=False)
-        set_watermark(WATERMARK_DB, BONUSES_VIEW, str(df_bonuses["__cursor__"].max()))
-        print(f"[bonus] Watermark updated to: {df_bonuses['__cursor__'].max()}")
+        out_path = OUT_DIR / bonuses_filename
+        df_bonuses.to_parquet(out_path, index=False)
+        print(f"[bonus] Saved to {out_path}")
+        if window_start and window_end:
+            if args.update_watermark:
+                set_watermark(WATERMARK_DB, BONUSES_VIEW, str(df_bonuses["__cursor__"].max()))
+                print(f"[bonus] Updated watermark to: {df_bonuses['__cursor__'].max()}")
+            else:
+                print(f"[bonus] Watermark unchanged: {last_value}")
+        else:
+            set_watermark(WATERMARK_DB, BONUSES_VIEW, str(df_bonuses["__cursor__"].max()))
+            print(f"[bonus] Watermark updated to: {df_bonuses['__cursor__'].max()}")
 
     # ── 2. BonusCampaigns (full-refresh) ─────────────────────────────────────
     print("[bonus] Pulling BonusCampaigns (full-refresh)...")
@@ -86,7 +140,7 @@ def main() -> None:
         """
     )
     with engine.connect() as conn:
-        df_freebets = pd.read_sql(freebets_query, conn, params={"start_date": FREEBETS_START_DATE})
+        df_freebets = pd.read_sql(freebets_query, conn, params={"start_date": args.freebets_start})
     print(f"[bonus] BonusFreebets rows: {len(df_freebets)}")
     df_freebets.to_parquet(OUT_DIR / "freebets_latest.parquet", index=False)
 

@@ -108,7 +108,17 @@ def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
     """Daily provider-level casino metrics for range-filtered dashboard charts."""
     if casino.empty:
         return pd.DataFrame(
-            columns=["date", "provider_name", "casino_type", "stake", "winnings", "ggr", "bets"]
+            columns=[
+                "date",
+                "provider_name",
+                "date_provider_key",
+                "date_provider_type_key",
+                "casino_type",
+                "stake",
+                "winnings",
+                "ggr",
+                "bets",
+            ]
         )
 
     casino, ccol = normalize_cols(casino)
@@ -121,7 +131,17 @@ def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
     provider_col = ccol.get("providername") or ccol.get("bookmakerprovider_name") or ccol.get("providerid")
     if not provider_col:
         return pd.DataFrame(
-            columns=["date", "provider_name", "casino_type", "stake", "winnings", "ggr", "bets"]
+            columns=[
+                "date",
+                "provider_name",
+                "date_provider_key",
+                "date_provider_type_key",
+                "casino_type",
+                "stake",
+                "winnings",
+                "ggr",
+                "bets",
+            ]
         )
 
     type_col = ccol.get("casinotype") or ccol.get("casinotypeid")
@@ -156,6 +176,18 @@ def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
         .agg(**agg)
         .reset_index()
         .rename(columns={"casino_date": "date"})
+    )
+    out["date_provider_key"] = (
+        pd.to_datetime(out["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        + "|"
+        + out["provider_name"].fillna("").astype(str).str.strip()
+    )
+    out["date_provider_type_key"] = (
+        pd.to_datetime(out["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+        + "|"
+        + out["provider_name"].fillna("").astype(str).str.strip()
+        + "|"
+        + out["casino_type"].fillna("").astype(str).str.strip()
     )
     out["ggr"] = out["stake"] - out["winnings"]
     if "bets" not in out.columns:
