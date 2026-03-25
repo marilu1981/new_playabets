@@ -73,3 +73,5 @@ infra/azure/vm/playabets-pipeline.timer
 infra/azure/vm/playabets.env.example
 
 .dockerignore
+
+docs/SSL-VPN & DWH credentials.msg
