@@ -20,7 +20,7 @@ VIEW_NAME     = "Dwh_en.view_casino"
 CURSOR_COLUMN = "InsertDate"
 FORCE_START_DATE = None # inclusive
 FORCE_END_DATE = None # exclusive
-UPDATE_WATERMARK_ON_BACKFILL = False
+UPDATE_WATERMARK_ON_BACKFILL = True
 
 COLUMNS = [
     "CasinoID", "ProviderID", "ProviderName", "BookmakerProviderName",

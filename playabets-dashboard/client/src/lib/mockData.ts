@@ -264,10 +264,12 @@ export const revenueMetricsTrend = Array.from({ length: 30 }, (_, i) => {
 
 // ─── Segment Distribution (Actives) ──────────────────────────────────────────
 export const segmentDistribution = [
-  { segment: "Mass", count: 22_840, pct: 59.5, color: "oklch(0.62 0.17 145)" },
-  { segment: "Mix", count: 9_420, pct: 24.5, color: "oklch(0.72 0.14 85)" },
-  { segment: "PVIP", count: 4_210, pct: 11.0, color: "oklch(0.65 0.15 195)" },
-  { segment: "VIP", count: 1_942, pct: 5.0, color: "oklch(0.72 0.17 60)" },
+  { segment: "Champions", count: 1_942, pct: 5.0, color: "oklch(0.72 0.17 60)" },
+  { segment: "Loyal", count: 4_210, pct: 11.0, color: "oklch(0.65 0.15 195)" },
+  { segment: "Big Spenders", count: 9_420, pct: 24.5, color: "oklch(0.62 0.17 145)" },
+  { segment: "Mid", count: 22_840, pct: 59.5, color: "oklch(0.72 0.14 85)" },
+  { segment: "At Risk", count: 1_280, pct: 3.3, color: "oklch(0.55 0.22 25)" },
+  { segment: "Dormant", count: 760, pct: 2.0, color: "oklch(0.45 0.05 0)" },
 ];
 
 // ─── Deposit vs Withdrawal Flow ───────────────────────────────────────────────
@@ -352,10 +354,12 @@ export const trendBySegment = Array.from({ length: 12 }, (_, i) => {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return {
     month: months[i],
-    VIP:   Math.round(380_000 + Math.sin(i / 2) * 40_000 + Math.random() * 20_000),
-    PVIP:  Math.round(210_000 + Math.sin(i / 2.5) * 25_000 + Math.random() * 15_000),
-    Mass:  Math.round(520_000 + Math.sin(i / 3) * 60_000 + Math.random() * 30_000),
-    Mix:   Math.round(140_000 + Math.sin(i / 4) * 18_000 + Math.random() * 10_000),
+    Champions: Math.round(95_000 + Math.sin(i / 2) * 12_000 + Math.random() * 8_000),
+    Loyal: Math.round(180_000 + Math.sin(i / 2.4) * 18_000 + Math.random() * 10_000),
+    "Big Spenders": Math.round(260_000 + Math.sin(i / 2.8) * 22_000 + Math.random() * 12_000),
+    Mid: Math.round(410_000 + Math.sin(i / 3) * 30_000 + Math.random() * 18_000),
+    "At Risk": Math.round(110_000 + Math.sin(i / 3.4) * 14_000 + Math.random() * 8_000),
+    Dormant: Math.round(60_000 + Math.sin(i / 3.8) * 10_000 + Math.random() * 6_000),
   };
 });
 
@@ -374,7 +378,7 @@ export const dailyTrendWithMA = rawDailyValues.map((val, i) => {
 
 // ─── Detailed Breakdown Table ─────────────────────────────────────────────────
 const brands    = ["PlayaBets NG", "PlayaBets GH", "PlayaBets KE", "PlayaBets UG", "PlayaBets ZM"];
-const segments  = ["VIP", "PVIP", "Mass", "Mix"];
+const segments  = ["Champions", "Loyal", "Big Spenders", "Mid", "At Risk", "Dormant"];
 const territories = ["West Africa", "East Africa", "Southern Africa"];
 
 export const detailedBreakdown = Array.from({ length: 20 }, (_, i) => {

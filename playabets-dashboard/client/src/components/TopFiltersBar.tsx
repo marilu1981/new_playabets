@@ -268,7 +268,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
           style={{ borderTop: "1px solid oklch(1 0 0 / 5%)" }}
         >
 
-          <Field label="User Segment">
+          <Field label="RFM Segment">
             <select
               value={filters.currentSegment}
               onChange={(e) => set("currentSegment", e.target.value)}
@@ -276,10 +276,12 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               style={SELECT_STYLE}
             >
               <option value="all">All Segments</option>
-              <option value="VIP">VIP</option>
-              <option value="PVIP">PVIP</option>
-              <option value="Mass">Mass</option>
-              <option value="Mix">Mix</option>
+              <option value="Champions">Champions</option>
+              <option value="Loyal">Loyal</option>
+              <option value="Big Spenders">Big Spenders</option>
+              <option value="Mid">Mid</option>
+              <option value="At Risk">At Risk</option>
+              <option value="Dormant">Dormant</option>
             </select>
           </Field>
 

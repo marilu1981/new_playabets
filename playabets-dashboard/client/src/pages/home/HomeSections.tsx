@@ -384,8 +384,20 @@ export function DetailedBreakdownTable({
                 <td className="py-2.5 pr-6 text-white/80 text-xs font-medium">{row.brand}</td>
                 <td className="py-2.5 pr-6">
                   <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{
-                    background: row.segment === "VIP" ? "oklch(0.72 0.14 85 / 15%)" : row.segment === "PVIP" ? "oklch(0.65 0.15 195 / 15%)" : row.segment === "Mass" ? "oklch(0.62 0.17 145 / 15%)" : "oklch(0.72 0.17 60 / 15%)",
-                    color: row.segment === "VIP" ? chartColors.gold : row.segment === "PVIP" ? chartColors.teal : row.segment === "Mass" ? chartColors.green : chartColors.amber,
+                    background:
+                      row.segment === "Champions" ? "oklch(0.72 0.17 60 / 15%)" :
+                      row.segment === "Loyal" ? "oklch(0.65 0.15 195 / 15%)" :
+                      row.segment === "Big Spenders" ? "oklch(0.62 0.17 145 / 15%)" :
+                      row.segment === "At Risk" ? "oklch(0.55 0.22 25 / 15%)" :
+                      row.segment === "Dormant" ? "oklch(0.45 0.05 0 / 15%)" :
+                      "oklch(0.72 0.14 85 / 15%)",
+                    color:
+                      row.segment === "Champions" ? chartColors.gold :
+                      row.segment === "Loyal" ? chartColors.teal :
+                      row.segment === "Big Spenders" ? chartColors.green :
+                      row.segment === "At Risk" ? chartColors.red :
+                      row.segment === "Dormant" ? "oklch(0.45 0.05 0)" :
+                      chartColors.amber,
                   }}>{row.segment}</span>
                 </td>
                 <td className="py-2.5 pr-6 text-white/60 text-xs">{row.territory}</td>

@@ -71,4 +71,5 @@ infra/azure/containerapp-job.yaml
 infra/azure/vm/playabets-pipeline.service
 infra/azure/vm/playabets-pipeline.timer
 infra/azure/vm/playabets.env.example
+
 .dockerignore

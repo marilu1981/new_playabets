@@ -83,6 +83,24 @@ import {
   SummaryMetricsTable,
 } from "./home/HomeSections";
 
+const RFM_SEGMENTS = ["Champions", "Loyal", "Big Spenders", "Mid", "At Risk", "Dormant"] as const;
+const RFM_SEGMENT_COLOR_MAP: Record<(typeof RFM_SEGMENTS)[number], string> = {
+  Champions: CHART_COLORS.gold,
+  Loyal: CHART_COLORS.teal,
+  "Big Spenders": CHART_COLORS.green,
+  Mid: CHART_COLORS.amber,
+  "At Risk": CHART_COLORS.red,
+  Dormant: "oklch(0.45 0.05 0)",
+};
+
+function getRfmSegmentBadgeStyle(segment: string) {
+  const color = RFM_SEGMENT_COLOR_MAP[segment as keyof typeof RFM_SEGMENT_COLOR_MAP] ?? CHART_COLORS.amber;
+  return {
+    background: color.replace(")", " / 15%)"),
+    color,
+  };
+}
+
 
 export default function Home() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
@@ -733,9 +751,9 @@ export default function Home() {
   }, [revenueMetricsTrend, revenueTrend]);
   const segmentDistribution = useMemo(() => {
     const source = liveSegmentDistribution ?? baseSegmentDistribution;
-    const filtered = liveSegmentDistribution
-      ? source
-      : source.filter((row) => matchesRowFilters(filters, { segment: row.segment }));
+    const filtered = source.filter((row) =>
+      filters.currentSegment === "all" ? true : row.segment === filters.currentSegment
+    );
     const scaled = liveSegmentDistribution
       ? filtered  // live data is already computed — don't scale with mock multiplier
       : scaleArrayNumericFields(filtered, multiplier, ["segment", "color", "pct"]);
@@ -805,7 +823,19 @@ export default function Home() {
     if (liveSegmentTrend && liveSegmentTrend.length > 0) {
       const filtered = filterByDateRange(liveSegmentTrend, filters, (row) => row.date);
       const scaled = scaleArrayNumericFields(filtered, multiplier, ["date"]);
-      return aggregateByGranularity(scaled, filters.granularity, (row) => row.date, {
+      const scoped = scaled.map((row) => {
+        if (filters.currentSegment === "all") {
+          return row;
+        }
+        const out = { ...row };
+        RFM_SEGMENTS.forEach((segment) => {
+          if (segment !== filters.currentSegment) {
+            out[segment] = 0;
+          }
+        });
+        return out;
+      });
+      return aggregateByGranularity(scoped, filters.granularity, (row) => row.date, {
         labelKey: "date",
         fallbackYear,
       });
@@ -816,8 +846,8 @@ export default function Home() {
       const out = { ...row };
       const segmentFilters = [filters.currentSegment].filter((value) => value !== "all");
       if (segmentFilters.length > 0) {
-        (["VIP", "PVIP", "Mass", "Mix"] as const).forEach((segment) => {
-          if (!segmentFilters.some((value) => value.toUpperCase() === segment)) {
+        RFM_SEGMENTS.forEach((segment) => {
+          if (!segmentFilters.some((value) => value === segment)) {
             out[segment] = 0;
           }
         });
@@ -1330,10 +1360,12 @@ export default function Home() {
                   </>
                 ) : (
                   <>
-                    <Bar dataKey="VIP"  fill={CHART_COLORS.gold}  stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="PVIP" fill={CHART_COLORS.teal}  stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Mass" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Mix"  fill={CHART_COLORS.amber} stackId="a" radius={[2,2,0,0]} />
+                    <Bar dataKey="Champions" fill={CHART_COLORS.gold} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Loyal" fill={CHART_COLORS.teal} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Big Spenders" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Mid" fill={CHART_COLORS.amber} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="At Risk" fill={CHART_COLORS.red} stackId="a" radius={[0,0,0,0]} />
+                    <Bar dataKey="Dormant" fill="oklch(0.45 0.05 0)" stackId="a" radius={[2,2,0,0]} />
                   </>
                 )}
               </BarChart>
@@ -1461,10 +1493,9 @@ export default function Home() {
                   <td className="py-2.5 pr-6 text-white/50 text-xs font-mono" style={FONT_MONO}>{row.date}</td>
                   <td className="py-2.5 pr-6 text-white/80 text-xs font-medium">{row.brand}</td>
                   <td className="py-2.5 pr-6">
-                    <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{
-                      background: row.segment === "VIP" ? "oklch(0.72 0.14 85 / 15%)" : row.segment === "PVIP" ? "oklch(0.65 0.15 195 / 15%)" : row.segment === "Mass" ? "oklch(0.62 0.17 145 / 15%)" : "oklch(0.72 0.17 60 / 15%)",
-                      color: row.segment === "VIP" ? CHART_COLORS.gold : row.segment === "PVIP" ? CHART_COLORS.teal : row.segment === "Mass" ? CHART_COLORS.green : CHART_COLORS.amber,
-                    }}>{row.segment}</span>
+                    <span className="text-xs px-2 py-0.5 rounded font-semibold" style={getRfmSegmentBadgeStyle(row.segment)}>
+                      {row.segment}
+                    </span>
                   </td>
                   <td className="py-2.5 pr-6 text-white/60 text-xs">{row.territory}</td>
                   <td className="py-2.5 pr-6 text-white text-xs font-mono" style={FONT_MONO}>{ formatCompact(row.value)}</td>
