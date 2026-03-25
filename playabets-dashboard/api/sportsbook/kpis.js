@@ -2,10 +2,11 @@ const { supaQuery, sum, corsHeaders } = require("../_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const h = corsHeaders(req);
+    Object.entries(h).forEach(([k, v]) => res.setHeader(k, v));
     return res.status(200).end();
   }
-  const headers = corsHeaders();
+  const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
   try {
     const start = String(req.query.start ?? "");
@@ -29,6 +30,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error("[/api/sportsbook/kpis]", err);
-    return res.status(500).json({ error: String(err) });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

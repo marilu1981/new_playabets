@@ -4,10 +4,11 @@ const TRANSACTIONS_ENABLED = process.env.PLAYABETS_ENABLE_TRANSACTIONS === "1";
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    const h = corsHeaders(req);
+    Object.entries(h).forEach(([k, v]) => res.setHeader(k, v));
     return res.status(200).end();
   }
-  const headers = corsHeaders();
+  const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
   try {
     const cacheKey = `transactions-kpis:${req.url ?? JSON.stringify(req.query ?? {})}`;
@@ -57,6 +58,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(payload);
   } catch (err) {
     console.error("[/api/transactions/kpis]", err);
-    return res.status(500).json({ error: String(err) });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

@@ -44,8 +44,10 @@ from pathlib import Path
 from typing import Optional, Literal
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -484,18 +486,51 @@ app = FastAPI(title="Playa Bets Analytics API", version="0.3")
 # handles routing so CORS is never triggered. This config is for local dev only.
 # ---------------------------------------------------------------------------
 _ALLOWED_ORIGINS = [
-    "http://localhost:3000",   # Vite dev server
-    "http://127.0.0.1:3000",
-    # Add production domain here when deploying, e.g.:
-    # "https://dashboard.playabets.com",
+    o.strip()
+    for o in os.environ.get(
+        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
+    if o.strip()
 ]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=False,          # No cookies — we use Authorization header
     allow_methods=["GET", "OPTIONS"],  # Read-only API
-    allow_headers=["Content-Type", "Authorization", "Accept"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-API-Key"],
 )
+
+
+# ---------------------------------------------------------------------------
+# API-key authentication middleware
+# Set API_KEY env var to enable. If unset, auth is disabled (local dev).
+# Pass the key via "Authorization: Bearer <key>" or "X-API-Key: <key>" header.
+# ---------------------------------------------------------------------------
+_API_KEY = os.environ.get("API_KEY")
+_AUTH_EXEMPT_PATHS = {"/", "/health", "/docs", "/openapi.json"}
+
+
+class APIKeyMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if not _API_KEY:                          # auth disabled in dev
+            return await call_next(request)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        if request.url.path in _AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+
+        key = request.headers.get("x-api-key") or ""
+        auth = request.headers.get("authorization") or ""
+        if auth.startswith("Bearer "):
+            key = key or auth[7:]
+
+        if key != _API_KEY:
+            return JSONResponse(status_code=401, content={"detail": "Invalid or missing API key"})
+
+        return await call_next(request)
+
+
+app.add_middleware(APIKeyMiddleware)
 
 
 def _filter_range(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:

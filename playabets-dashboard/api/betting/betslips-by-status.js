@@ -19,11 +19,11 @@ const CACHE_TTL_MS = 60_000;
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+    const h = corsHeaders(req);
+    Object.entries(h).forEach(([k, v]) => res.setHeader(k, v));
     return res.status(200).end();
   }
-  const headers = corsHeaders();
+  const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
 
   try {
@@ -103,6 +103,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json(result);
   } catch (err) {
     console.error("[/api/betting/betslips-by-status]", err);
-    return res.status(500).json({ error: String(err) });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

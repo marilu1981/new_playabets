@@ -58,7 +58,8 @@ async function supaQuery(table, opts = {}) {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Supabase ${table} ${res.status}: ${text}`);
+    console.error(`Supabase query failed [${table}] ${res.status}: ${text}`);
+    throw new Error(`Data query failed (${res.status})`);
   }
   const data = await res.json();
   cacheSet(cacheKey, data);
@@ -103,7 +104,8 @@ async function supaQueryAll(table, opts = {}) {
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Supabase ${table} ${res.status}: ${text}`);
+      console.error(`Supabase paginated query failed [${table}] ${res.status}: ${text}`);
+      throw new Error(`Data query failed (${res.status})`);
     }
 
     const page = await res.json();
@@ -132,9 +134,18 @@ function sum(rows, col) {
   return rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
 }
 
-function corsHeaders() {
+const _ALLOWED_ORIGINS = (
+  process.env.ALLOWED_ORIGINS ||
+  "http://localhost:3000,https://new-playabets-marilus-projects.vercel.app,https://new-playabets.vercel.app"
+)
+  .split(",")
+  .map((s) => s.trim());
+
+function corsHeaders(req) {
+  const origin = req?.headers?.origin ?? "";
+  const allowed = _ALLOWED_ORIGINS.includes(origin) ? origin : _ALLOWED_ORIGINS[0];
   return {
-    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "GET,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json",

@@ -1,4 +1,3 @@
-@'
 .env
 .env.local
 .env.development.local
@@ -33,8 +32,10 @@ dist
 # Local generated data (do not commit)
 data/raw/
 data/serving/
+data/csv/
 data/watermarks.db
 watermarks.db
+*.db
 backend/data/
 backend/watermarks.db
 
@@ -46,8 +47,8 @@ backend/__pycache__/
 # Local mirrored copies
 backend/docs/
 backend/assets/
-'@ | Set-Content .gitignore
 
+# Docs temp files
 docs/_tmp_dwh.zip
 docs/_tmp_dwh_docx/
 docs/_tmp_*/
@@ -55,11 +56,7 @@ docs/_tmp_*/
 
 playabets-dashboard/AWS_rework_later.md
 
-data/raw/
-data/serving/
-data/csv/
-
-# Azure set up 
+# Azure set up
 docs/azure-container-apps-deployment-guide.md
 docs/azure-container-apps-execution-checklist.md
 docs/azure-parallel-backend-rollout.md
@@ -74,4 +71,9 @@ infra/azure/vm/playabets.env.example
 
 .dockerignore
 
+# Credentials — never commit
 docs/SSL-VPN & DWH credentials.msg
+*.msg
+*.pem
+*.key
+*.p12
