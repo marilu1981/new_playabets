@@ -97,7 +97,13 @@ def build_rfm_users(
         cols_to_add.append(lastlogin_col)
 
     if cols_to_add:
-        add_df = users[[uid_u] + cols_to_add].drop_duplicates().copy()
+        add_df = users[[uid_u] + cols_to_add].copy()
+        if lastlogin_col and lastlogin_col in add_df.columns:
+            add_df["_user_ord"] = to_dt(add_df[lastlogin_col])
+        else:
+            add_df["_user_ord"] = pd.NaT
+        add_df = add_df.sort_values("_user_ord").drop_duplicates(subset=[uid_u], keep="last")
+        add_df = add_df.drop(columns=["_user_ord"])
         add_df = add_df.rename(columns={uid_u: "userid"})
         base = base.merge(add_df, on="userid", how="left")
 
@@ -449,6 +455,11 @@ def build_rfm_users(
         "segment",
     ]
     cols_out = [c for c in cols_out if c is not None and c in rfm.columns]
-
-    return rfm[cols_out].sort_values(["segment", "rfm_score"], ascending=[True, False])
+    out = rfm[cols_out].copy()
+    dedupe_order = [c for c in ["last_activity_dt", "last_login_dt", "rfm_score"] if c in out.columns]
+    if dedupe_order:
+        ascending = [True] * (len(dedupe_order) - 1) + [False]
+        out = out.sort_values(dedupe_order, ascending=ascending)
+    out = out.drop_duplicates(subset=["userid"], keep="last")
+    return out.sort_values(["segment", "rfm_score"], ascending=[True, False])
 

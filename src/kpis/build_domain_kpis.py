@@ -20,6 +20,7 @@ from .transactions_kpi import compute_transactions_daily
 from .bonus_kpis import compute_bonus_daily
 from .ftd_kpis import compute_ftd_daily
 from .casino_kpis import compute_casino_daily, compute_casino_provider_daily
+from .conversion_cohorts_kpi import compute_conversion_cohorts_daily
 
 RAW = RAW_ROOT
 SERVING = SERVING_ROOT
@@ -72,6 +73,16 @@ def main() -> None:
             ftd_daily = compute_ftd_daily(ftd_raw)
             ftd_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] FTD daily: {len(ftd_daily)} rows -> {out}")
+
+            users_dir = RAW / "users"
+            users_raw = read_all_parquets(users_dir, "users_increment_*.parquet") if users_dir.exists() else pd.DataFrame()
+            cohorts_out = SERVING / "conversion_cohorts_daily.parquet"
+            if users_raw.empty:
+                print("[domain_kpis] Users raw is empty - skipping conversion cohorts build")
+            else:
+                conversion_cohorts = compute_conversion_cohorts_daily(users_raw, ftd_raw)
+                conversion_cohorts.to_parquet(cohorts_out, index=False)
+                print(f"[domain_kpis] Conversion cohorts daily: {len(conversion_cohorts)} rows -> {cohorts_out}")
     else:
         print("[domain_kpis] No first_deposits raw dir - skipping")
 

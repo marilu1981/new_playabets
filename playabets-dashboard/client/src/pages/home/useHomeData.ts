@@ -147,6 +147,16 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         registrations: fetchJson<{ registrations: Array<{ date: string; value: number }>; ftds: Array<{ date: string; value: number }> }>(
           `/timeseries/registrations?${regsQuery}`
         ),
+        conversionCohorts: fetchJson<{
+          rows: Array<{
+            date: string;
+            registrations?: number;
+            ftds_d7?: number;
+            ftds_d30?: number;
+            rate_d7?: number | null;
+            rate_d30?: number | null;
+          }>;
+        }>(`/timeseries/conversion-cohorts?start=${filters.dateFrom}&end=${filters.dateTo}`),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
         rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_champions?: number; rfm_loyal?: number; rfm_big_spenders?: number; rfm_mid?: number; rfm_at_risk?: number; rfm_dormant?: number }> }>(
@@ -154,12 +164,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         ),
       };
 
-      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes] = await Promise.allSettled([
+      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes] = await Promise.allSettled([
         requests.kpis,
         requests.daily,
         requests.casinoDaily,
         requests.bonusDaily,
         requests.registrations,
+        requests.conversionCohorts,
       ]);
 
       if (cancelled) {
@@ -375,44 +386,19 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           }));
         setLivePlayerAcquisition(monthly.length > 0 ? monthly : null);
 
-        const allRegDates = Array.from(
-          new Set([
-            ...Array.from(regByDate.keys()),
-            ...Array.from(ftdByDate.keys()),
-          ])
-        ).sort();
-        const dateRows = allRegDates
-          .map((date) => ({ date, ts: Date.parse(`${date}T00:00:00Z`) }))
-          .filter((row) => Number.isFinite(row.ts));
+      }
 
-        const rollingRates = (windowDays: number) => {
-          const limitMs = (windowDays - 1) * 86400000;
-          return dateRows.map((row, idx) => {
-            let regSum = 0;
-            let ftdSum = 0;
-            for (let j = idx; j >= 0; j -= 1) {
-              if (row.ts - dateRows[j].ts > limitMs) {
-                break;
-              }
-              regSum += regByDate.get(dateRows[j].date) ?? 0;
-              ftdSum += ftdByDate.get(dateRows[j].date) ?? 0;
-            }
-            if (!regSum) {
-              return null;
-            }
-            const raw = (ftdSum / regSum) * 100;
-            return Number(Math.min(raw, 100).toFixed(1));
-          });
-        };
-
-        const rate7d = rollingRates(7);
-        const rate30d = rollingRates(30);
-        const conversion = dateRows.map((row, idx) => ({
-          date: row.date,
-          rate7d: rate7d[idx],
-          rate30d: rate30d[idx],
-        }));
-        setLiveConversionRateTrend(conversion.length > 0 ? conversion : null);
+      if (conversionCohortsRes.status === "fulfilled") {
+        const rows = (conversionCohortsRes.value.rows ?? [])
+          .map((row) => ({
+            date: String(row.date ?? ""),
+            rate7d: row.rate_d7 == null ? null : Number(row.rate_d7),
+            rate30d: row.rate_d30 == null ? null : Number(row.rate_d30),
+          }))
+          .filter((row) => row.date);
+        setLiveConversionRateTrend(rows.length > 0 ? rows : null);
+      } else {
+        setLiveConversionRateTrend(null);
       }
 
       const [betslipStatusRes, userStatusRes, rfmSegmentsRes] = await Promise.allSettled([

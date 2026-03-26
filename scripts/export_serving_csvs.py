@@ -26,6 +26,7 @@ DEFAULT_EXPORTS = [
     "daily_kpis",
     "rfm_users",
     "bonus_daily",
+    "conversion_cohorts_daily",
     "ftd_daily",
     "casino_daily",
     "casino_providers_daily",
