@@ -263,7 +263,8 @@ export default function Home() {
       const requests = {
         kpis: fetchJson<{
           registrations?: number;
-          actives?: number;
+          actives_sports?: number;
+          actives_casino?: number;
           turnover?: number;
           winnings?: number;
           ggr?: number;
@@ -341,7 +342,8 @@ export default function Home() {
         setLiveNgr(Number(k.ngr ?? 0));
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
-          activeUsers: Number(k.actives ?? 0),
+          activesSports: Number(k.actives_sports ?? 0),
+          activesCasino: Number(k.actives_casino ?? 0),
           totalBetslips: prev?.totalBetslips ?? baseOverviewKPIs.totalBetslips,
           totalStake: Number(k.turnover ?? 0),
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
@@ -477,7 +479,8 @@ export default function Home() {
         const totalBetslips = Array.from(sportsbookByDate.values()).reduce((sum, r) => sum + r.betslipsCount, 0);
         setLiveOverviewKPIs({
           ...baseOverviewKPIs,
-          activeUsers: Number(k.actives ?? 0),
+          activesSports: Number(k.actives_sports ?? 0),
+          activesCasino: Number(k.actives_casino ?? 0),
           totalBetslips,
           totalStake: Number(k.turnover ?? 0),
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
@@ -1033,13 +1036,15 @@ export default function Home() {
           Primary KPIs
         </h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-5 gap-3 mb-3">
         <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range"
           icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
           icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Actives" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Sports + Casino actives"
+        <KpiCard title="Sports Actives" value={formatCompact(overviewKPIs.activesSports)} subtitle="Unique sports users"
           icon={<Activity size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Casino Actives" value={formatCompact(overviewKPIs.activesCasino)} subtitle="Unique casino users"
+          icon={<Activity size={18} />} accent="gold" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
           value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
@@ -1163,7 +1168,7 @@ export default function Home() {
                   <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
                   <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip contentStyle={TT_STYLE} formatter={(v: number | null) => (v == null ? "n/a" : `${v}%`)} />
+                  <Tooltip contentStyle={TT_STYLE} formatter={(v) => (v == null ? "n/a" : `${v}%`)} />
                   <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
                   <Bar dataKey="registrations" name="Regs MoM%"  fill={CHART_COLORS.teal} radius={[2, 2, 0, 0]} />
                   <Bar dataKey="ftds"          name="FTDs MoM%"  fill={CHART_COLORS.gold} radius={[2, 2, 0, 0]} />
@@ -1199,7 +1204,7 @@ export default function Home() {
               <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} domain={[0, 100]} />
               <Tooltip
                 contentStyle={TT_STYLE}
-                formatter={(v: number | null) => (v == null ? "n/a" : `${v}%`)}
+                formatter={(v) => (v == null ? "n/a" : `${v}%`)}
               />
               <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
               <Line type="monotone" dataKey="rate7d"  name="7d Conversion"  stroke={CHART_COLORS.amber} strokeWidth={2} dot={false} />

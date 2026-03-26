@@ -118,7 +118,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       const requests = {
         kpis: fetchJson<{
           registrations?: number;
-          actives?: number;
+          actives_sports?: number;
+          actives_casino?: number;
           turnover?: number;
           winnings?: number;
           ggr?: number;
@@ -193,7 +194,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveNgr(Number(k.ngr ?? 0));
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
-          activeUsers: Number(k.actives ?? 0),
+          activesSports: Number(k.actives_sports ?? 0),
+          activesCasino: Number(k.actives_casino ?? 0),
           totalBetslips: prev?.totalBetslips ?? baseOverviewKPIs.totalBetslips,
           totalStake: Number(k.turnover ?? 0),
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
@@ -333,7 +335,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         const totalBetslips = Array.from(sportsbookByDate.values()).reduce((sum, r) => sum + r.betslipsCount, 0);
         setLiveOverviewKPIs({
           ...baseOverviewKPIs,
-          activeUsers: Number(k.actives ?? 0),
+          activesSports: Number(k.actives_sports ?? 0),
+          activesCasino: Number(k.actives_casino ?? 0),
           totalBetslips,
           totalStake: Number(k.turnover ?? 0),
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),

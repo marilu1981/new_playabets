@@ -17,7 +17,8 @@ type SectionStyleProps = {
 };
 
 type OverviewLike = {
-  activeUsers: number;
+  activesSports: number;
+  activesCasino: number;
   totalStake: number;
   grossRevenue: number;
 };
@@ -116,10 +117,11 @@ export function HomePrimaryKpis({
           Primary KPIs
         </h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-4 gap-3 mb-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-5 gap-3 mb-3">
         <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range" icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors" icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Actives" value={formatCompact(overviewKpis.activeUsers)} subtitle="Sports + Casino actives" icon={<Activity size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Sports Actives" value={formatCompact(overviewKpis.activesSports)} subtitle="Unique sports users" icon={<Activity size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Casino Actives" value={formatCompact(overviewKpis.activesCasino)} subtitle="Unique casino users" icon={<Activity size={18} />} accent="gold" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
           value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}

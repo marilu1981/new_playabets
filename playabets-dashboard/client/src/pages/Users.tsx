@@ -238,7 +238,7 @@ export default function UsersPage() {
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
       const [kpisRes, regsRes, statusRes, dailyRes, casinoRes] = await Promise.allSettled([
-        fetchJson<{ actives?: number; registrations?: number }>(`/kpis?${query}`),
+        fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
@@ -261,7 +261,8 @@ export default function UsersPage() {
         setLiveOverview({
           ...baseOverviewKPIs,
           totalUsers: Number(kpisRes.value.registrations ?? 0),
-          activeUsers: Number(kpisRes.value.actives ?? 0),
+          activesSports: Number(kpisRes.value.actives_sports ?? 0),
+          activesCasino: Number(kpisRes.value.actives_casino ?? 0),
         });
       }
 
@@ -414,7 +415,9 @@ export default function UsersPage() {
     return {
       ...(liveOverview ?? baseOverviewKPIs),
       totalUsers: liveOverview?.totalUsers ?? totalUsers,
-      activeUsers: liveOverview?.activeUsers ?? activeUsers,
+      activeUsers,
+      activesSports: liveOverview?.activesSports ?? 0,
+      activesCasino: liveOverview?.activesCasino ?? 0,
     };
   }, [usersByStatus, liveOverview]);
   const totalUsersSafe = Math.max(1, overviewKPIs.totalUsers);

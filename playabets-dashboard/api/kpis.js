@@ -56,8 +56,8 @@ module.exports = async function handler(req, res) {
 
     const payload = {
       registrations: sum(kpiRows, "registrations"),
-      // Actives = Sports actives + Casino actives (Sports + Casino combined)
-      actives:       sum(kpiRows, "actives_sports") + sum(casinoRows, "casino_actives"),
+      actives_sports: sum(kpiRows, "actives_sports"),
+      actives_casino: sum(casinoRows, "casino_actives"),
       turnover:      total_turnover,
       winnings:      sum(kpiRows, "settled_winnings") + sum(casinoRows, "casino_winnings"),
       ggr:           total_ggr,

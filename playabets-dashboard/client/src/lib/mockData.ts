@@ -8,7 +8,9 @@
 // ─── KPI Overview ────────────────────────────────────────────────────────────
 export const overviewKPIs = {
   totalUsers: 142_830,
-  activeUsers: 38_412,
+  activeUsers: 98_420,
+  activesSports: 28_412,
+  activesCasino: 14_200,
   totalBetslips: 2_847_391,
   totalStake: 9_482_100,
   totalWinnings: 8_103_200,
