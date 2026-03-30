@@ -44,6 +44,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     Lapsed: number;
     Dormant: number;
   }> | null>(null);
+  const [liveTodayKpis, setLiveTodayKpis] = useState<{
+    ggr: number;
+    turnover: number;
+    registrations: number;
+    activeSports: number;
+    activeCasino: number;
+  } | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
@@ -536,6 +543,34 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     filters.granularity,
   ]);
 
+  // ── Fetch today's (latest date) snapshot independently of the date filter ──
+  useEffect(() => {
+    if (!latestDataDate) return;
+    let cancelled = false;
+    Promise.allSettled([
+      fetchJson<{ rows: Array<{ date: string; placed_stake?: number; ggr?: number; registrations?: number; actives_sports?: number }> }>(
+        `/kpis/daily?start=${latestDataDate}&end=${latestDataDate}&metrics=placed_stake,ggr,registrations,actives_sports`
+      ),
+      fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(
+        `/casino/daily?start=${latestDataDate}&end=${latestDataDate}`
+      ),
+    ]).then(([dailyRes, casinoRes]) => {
+      if (cancelled) return;
+      const row = dailyRes.status === "fulfilled" ? (dailyRes.value.rows?.[0] ?? null) : null;
+      const casinoRow = casinoRes.status === "fulfilled" ? (casinoRes.value.points?.[0] ?? null) : null;
+      if (row) {
+        setLiveTodayKpis({
+          ggr: Number(row.ggr ?? 0),
+          turnover: Number(row.placed_stake ?? 0),
+          registrations: Number(row.registrations ?? 0),
+          activeSports: Number(row.actives_sports ?? 0),
+          activeCasino: Number(casinoRow?.casino_actives ?? casinoRow?.actives ?? 0),
+        });
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [latestDataDate]);
+
   return {
     dataMode,
     latestDataDate,
@@ -557,5 +592,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     hasUserStatusData,
     liveSegmentDistribution,
     hasSegmentData,
+    liveTodayKpis,
   };
 }

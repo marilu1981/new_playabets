@@ -124,6 +124,7 @@ export default function Home() {
     hasUserStatusData,
     liveSegmentDistribution,
     hasSegmentData,
+    liveTodayKpis,
   } = useHomeData({ filters, setFilters });
 /*
   const [dataMode, setDataMode] = useState<DataMode>("mock");
@@ -1010,76 +1011,91 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── PRIMARY KPIs — ROW 1 ────────────────────────────────────────── */}
-      <div className="mb-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: CHART_COLORS.gold }}>
-          Primary KPIs
-        </h3>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-5 gap-3 mb-3">
-        <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range"
-          icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
-          icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Sports Actives" value={formatCompact(overviewKPIs.activesSports)} subtitle="Avg daily unique users"
-          icon={<Activity size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Casino Actives" value={formatCompact(overviewKPIs.activesCasino)} subtitle="Avg daily unique users"
-          icon={<Activity size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard
-          title="Total Deposits"
-          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
-          subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
-          icon={<DollarSign size={18} />}
-          accent="amber"
-          loading={isLoading}
-        />
-      </div>
+      {/* ── DAILY HEALTH + PERIOD KPIs ───────────────────────────────────── */}
+      {(() => {
+        const TILE_BG = "oklch(0.22 0.04 155 / 70%)";
+        const tile = (
+          label: string,
+          value: string,
+          accent: string,
+          pending = false,
+        ) => (
+          <div className="rounded-lg p-2.5" style={{ background: TILE_BG }}>
+            <div className="text-[9px] font-bold uppercase tracking-widest mb-1 truncate" style={{ color: accent }}>
+              {label}
+            </div>
+            <div className={`text-base font-bold leading-tight ${pending ? "text-white/30" : "text-white"}`} style={FONT_MONO}>
+              {value}
+            </div>
+          </div>
+        );
 
-      {/* ── PRIMARY KPIs — ROW 2 ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-        <KpiCard
-          title="Total Withdrawals"
-          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalWithdrawals)}` : "Pending"}
-          subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
-          icon={<ArrowUpRight size={18} />}
-          accent="red"
-          loading={isLoading}
-        />
-        <KpiCard title="Total Turnover" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Sports + Casino"
-          icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="GGR" value={`${formatCompact(overviewKPIs.grossRevenue)}`} subtitle={`Sports + Casino · ${margin}% margin`}
-          icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
-      </div>
+        const todayGGR     = liveTodayKpis ? formatCompact(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
+        const todayTurn    = liveTodayKpis ? formatCompact(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
+        const todayRegs    = liveTodayKpis ? formatCompact(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
+        const todaySports  = liveTodayKpis ? formatCompact(liveTodayKpis.activeSports)  : (isLoading ? "…" : "—");
+        const todayCasino  = liveTodayKpis ? formatCompact(liveTodayKpis.activeCasino)  : (isLoading ? "…" : "—");
 
-      {/* ── PRIMARY KPIs — ROW 3 ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle}
-          icon={<Percent size={18} />} accent="green" loading={isLoading} />
-        <KpiCard
-          title="Top_FTDs (TBC from RFM)"
-          value="TBC"
-          valueClassName="text-white/35"
-          subtitle="High-value FTDs"
-          icon={<Zap size={18} />}
-          accent="gold"
-          loading={isLoading}
-        />
-        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD"
-          icon={<Percent size={18} />} accent="amber" loading={isLoading} />
-      </div>
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
-      {/* ── REVENUE TRENDS — GGR/NGR/TURNOVER TOGGLE ────────────────────── */}
-      <div className="relative rounded-xl p-5 mb-6" style={CARD_BG}>
-        <MockOverlay active badge label="Pending Data" />
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Alerts & Flags</h3>
-          <p className="text-xs text-white/40">Compliance and transaction alerts to fold into the daily monitor</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <KpiCard title="AML Alerts" value={formatCompact(complianceAlerts.amlAlerts)} subtitle="Pending live compliance feed" icon={<Activity size={18} />} accent="red" loading={isLoading} />
-          <KpiCard title="Flagged Transactions" value={formatCompact(complianceAlerts.flaggedTransactions)} subtitle="Pending live transaction-risk feed" icon={<Zap size={18} />} accent="amber" loading={isLoading} />
-        </div>
-      </div>
+            {/* ── TODAY panel ── */}
+            <div className="rounded-xl overflow-hidden" style={CARD_BG}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "oklch(0.58 0.17 50)" }}>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
+                <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {tile("GGR",            todayGGR,   CHART_COLORS.gold)}
+                  {tile("Turnover",       todayTurn,  CHART_COLORS.teal)}
+                  {tile("Deposits",       "Pending",  CHART_COLORS.amber, true)}
+                  {tile("Registrations",  todayRegs,  CHART_COLORS.teal)}
+                  {tile("Conv Rate",      `${periodConvRate}%`, CHART_COLORS.amber)}
+                  {tile("Sports Actives", todaySports, CHART_COLORS.green)}
+                  {tile("Casino Actives", todayCasino, CHART_COLORS.gold)}
+                </div>
+                {/* Alerts */}
+                <div className="border-t pt-2.5" style={{ borderColor: "oklch(1 0 0 / 8%)" }}>
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-white/35 mb-2">Alerts & Flags</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
+                      <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.red }}>AML Alerts</span>
+                      <span className="text-white/25 text-xs font-mono">Pending</span>
+                    </div>
+                    <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
+                      <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.amber }}>Flagged Tx</span>
+                      <span className="text-white/25 text-xs font-mono">Pending</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── PERIOD panel ── */}
+            <div className="rounded-xl overflow-hidden" style={CARD_BG}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "oklch(0.42 0.13 195)" }}>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Period KPIs</span>
+                <span className="text-xs text-white/70 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
+              </div>
+              <div className="p-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),     CHART_COLORS.gold)}
+                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),       CHART_COLORS.teal)}
+                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits) : "Pending", CHART_COLORS.amber, !hasTransactionsData)}
+                  {tile("Registrations",  formatCompact(kpiRegistrations),              CHART_COLORS.teal)}
+                  {tile("FTDs",           formatCompact(kpiFtds),                       CHART_COLORS.gold)}
+                  {tile("Conv Rate",      `${periodConvRate}%`,                         CHART_COLORS.amber)}
+                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),    CHART_COLORS.green)}
+                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),    CHART_COLORS.gold)}
+                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending", CHART_COLORS.red, !hasTransactionsData)}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        );
+      })()}
 
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
