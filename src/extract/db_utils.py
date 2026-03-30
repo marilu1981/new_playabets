@@ -51,15 +51,23 @@ QUERY_TIMEOUT_SECONDS = int(os.environ.get("DWH_QUERY_TIMEOUT_SECONDS", "900"))
 
 
 def _odbc_conn_str() -> str:
-    """Build the raw ODBC connection string from env vars."""
+    """Build the raw ODBC connection string from env vars.
+
+    ODBC special-character rule: if a value contains { } or ; it must be
+    wrapped in curly braces.  Any literal } inside the value must be doubled.
+    We apply this to both UID and PWD to be safe.
+    """
+    def _odbc_escape(value: str) -> str:
+        return "{" + value.replace("}", "}}") + "}"
+
     username = os.environ["DWH_USER"]
     password = os.environ["DWH_PASS"]
     return (
         f"DRIVER={{{ODBC_DRIVER}}};"
         f"SERVER={SERVER},{PORT};"
         f"DATABASE={DATABASE};"
-        f"UID={username};"
-        f"PWD={password};"
+        f"UID={_odbc_escape(username)};"
+        f"PWD={_odbc_escape(password)};"
         f"Encrypt={ENCRYPT};"
         f"TrustServerCertificate={TRUST_SERVER_CERTIFICATE};"
         f"Connection Timeout={CONNECTION_TIMEOUT_SECONDS};"
