@@ -83,14 +83,14 @@ import {
   SummaryMetricsTable,
 } from "./home/HomeSections";
 
-const RFM_SEGMENTS = ["Champions", "Loyal", "Big Spenders", "Mid", "At Risk", "Dormant"] as const;
+const RFM_SEGMENTS = ["VIP", "Active", "New", "At Risk", "Lapsed", "Dormant"] as const;
 const RFM_SEGMENT_COLOR_MAP: Record<(typeof RFM_SEGMENTS)[number], string> = {
-  Champions: CHART_COLORS.gold,
-  Loyal: CHART_COLORS.teal,
-  "Big Spenders": CHART_COLORS.green,
-  Mid: CHART_COLORS.amber,
-  "At Risk": CHART_COLORS.red,
-  Dormant: "oklch(0.45 0.05 0)",
+  VIP:       "oklch(0.72 0.17 60)",
+  Active:    "oklch(0.65 0.15 195)",
+  New:       "oklch(0.62 0.17 145)",
+  "At Risk": "oklch(0.72 0.14 85)",
+  Lapsed:    "oklch(0.65 0.15 30)",
+  Dormant:   "oklch(0.45 0.05 0)",
 };
 
 function getRfmSegmentBadgeStyle(segment: string) {
@@ -846,7 +846,7 @@ export default function Home() {
     const monthFiltered = filterMonthRows(baseTrendBySegment, filters, (row) => row.month, fallbackYear);
     const scaled = scaleArrayNumericFields(monthFiltered, multiplier, ["month"]);
     return scaled.map((row) => {
-      const out = { ...row };
+      const out = { ...row } as Record<string, unknown>;
       const segmentFilters = [filters.currentSegment].filter((value) => value !== "all");
       if (segmentFilters.length > 0) {
         RFM_SEGMENTS.forEach((segment) => {
@@ -1230,7 +1230,7 @@ export default function Home() {
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
             <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending live RFM" : "Live RFM snapshot"}</p>
-            <p className="text-xs text-white/40">RFM analysis will categorise players into: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
+            <p className="text-xs text-white/40">RFM analysis will categorise players into: VIP · Active · New · At Risk · Lapsed · Dormant</p>
           </div>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={160} height={160}>
@@ -1289,7 +1289,7 @@ export default function Home() {
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
         <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: VIP · Active · New · At Risk · Lapsed · Dormant</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
             <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
