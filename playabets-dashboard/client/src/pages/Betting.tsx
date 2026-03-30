@@ -400,6 +400,52 @@ export default function BettingPage() {
         </div>
       </div>
 
+      {/* Betslip Status */}
+      {(() => {
+        const STATUS_COLORS = ["oklch(0.62 0.17 145)", "oklch(0.55 0.22 25)", "oklch(0.72 0.17 60)", "oklch(0.65 0.15 195)", "#6b7280"];
+        const totalSafe = Math.max(1, betslipsByStatus.reduce((sum, r) => sum + r.count, 0));
+        return (
+          <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+            <MockOverlay active={!liveBetslipsByStatus} description="Betslip status pending live data" />
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Betslip Status</h3>
+                <p className="text-xs text-white/40">Distribution by status</p>
+              </div>
+              {liveBetslipsByStatus ? (
+                <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>Live</span>
+              ) : (
+                <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>Mock</span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={betslipsByStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="count" nameKey="status" paddingAngle={2}>
+                    {betslipsByStatus.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2">
+                {betslipsByStatus.map((row, i) => (
+                  <div key={row.status} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: STATUS_COLORS[i % STATUS_COLORS.length] }} />
+                      <span className="text-white/60">{row.status}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-mono text-white/80">{formatCompact(row.count)}</span>
+                      <span className="text-xs text-white/40 ml-1">({(row.count / totalSafe * 100).toFixed(1)}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Event Program */}
       <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
         <MockOverlay active badge label="Mock Data" />

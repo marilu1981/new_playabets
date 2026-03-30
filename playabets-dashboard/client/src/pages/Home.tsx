@@ -68,9 +68,7 @@ import {
   aggregateByGranularity,
   fetchJson,
   filterMonthRows,
-  parseIsoDate,
   parseSeriesDate,
-  toggleBtn,
   type DataMode,
   type MetricRow,
 } from "./home/homeUtils";
@@ -79,7 +77,6 @@ import {
   DetailedBreakdownTable,
   HomeHeroBanner,
   HomePrimaryKpis,
-  StatusPiePanels,
   SummaryMetricsTable,
 } from "./home/HomeSections";
 
@@ -105,7 +102,6 @@ function getRfmSegmentBadgeStyle(segment: string) {
 export default function Home() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
-  const [acqMode,   setAcqMode]   = useState<"trend" | "mom">("trend");
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
   const {
     dataMode,
@@ -953,36 +949,6 @@ export default function Home() {
     [multiplier],
   );
 
-  const fromDt = parseIsoDate(filters.dateFrom);
-  const toDt = parseIsoDate(filters.dateTo);
-  const skipFirstMoM = Boolean(fromDt && fromDt.getUTCDate() !== 1);
-  const skipLastMoM = (() => {
-    if (!toDt) return false;
-    const end = new Date(Date.UTC(toDt.getUTCFullYear(), toDt.getUTCMonth() + 1, 0));
-    return toDt.getUTCDate() !== end.getUTCDate();
-  })();
-  const momData = playerAcquisition.slice(1).map((d, i) => {
-    if (skipFirstMoM && i === 0) {
-      return { month: d.month, registrations: null, ftds: null };
-    }
-    if (skipLastMoM && i === playerAcquisition.length - 2) {
-      return { month: d.month, registrations: null, ftds: null };
-    }
-    const prev = playerAcquisition[i];
-    const prevRegs = prev.registrations;
-    const prevFtds = prev.ftds;
-    const registrationsChange = prevRegs > 0
-      ? parseFloat((((d.registrations - prevRegs) / prevRegs) * 100).toFixed(1))
-      : null;
-    const ftdsChange = prevFtds > 0
-      ? parseFloat((((d.ftds - prevFtds) / prevFtds) * 100).toFixed(1))
-      : null;
-    return {
-      month: d.month,
-      registrations: registrationsChange,
-      ftds: ftdsChange,
-    };
-  });
 
   const getSummaryRows = (): MetricRow[] => {
     if (summaryTab === "overview") return summaryMetrics.overview;
@@ -1142,6 +1108,58 @@ export default function Home() {
         </ResponsiveContainer>
       </div>
 
+      {/* ── DAILY GGR — GROSS GAMING REVENUE ────────────────────────────── */}
+      <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
+        <MockOverlay active={showPendingOverlay} description="Daily GGR pending live data" />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Gross Gaming Revenue (GGR)</h3>
+            <p className="text-xs text-white/40">GGR = total stakes minus total winnings paid — {granularityLabel} view with 7-day moving average</p>
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
+            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+            <Line type="monotone" dataKey="value" name="Daily GGR" stroke={CHART_COLORS.gold} strokeWidth={1.5} dot={false} strokeOpacity={0.6} />
+            <Line type="monotone" dataKey="ma7"   name="7-day MA"  stroke={CHART_COLORS.teal} strokeWidth={2.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── STAKE VS REVENUE ─────────────────────────────────────────────── */}
+      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
+          <p className="text-xs text-white/40">Daily settled stake vs Gross Gaming Revenue — selected period</p>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={CHART_COLORS.gold}  stopOpacity={0.3} />
+                <stop offset="95%" stopColor={CHART_COLORS.gold}  stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={CHART_COLORS.green} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
+            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+            <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="revenue" name="Revenue (GGR)" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2} dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* ── PLAYER ACQUISITION + CONVERSION RATE ────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Player Acquisition */}
@@ -1151,37 +1169,18 @@ export default function Home() {
               <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Monthly Player Acquisition</h3>
               <p className="text-xs text-white/40">Registrations vs FTDs</p>
             </div>
-            <div className="flex gap-1">
-              {(["trend", "mom"] as const).map((m) => (
-                <button key={m} style={toggleBtn(acqMode === m)} onClick={() => setAcqMode(m)}>
-                  {m === "trend" ? "Total" : "MoM %"}
-                </button>
-              ))}
-            </div>
           </div>
           {playerAcquisition.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
-              {acqMode === "trend" ? (
-                <BarChart data={playerAcquisition} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
-                  <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatCompact(v)} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                  <Bar dataKey="registrations" name="Registrations" fill={CHART_COLORS.teal}  radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="ftds"          name="FTDs"          fill={CHART_COLORS.gold}  radius={[2, 2, 0, 0]} />
-                </BarChart>
-              ) : (
-                <BarChart data={momData} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} />
-                  <Tooltip contentStyle={TT_STYLE} formatter={(v) => (v == null ? "n/a" : `${v}%`)} />
-                  <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                  <Bar dataKey="registrations" name="Regs MoM%"  fill={CHART_COLORS.teal} radius={[2, 2, 0, 0]} />
-                  <Bar dataKey="ftds"          name="FTDs MoM%"  fill={CHART_COLORS.gold} radius={[2, 2, 0, 0]} />
-                </BarChart>
-              )}
+              <BarChart data={playerAcquisition} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
+                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatCompact(v)} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+                <Bar dataKey="registrations" name="Registrations" fill={CHART_COLORS.teal}  radius={[2, 2, 0, 0]} />
+                <Bar dataKey="ftds"          name="FTDs"          fill={CHART_COLORS.gold}  radius={[2, 2, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
@@ -1301,139 +1300,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ── SUMMARY METRICS TABLE ────────────────────────────────────────── */}
-      {/* Summary Metrics */}
-
-
-      {/* ── DAILY GGR — GROSS GAMING REVENUE ────────────────────────────── */}
-      <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
-        <MockOverlay active={showPendingOverlay} description="Daily GGR pending live data" />
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Gross Gaming Revenue (GGR)</h3>
-            <p className="text-xs text-white/40">GGR = total stakes minus total winnings paid — {granularityLabel} view with 7-day moving average</p>
-          </div>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
-        </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-            <Line type="monotone" dataKey="value" name="Daily GGR" stroke={CHART_COLORS.gold} strokeWidth={1.5} dot={false} strokeOpacity={0.6} />
-            <Line type="monotone" dataKey="ma7"   name="7-day MA"  stroke={CHART_COLORS.teal} strokeWidth={2.5} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* ── STAKE VS REVENUE ─────────────────────────────────────────────── */}
-      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
-          <p className="text-xs text-white/40">Daily settled stake vs Gross Gaming Revenue — selected period</p>
-        </div>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={CHART_COLORS.gold}  stopOpacity={0.3} />
-                <stop offset="95%" stopColor={CHART_COLORS.gold}  stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={CHART_COLORS.green} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-            <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
-            <Area type="monotone" dataKey="revenue" name="Revenue (GGR)" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Betslip Status + User Status */}
-      <StatusPiePanels
-        betslipsByStatus={betslipsByStatus}
-        usersByStatus={usersByStatus}
-        betslipStatusPending={betslipStatusPending}
-        userStatusPending={userStatusPending}
-        cardBg={CARD_BG}
-        chartColors={CHART_COLORS}
-        fontSerif={FONT_SERIF}
-        fontMono={FONT_MONO}
-        ttStyle={TT_STYLE}
-      />
 
       {renderSummaryMetricsTable()}
 
-      {/* ── DETAILED BREAKDOWN TABLE ─────────────────────────────────────── */}
-      <div className="rounded-xl p-5" style={CARD_BG}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Detailed Breakdown</h3>
-              <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
-            </div>
-            <p className="text-xs text-white/40">Date · Brand · Segment · Territory · Value · % Change</p>
-          </div>
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
-            style={{ background: CHART_COLORS.teal, color: "white" }}
-            onClick={() => {
-              const csv = ["Date,Brand,Segment,Territory,Value,% Change",
-                ...detailedBreakdown.map((r) =>
-                  `${r.date},${r.brand},${r.segment},${r.territory},${formatCompact(r.value)},${r.pctChange >= 0 ? "+" : ""}${r.pctChange}%`
-                )
-              ].join("\n");
-              const blob = new Blob([csv], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `playabets_detailed_breakdown_${filters.dateFrom}_${filters.dateTo}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download size={12} />
-            Export to Excel
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-                {["Date", "Brand", "Segment", "Territory", "Value", "% Change"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-6 whitespace-nowrap" style={{ color: "oklch(0.45 0.01 155)" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {detailedBreakdown.map((row, idx) => (
-                <tr key={idx} className="hover:bg-white/2 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-6 text-white/50 text-xs font-mono" style={FONT_MONO}>{row.date}</td>
-                  <td className="py-2.5 pr-6 text-white/80 text-xs font-medium">{row.brand}</td>
-                  <td className="py-2.5 pr-6">
-                    <span className="text-xs px-2 py-0.5 rounded font-semibold" style={getRfmSegmentBadgeStyle(row.segment)}>
-                      {row.segment}
-                    </span>
-                  </td>
-                  <td className="py-2.5 pr-6 text-white/60 text-xs">{row.territory}</td>
-                  <td className="py-2.5 pr-6 text-white text-xs font-mono" style={FONT_MONO}>{ formatCompact(row.value)}</td>
-                  <td className="py-2.5 text-xs font-semibold font-mono" style={{ ...FONT_MONO, color: row.pctChange >= 0 ? CHART_COLORS.green : CHART_COLORS.red }}>
-                    {row.pctChange >= 0 ? "+" : ""}{row.pctChange}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </DashboardLayout>
   );
 }

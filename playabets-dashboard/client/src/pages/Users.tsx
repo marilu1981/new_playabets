@@ -12,6 +12,7 @@ import MockOverlay from "@/components/MockOverlay";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
+  PieChart, Pie, Cell,
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
@@ -480,6 +481,48 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        {/* User Status */}
+        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={!liveStatusBreakdown} description="User status pending live data" />
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-white">User Status</h3>
+              <p className="text-xs text-white/40">Distribution by account status</p>
+            </div>
+            {liveStatusBreakdown ? (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>Live</span>
+            ) : (
+              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>Mock</span>
+            )}
+          </div>
+          {(() => {
+            const STATUS_COLORS = ["oklch(0.62 0.17 145)", "oklch(0.55 0.22 25)", "oklch(0.72 0.17 60)", "oklch(0.65 0.15 195)", "#6b7280"];
+            return (
+              <>
+                <ResponsiveContainer width="100%" height={140}>
+                  <PieChart>
+                    <Pie data={usersByStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="count" nameKey="status" paddingAngle={2}>
+                      {usersByStatus.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-1.5 mt-2">
+                  {usersByStatus.map((row, i) => (
+                    <div key={row.status} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[i % STATUS_COLORS.length] }} />
+                        <span className="text-white/60 truncate max-w-[110px]">{row.status}</span>
+                      </div>
+                      <span className="text-white/70 font-mono">{formatCompact(row.count)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
           <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
