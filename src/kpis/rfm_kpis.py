@@ -81,8 +81,8 @@ def build_rfm_users(
 
     test_col = ucol.get("testuser")
     status_col = ucol.get("userstatus")
-
     lastlogin_col = ucol.get("lastlogin")
+    creation_col = next((ucol.get(k) for k in ["creationdate", "registrationdate", "registration_date"] if ucol.get(k)), None)
 
     base = users[[uid_u]].drop_duplicates().copy()
     base = base.rename(columns={uid_u: "userid"})
@@ -95,6 +95,8 @@ def build_rfm_users(
         cols_to_add.append(status_col)
     if lastlogin_col:
         cols_to_add.append(lastlogin_col)
+    if creation_col:
+        cols_to_add.append(creation_col)
 
     if cols_to_add:
         add_df = users[[uid_u] + cols_to_add].copy()
@@ -418,7 +420,7 @@ def build_rfm_users(
         vip_threshold = float("inf")
 
     # Registration recency: use last_login_dt as proxy when reg date unavailable
-    reg_col = "registration_date" if "registration_date" in rfm.columns else None
+    reg_col = creation_col if creation_col and creation_col in rfm.columns else None
 
     def segment(row) -> str:
         recency = row["recency_days"]
