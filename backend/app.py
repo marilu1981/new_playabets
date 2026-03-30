@@ -507,13 +507,12 @@ async def _log_requests(request: Request, call_next):
 # In production (Azure Static Web Apps + Container Apps), the reverse proxy
 # handles routing so CORS is never triggered. This config is for local dev only.
 # ---------------------------------------------------------------------------
-_ALLOWED_ORIGINS = [
-    o.strip()
-    for o in os.environ.get(
-        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-    ).split(",")
-    if o.strip()
-]
+_cors_env = os.environ.get("CORS_ORIGINS", "").strip()
+_ALLOWED_ORIGINS = (
+    ["*"]
+    if not _cors_env or _cors_env == "*"
+    else [o.strip() for o in _cors_env.split(",") if o.strip()]
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,

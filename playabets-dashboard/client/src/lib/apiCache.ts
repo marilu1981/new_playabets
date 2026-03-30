@@ -63,7 +63,13 @@ export async function cachedFetch<T>(url: string): Promise<T> {
   }
 
   const request = (async () => {
-    const res = await fetch(url);
+    const apiKey = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const res = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(apiKey ? { "X-API-Key": apiKey } : {}),
+      },
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: T = await res.json();
     setCached(url, data);
