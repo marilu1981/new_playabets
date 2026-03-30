@@ -568,6 +568,11 @@ def _i(df: pd.DataFrame, col: str) -> int:
     return int(df[col].sum()) if col in df.columns else 0
 
 
+def _mean_i(df: pd.DataFrame, col: str) -> int:
+    """Return rounded mean of a column — used for avg daily unique users."""
+    return int(round(df[col].mean())) if col in df.columns and len(df) > 0 else 0
+
+
 def _load_transactions_df(start: date, end: date) -> pd.DataFrame:
     if not ENABLE_TRANSACTIONS:
         return pd.DataFrame()
@@ -614,12 +619,12 @@ def kpis(
     sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
     sportsbook_winnings = _s(df, "settled_winnings")
     sportsbook_ggr = _s(df, "ggr")
-    sportsbook_actives = _i(df, "actives_sports")
+    sportsbook_actives = _mean_i(df, "actives_sports")
 
     casino_turnover = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
     casino_ggr = _s(casino, "casino_ggr")
-    casino_actives = _i(casino, "casino_actives")
+    casino_actives = _mean_i(casino, "casino_actives")
 
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings

@@ -392,37 +392,55 @@ def build_rfm_users(
         + rfm["casino_stake_30d"].fillna(0.0).astype(float)
     )
 
-    # Scores
+    # Scores (kept for reference / drill-down, not used for segmentation)
     rfm["r_score"] = _score_quantiles(rfm["recency_days"], ascending=True)
     rfm["f_score"] = _score_quantiles(rfm["frequency_30d"], ascending=False, zero_is_lowest=True)
     rfm["m_score"] = _score_quantiles(rfm["monetary_30d"], ascending=False, zero_is_lowest=True)
-
     rfm["rfm_score"] = rfm["r_score"] * 100 + rfm["f_score"] * 10 + rfm["m_score"]
 
-    # Segment rules:
-    # 1) Champions: R=5, F=5, M=5
-    # 2) Big Spenders: not Champion AND F>=4 AND M=5
-    # 3) Loyal: not Champion/Big Spender AND R>=4 AND F>=4 AND M>=3
-    # 4) At Risk / Dormant / Mid unchanged
+    # ── Activity-based segmentation ───────────────────────────────────────────
+    # Segments are based on recency_days and monetary_30d so every user is
+    # placed into exactly one meaningful bucket that maps to a CRM action.
+    #
+    #   VIP       – active in last 30 days AND top 10% by monetary value
+    #   Active    – active in last 30 days (below VIP threshold)
+    #   New       – registered in last 30 days (may overlap Active; New wins)
+    #   At Risk   – last activity was 31–90 days ago
+    #   Lapsed    – last activity was 91–180 days ago
+    #   Dormant   – no activity in 180+ days (or never active)
+
+    # Top-10% monetary threshold among users active in the last 30 days
+    active_mask = rfm["recency_days"] <= 30
+    monetary_active = rfm.loc[active_mask, "monetary_30d"]
+    vip_threshold = float(monetary_active.quantile(0.90)) if not monetary_active.empty else float("inf")
+    # Ensure threshold is meaningful (avoid VIP on zero-spend users)
+    if vip_threshold <= 0:
+        vip_threshold = float("inf")
+
+    # Registration recency: use last_login_dt as proxy when reg date unavailable
+    reg_col = "registration_date" if "registration_date" in rfm.columns else None
+
     def segment(row) -> str:
-        r, f, m = row["r_score"], row["f_score"], row["m_score"]
-        is_champion = (r == 5 and f == 5 and m == 5)
-        if is_champion:
-            return "Champions"
+        recency = row["recency_days"]
+        monetary = row["monetary_30d"]
 
-        is_big_spender = (f >= 4 and m == 5)
-        if is_big_spender:
-            return "Big Spenders"
+        # New: registered within last 30 days (takes priority over Active)
+        if reg_col:
+            reg_date = row.get(reg_col)
+            if pd.notna(reg_date):
+                reg_recency = (as_of_date - pd.Timestamp(reg_date).date()).days
+                if reg_recency <= 30:
+                    return "New"
 
-        is_loyal = (r >= 4 and f >= 4 and m >= 3)
-        if is_loyal:
-            return "Loyal"
-
-        if r <= 2 and f >= 3:
+        if recency <= 30:
+            if monetary >= vip_threshold:
+                return "VIP"
+            return "Active"
+        if recency <= 90:
             return "At Risk"
-        if r <= 2 and f <= 2:
-            return "Dormant"
-        return "Mid"
+        if recency <= 180:
+            return "Lapsed"
+        return "Dormant"
 
     rfm["segment"] = rfm.apply(segment, axis=1)
 

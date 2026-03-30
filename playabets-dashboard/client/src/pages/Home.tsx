@@ -1055,9 +1055,9 @@ export default function Home() {
           icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors"
           icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Sports Actives" value={formatCompact(overviewKPIs.activesSports)} subtitle="Unique sports users"
+        <KpiCard title="Sports Actives" value={formatCompact(overviewKPIs.activesSports)} subtitle="Avg daily unique users"
           icon={<Activity size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Casino Actives" value={formatCompact(overviewKPIs.activesCasino)} subtitle="Unique casino users"
+        <KpiCard title="Casino Actives" value={formatCompact(overviewKPIs.activesCasino)} subtitle="Avg daily unique users"
           icon={<Activity size={18} />} accent="gold" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
@@ -1304,93 +1304,6 @@ export default function Home() {
       {/* ── SUMMARY METRICS TABLE ────────────────────────────────────────── */}
       {/* Summary Metrics */}
 
-      {/* ── GEOGRAPHIC DISTRIBUTION ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 mb-4">
-        {/* Geographic Distribution */}
-          <div className="relative rounded-xl p-5" style={CARD_BG}>
-            <MockOverlay active={geoPending} description="Mock data - geographic pending" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Geographic Distribution</h3>
-              <p className="text-xs text-white/40">Players & GGR by Territory / Country</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>Mock</span>
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.72 0.17 60 / 15%)", color: CHART_COLORS.amber }}>Brand split mapped</span>
-            </div>
-          </div>
-          {geographicDistribution.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={geographicDistribution} margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={40} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-                <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => name === "GGR" ? `${formatCompact(v)}` : formatCompact(v)} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                <Bar yAxisId="left"  dataKey="players" name="Players" fill={CHART_COLORS.teal}  radius={[2, 2, 0, 0]} />
-                <Bar yAxisId="right" dataKey="ggr"     name="GGR"     fill={CHART_COLORS.gold}  radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
-              No geographic rows for current filter combination.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── TREND BY SEGMENT + DAILY TREND ──────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Trend by Segment */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment trend pending" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>RFM Trend by Segment</h3>
-            <p className="text-xs text-white/40">{granularityLabel} active users by RFM segment — Champions · Loyal · Big Spenders · Mid · At Risk · Dormant</p>
-            </div>
-            <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>
-              Live RFM
-            </span>
-          </div>
-          {trendBySegment.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={trendBySegment} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                {liveSegmentTrend && liveSegmentTrend.length > 0 ? (
-                  <>
-                    <Bar dataKey="Champions" fill={CHART_COLORS.gold} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Loyal" fill={CHART_COLORS.teal} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Big Spenders" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Mid" fill={CHART_COLORS.amber} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="At Risk" fill={CHART_COLORS.red} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Dormant" fill="oklch(0.45 0.05 0)" stackId="a" radius={[2,2,0,0]} />
-                  </>
-                ) : (
-                  <>
-                    <Bar dataKey="Champions" fill={CHART_COLORS.gold} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Loyal" fill={CHART_COLORS.teal} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Big Spenders" fill={CHART_COLORS.green} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Mid" fill={CHART_COLORS.amber} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="At Risk" fill={CHART_COLORS.red} stackId="a" radius={[0,0,0,0]} />
-                    <Bar dataKey="Dormant" fill="oklch(0.45 0.05 0)" stackId="a" radius={[2,2,0,0]} />
-                  </>
-                )}
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
-              No segment-trend rows for current date range.
-            </div>
-          )}
-        </div>
-
-      </div>
 
       {/* ── DAILY GGR — GROSS GAMING REVENUE ────────────────────────────── */}
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>

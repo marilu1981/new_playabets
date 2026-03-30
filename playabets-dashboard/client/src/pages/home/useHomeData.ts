@@ -37,11 +37,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveUsersByStatus, setLiveUsersByStatus] = useState<Array<{ status: string; count: number }> | null>(null);
   const [liveSegmentTrend, setLiveSegmentTrend] = useState<Array<{
     date: string;
-    Champions: number;
-    Loyal: number;
-    "Big Spenders": number;
-    Mid: number;
+    VIP: number;
+    Active: number;
+    New: number;
     "At Risk": number;
+    Lapsed: number;
     Dormant: number;
   }> | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
@@ -162,7 +162,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }>(`/timeseries/conversion-cohorts?start=${filters.dateFrom}&end=${filters.dateTo}`),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
-        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_champions?: number; rfm_loyal?: number; rfm_big_spenders?: number; rfm_mid?: number; rfm_at_risk?: number; rfm_dormant?: number }> }>(
+        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_at_risk?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
           `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
       };
@@ -446,19 +446,19 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       }
 
       const segmentColors: Record<string, string> = {
-        rfm_champions: "oklch(0.72 0.17 60)",
-        rfm_loyal: "oklch(0.65 0.15 195)",
-        rfm_big_spenders: "oklch(0.62 0.17 145)",
-        rfm_mid: "oklch(0.72 0.14 85)",
-        rfm_at_risk: "oklch(0.65 0.15 30)",
+        rfm_vip:     "oklch(0.72 0.17 60)",
+        rfm_active:  "oklch(0.65 0.15 195)",
+        rfm_new:     "oklch(0.62 0.17 145)",
+        rfm_at_risk: "oklch(0.72 0.14 85)",
+        rfm_lapsed:  "oklch(0.65 0.15 30)",
         rfm_dormant: "oklch(0.45 0.05 0)",
       };
       const segmentLabels: Record<string, string> = {
-        rfm_champions: "Champions",
-        rfm_loyal: "Loyal",
-        rfm_big_spenders: "Big Spenders",
-        rfm_mid: "Mid",
+        rfm_vip:     "VIP",
+        rfm_active:  "Active",
+        rfm_new:     "New",
         rfm_at_risk: "At Risk",
+        rfm_lapsed:  "Lapsed",
         rfm_dormant: "Dormant",
       };
       if (rfmSegmentsRes.status === "fulfilled") {
@@ -468,11 +468,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           .sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")))
           .map((row) => ({
             date: String(row.date ?? ""),
-            Champions: Number(row.rfm_champions ?? 0),
-            Loyal: Number(row.rfm_loyal ?? 0),
-            "Big Spenders": Number(row.rfm_big_spenders ?? 0),
-            Mid: Number(row.rfm_mid ?? 0),
+            VIP: Number(row.rfm_vip ?? 0),
+            Active: Number(row.rfm_active ?? 0),
+            New: Number(row.rfm_new ?? 0),
             "At Risk": Number(row.rfm_at_risk ?? 0),
+            Lapsed: Number(row.rfm_lapsed ?? 0),
             Dormant: Number(row.rfm_dormant ?? 0),
           }));
         const latestRow = rfmRows
@@ -495,11 +495,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
               ? trendRows
               : [{
                   date: String(latestRow.date ?? ""),
-                  Champions: Number(latestRow.rfm_champions ?? 0),
-                  Loyal: Number(latestRow.rfm_loyal ?? 0),
-                  "Big Spenders": Number(latestRow.rfm_big_spenders ?? 0),
-                  Mid: Number(latestRow.rfm_mid ?? 0),
+                  VIP: Number(latestRow.rfm_vip ?? 0),
+                  Active: Number(latestRow.rfm_active ?? 0),
+                  New: Number(latestRow.rfm_new ?? 0),
                   "At Risk": Number(latestRow.rfm_at_risk ?? 0),
+                  Lapsed: Number(latestRow.rfm_lapsed ?? 0),
                   Dormant: Number(latestRow.rfm_dormant ?? 0),
                 }]
           );
