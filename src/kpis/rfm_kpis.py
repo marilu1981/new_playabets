@@ -423,7 +423,7 @@ def build_rfm_users(
     #   VIP       – active in last 30 days AND top 10% by monetary value
     #   Active    – active in last 30 days (below VIP threshold)
     #   New       – registered in last 30 days (may overlap Active; New wins)
-    #   At Risk   – last activity was 31–90 days ago
+    #   Cooling   – last activity was 31–90 days ago
     #   Lapsed    – last activity was 91–180 days ago
     #   Dormant   – no activity in 180+ days (or never active)
 
@@ -455,7 +455,7 @@ def build_rfm_users(
                 return "VIP"
             return "Active"
         if recency <= 90:
-            return "At Risk"
+            return "Cooling"
         if recency <= 180:
             return "Lapsed"
         return "Dormant"

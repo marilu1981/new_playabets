@@ -864,7 +864,7 @@ def rfm_segments(
             "rfm_vip",
             "rfm_active",
             "rfm_new",
-            "rfm_at_risk",
+            "rfm_cooling",
             "rfm_lapsed",
             "rfm_dormant",
         ]
@@ -891,7 +891,7 @@ def rfm_segments(
             "rfm_vip": int(grouped.get("VIP", 0)),
             "rfm_active": int(grouped.get("Active", 0)),
             "rfm_new": int(grouped.get("New", 0)),
-            "rfm_at_risk": int(grouped.get("At Risk", 0)),
+            "rfm_cooling": int(grouped.get("Cooling", 0)),
             "rfm_lapsed": int(grouped.get("Lapsed", 0)),
             "rfm_dormant": int(grouped.get("Dormant", 0)),
         }],

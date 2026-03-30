@@ -40,7 +40,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     VIP: number;
     Active: number;
     New: number;
-    "At Risk": number;
+    "Cooling": number;
     Lapsed: number;
     Dormant: number;
   }> | null>(null);
@@ -162,7 +162,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }>(`/timeseries/conversion-cohorts?start=${filters.dateFrom}&end=${filters.dateTo}`),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
-        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_at_risk?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
+        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
           `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
       };
@@ -449,7 +449,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         rfm_vip:     "oklch(0.72 0.17 60)",
         rfm_active:  "oklch(0.65 0.15 195)",
         rfm_new:     "oklch(0.62 0.17 145)",
-        rfm_at_risk: "oklch(0.72 0.14 85)",
+        rfm_cooling: "oklch(0.72 0.14 85)",
         rfm_lapsed:  "oklch(0.65 0.15 30)",
         rfm_dormant: "oklch(0.45 0.05 0)",
       };
@@ -457,7 +457,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         rfm_vip:     "VIP",
         rfm_active:  "Active",
         rfm_new:     "New",
-        rfm_at_risk: "At Risk",
+        rfm_cooling: "Cooling",
         rfm_lapsed:  "Lapsed",
         rfm_dormant: "Dormant",
       };
@@ -471,7 +471,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             VIP: Number(row.rfm_vip ?? 0),
             Active: Number(row.rfm_active ?? 0),
             New: Number(row.rfm_new ?? 0),
-            "At Risk": Number(row.rfm_at_risk ?? 0),
+            "Cooling": Number(row.rfm_cooling ?? 0),
             Lapsed: Number(row.rfm_lapsed ?? 0),
             Dormant: Number(row.rfm_dormant ?? 0),
           }));
@@ -498,7 +498,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
                   VIP: Number(latestRow.rfm_vip ?? 0),
                   Active: Number(latestRow.rfm_active ?? 0),
                   New: Number(latestRow.rfm_new ?? 0),
-                  "At Risk": Number(latestRow.rfm_at_risk ?? 0),
+                  "Cooling": Number(latestRow.rfm_cooling ?? 0),
                   Lapsed: Number(latestRow.rfm_lapsed ?? 0),
                   Dormant: Number(latestRow.rfm_dormant ?? 0),
                 }]

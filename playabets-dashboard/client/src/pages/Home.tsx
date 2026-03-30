@@ -80,12 +80,12 @@ import {
   SummaryMetricsTable,
 } from "./home/HomeSections";
 
-const RFM_SEGMENTS = ["VIP", "Active", "New", "At Risk", "Lapsed", "Dormant"] as const;
+const RFM_SEGMENTS = ["VIP", "Active", "New", "Cooling", "Lapsed", "Dormant"] as const;
 const RFM_SEGMENT_COLOR_MAP: Record<(typeof RFM_SEGMENTS)[number], string> = {
   VIP:       "oklch(0.72 0.17 60)",
   Active:    "oklch(0.65 0.15 195)",
   New:       "oklch(0.62 0.17 145)",
-  "At Risk": "oklch(0.72 0.14 85)",
+  "Cooling": "oklch(0.72 0.14 85)",
   Lapsed:    "oklch(0.65 0.15 30)",
   Dormant:   "oklch(0.45 0.05 0)",
 };
@@ -621,7 +621,7 @@ export default function Home() {
         rfm_loyal:       "oklch(0.65 0.15 195)",  // teal — Loyal
         rfm_big_spenders:"oklch(0.62 0.17 145)",  // green — Big Spenders
         rfm_mid:         "oklch(0.72 0.14 85)",   // amber — Mid
-        rfm_at_risk:     "oklch(0.65 0.15 30)",   // orange — At Risk
+        rfm_at_risk:     "oklch(0.65 0.15 30)",   // orange — Cooling
         rfm_dormant:     "oklch(0.45 0.05 0)",    // muted red — Dormant
       };
       const SEGMENT_LABELS: Record<string, string> = {
@@ -629,7 +629,7 @@ export default function Home() {
         rfm_loyal:       "Loyal",
         rfm_big_spenders:"Big Spenders",
         rfm_mid:         "Mid",
-        rfm_at_risk:     "At Risk",
+        rfm_at_risk:     "Cooling",
         rfm_dormant:     "Dormant",
       };
       if (rfmSegmentsRes.status === "fulfilled") {
@@ -1229,7 +1229,7 @@ export default function Home() {
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
             <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending live RFM" : "Live RFM snapshot"}</p>
-            <p className="text-xs text-white/40">RFM analysis will categorise players into: VIP · Active · New · At Risk · Lapsed · Dormant</p>
+            <p className="text-xs text-white/40">RFM analysis will categorise players into: VIP · Active · New · Cooling · Lapsed · Dormant</p>
           </div>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={160} height={160}>
@@ -1288,7 +1288,7 @@ export default function Home() {
       <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
         <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
         <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: VIP · Active · New · At Risk · Lapsed · Dormant</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: VIP · Active · New · Cooling · Lapsed · Dormant</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {segmentDistribution.map((s) => (
             <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
