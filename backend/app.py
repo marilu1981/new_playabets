@@ -861,11 +861,11 @@ def rfm_segments(
         daily = load_daily_df()
         wanted = [
             "date",
-            "rfm_champions",
-            "rfm_loyal",
-            "rfm_big_spenders",
-            "rfm_mid",
+            "rfm_vip",
+            "rfm_active",
+            "rfm_new",
             "rfm_at_risk",
+            "rfm_lapsed",
             "rfm_dormant",
         ]
         if not daily.empty and all(col in daily.columns for col in wanted):
@@ -888,11 +888,11 @@ def rfm_segments(
     return {
         "rows": [{
             "date": snapshot_date,
-            "rfm_champions": int(grouped.get("Champions", 0)),
-            "rfm_loyal": int(grouped.get("Loyal", 0)),
-            "rfm_big_spenders": int(grouped.get("Big Spenders", 0)),
-            "rfm_mid": int(grouped.get("Mid", 0)),
+            "rfm_vip": int(grouped.get("VIP", 0)),
+            "rfm_active": int(grouped.get("Active", 0)),
+            "rfm_new": int(grouped.get("New", 0)),
             "rfm_at_risk": int(grouped.get("At Risk", 0)),
+            "rfm_lapsed": int(grouped.get("Lapsed", 0)),
             "rfm_dormant": int(grouped.get("Dormant", 0)),
         }],
         "source": "rfm_users",
