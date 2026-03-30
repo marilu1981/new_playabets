@@ -1041,7 +1041,7 @@ export default function Home() {
 
             {/* ── TODAY panel ── */}
             <div className="rounded-xl overflow-hidden" style={CARD_BG}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "oklch(0.58 0.17 50)" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#CC9C1F" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>
@@ -1061,11 +1061,11 @@ export default function Home() {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
                       <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.red }}>AML Alerts</span>
-                      <span className="text-white/25 text-xs font-mono">Pending</span>
+                      <span className="text-xs font-mono text-white/60">{formatCompact(complianceAlerts.amlAlerts)}</span>
                     </div>
                     <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
                       <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.amber }}>Flagged Tx</span>
-                      <span className="text-white/25 text-xs font-mono">Pending</span>
+                      <span className="text-xs font-mono text-white/60">{formatCompact(complianceAlerts.flaggedTransactions)}</span>
                     </div>
                   </div>
                 </div>
