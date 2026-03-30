@@ -7,7 +7,7 @@
  * Response shape (matches FastAPI /users/status-breakdown):
  * { statuses: [{ status: string, count: number }] }
  */
-const { supaQueryAll, corsHeaders } = require("../_supabase");
+const { supaQueryAll, corsHeaders, requireAuth } = require("../_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
@@ -17,6 +17,7 @@ module.exports = async function handler(req, res) {
   }
   const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
+  if (requireAuth(req, res)) return;
 
   try {
     // rfm_users has a userstatus column from the view_Users export.

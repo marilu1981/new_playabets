@@ -1,6 +1,6 @@
 'use strict';
 
-const { supaQuery, corsHeaders } = require("../_supabase");
+const { supaQuery, corsHeaders, requireAuth } = require("../_supabase");
 
 const CANDIDATE_TABLES = [
   process.env.PLAYABETS_BONUS_CAMPAIGNS_TABLE,
@@ -39,6 +39,7 @@ module.exports = async function handler(req, res) {
   }
   const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
+  if (requireAuth(req, res)) return;
 
   try {
     const statusFilter = String(req.query.status ?? "").trim().toLowerCase();

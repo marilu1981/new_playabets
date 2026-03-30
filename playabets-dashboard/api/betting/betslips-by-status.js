@@ -11,7 +11,7 @@
  *   cancel_rate = cancelled_stake / settled_stake  (stake proportion)
  * Rates are weighted by settled_stake and applied to the settled portion of betslips.
  */
-const { supaQuery, sum, corsHeaders } = require("../_supabase");
+const { supaQuery, sum, corsHeaders, requireAuth } = require("../_supabase");
 
 // Simple 60-second in-memory cache
 const cache = new Map();
@@ -25,6 +25,7 @@ module.exports = async function handler(req, res) {
   }
   const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
+  if (requireAuth(req, res)) return;
 
   try {
     const start = String(req.query.start ?? "");

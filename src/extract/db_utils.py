@@ -38,10 +38,9 @@ def _default_watermark() -> str:
     return cutoff.strftime("%Y-%m-%d %H:%M:%S")
 
 # ── Connection config (read from env) ────────────────────────────────────────
-SERVER = os.environ.get(
-    "DWH_SERVER",
-    "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com",
-)
+SERVER = os.environ.get("DWH_SERVER")
+if not SERVER:
+    raise RuntimeError("DWH_SERVER environment variable is required")
 PORT = int(os.environ.get("DWH_PORT", "1433"))
 DATABASE = os.environ.get("DWH_DATABASE", "isbets_bi")
 ODBC_DRIVER = os.environ.get("DWH_ODBC_DRIVER", "ODBC Driver 18 for SQL Server")
@@ -81,7 +80,7 @@ def build_engine():
         conn.timeout = max(0, QUERY_TIMEOUT_SECONDS)
         return conn
 
-    return create_engine("mssql+pyodbc://", creator=creator)
+    return create_engine("mssql+pyodbc://", creator=creator, pool_pre_ping=True)
 
 
 # ── Watermark helpers ─────────────────────────────────────────────────────────

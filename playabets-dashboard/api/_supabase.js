@@ -129,6 +129,25 @@ async function supaQueryAll(table, opts = {}) {
   return allRows;
 }
 
+// ── Auth ─────────────────────────────────────────────────────────────────────────────────────────
+/**
+ * Check API key. Returns true (and sends 401) if the request is rejected.
+ * Returns false if auth passes or is disabled (no API_KEY env var set).
+ * Usage: if (requireAuth(req, res)) return;
+ */
+function requireAuth(req, res) {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return false; // disabled in dev
+  const provided = req.headers['x-api-key'] || '';
+  const auth = req.headers['authorization'] || '';
+  const token = provided || (auth.startsWith('Bearer ') ? auth.slice(7) : '');
+  if (token !== apiKey) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return true;
+  }
+  return false;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────
 function sum(rows, col) {
   return rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
@@ -152,4 +171,4 @@ function corsHeaders(req) {
   };
 }
 
-module.exports = { supaQuery, supaQueryAll, sum, corsHeaders, cacheGet, cacheSet, CACHE_TTL_MS };
+module.exports = { supaQuery, supaQueryAll, sum, corsHeaders, cacheGet, cacheSet, CACHE_TTL_MS, requireAuth };

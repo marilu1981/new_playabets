@@ -1,4 +1,4 @@
-const { supaQuery, sum, corsHeaders, cacheGet, cacheSet } = require("../_supabase");
+const { supaQuery, sum, corsHeaders, cacheGet, cacheSet, requireAuth } = require("../_supabase");
 
 const TRANSACTIONS_ENABLED = process.env.PLAYABETS_ENABLE_TRANSACTIONS === "1";
 
@@ -10,6 +10,7 @@ module.exports = async function handler(req, res) {
   }
   const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
+  if (requireAuth(req, res)) return;
   try {
     const cacheKey = `transactions-kpis:${req.url ?? JSON.stringify(req.query ?? {})}`;
     const cached = cacheGet(cacheKey);

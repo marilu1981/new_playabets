@@ -37,13 +37,22 @@ Endpoints:
 """
 from __future__ import annotations
 
+import logging
 import sys
 import os
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Literal
 
+import numpy as np
 import pandas as pd
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    stream=sys.stdout,
+)
+logger = logging.getLogger("playabets.api")
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -450,13 +459,15 @@ def _build_conversion_cohorts() -> tuple[pd.DataFrame, Optional[date]]:
     out["ftds_d7"] = out["ftds_d7"].astype(int)
     out["ftds_d30"] = out["ftds_d30"].astype(int)
 
-    out["rate_d7"] = out.apply(
-        lambda r: (float(r["ftds_d7"]) / float(r["registrations"]) * 100.0) if r["registrations"] > 0 else 0.0,
-        axis=1,
+    out["rate_d7"] = np.where(
+        out["registrations"] > 0,
+        out["ftds_d7"].astype(float) / out["registrations"].astype(float) * 100.0,
+        0.0,
     )
-    out["rate_d30"] = out.apply(
-        lambda r: (float(r["ftds_d30"]) / float(r["registrations"]) * 100.0) if r["registrations"] > 0 else 0.0,
-        axis=1,
+    out["rate_d30"] = np.where(
+        out["registrations"] > 0,
+        out["ftds_d30"].astype(float) / out["registrations"].astype(float) * 100.0,
+        0.0,
     )
 
     if max_observed_date:
@@ -479,6 +490,17 @@ def _build_conversion_cohorts() -> tuple[pd.DataFrame, Optional[date]]:
 # App
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Playa Bets Analytics API", version="0.3")
+
+
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    import time
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    ms = (time.perf_counter() - t0) * 1000
+    logger.info("%s %s %d %.0fms", request.method, request.url.path, response.status_code, ms)
+    return response
+
 
 # ---------------------------------------------------------------------------
 # CORS — only used when the frontend is NOT behind the same-origin reverse proxy.
@@ -659,8 +681,8 @@ def revenue_timeseries(
     return {
         "metric": metric,
         "points": [
-            {"date": str(r["date"]), "value": float(r[metric]) if pd.notna(r[metric]) else None}
-            for _, r in d.iterrows()
+            {"date": str(dt), "value": float(v) if pd.notna(v) else None}
+            for dt, v in zip(d["date"], d[metric])
         ],
     }
 
@@ -688,8 +710,7 @@ def registrations_timeseries(
 
     ftd_by_date: dict[date, int] = {}
     if not f.empty and "date" in f.columns and "ftds" in f.columns:
-        for _, row in f.iterrows():
-            ftd_by_date[row["date"]] = int(row.get("ftds", 0) or 0)
+        ftd_by_date = dict(zip(f["date"], f["ftds"].fillna(0).astype(int)))
 
     regs = [{"date": str(x), "value": int(v)} for x, v in zip(d["date"], d.get("registrations", [0] * len(d)))]
     ftds = [{"date": str(x), "value": int(ftd_by_date.get(x, 0))} for x in d["date"]]
@@ -706,18 +727,19 @@ def conversion_cohorts_timeseries(
         return {"points": [], "max_observed_date": None}
 
     d = cohorts[(cohorts["date"] >= start) & (cohorts["date"] <= end)].sort_values("date")
+    records = d.to_dict("records")
     return {
         "max_observed_date": str(max_observed_date) if max_observed_date else None,
         "points": [
             {
                 "date": str(r["date"]),
-                "registrations": int(r.get("registrations", 0)),
-                "ftds_d7": int(r.get("ftds_d7", 0)),
-                "ftds_d30": int(r.get("ftds_d30", 0)),
+                "registrations": int(r.get("registrations", 0) or 0),
+                "ftds_d7": int(r.get("ftds_d7", 0) or 0),
+                "ftds_d30": int(r.get("ftds_d30", 0) or 0),
                 "rate_d7": (float(r["rate_d7"]) if pd.notna(r.get("rate_d7")) else None),
                 "rate_d30": (float(r["rate_d30"]) if pd.notna(r.get("rate_d30")) else None),
             }
-            for _, r in d.iterrows()
+            for r in records
         ],
     }
 
@@ -747,8 +769,8 @@ def kpis_series(
         "metric": metric,
         "days": days,
         "points": [
-            {"date": str(r["date"]), "value": float(r[metric]) if pd.notna(r[metric]) else None}
-            for _, r in tail_df.iterrows()
+            {"date": str(dt), "value": float(v) if pd.notna(v) else None}
+            for dt, v in zip(tail_df["date"], tail_df[metric])
         ],
     }
 
@@ -1047,11 +1069,12 @@ def transactions_trend(
     if df.empty:
         return {"has_data": False, "disabled": False, "deposits": [], "withdrawals": []}
     df = df.sort_values("date")
+    records = df.to_dict("records")
     return {
         "has_data": True,
         "disabled": False,
-        "deposits": [{"date": str(r["date"]), "value": float(r.get("deposits", 0))} for _, r in df.iterrows()],
-        "withdrawals": [{"date": str(r["date"]), "value": float(r.get("withdrawals", 0))} for _, r in df.iterrows()],
+        "deposits": [{"date": str(r["date"]), "value": float(r.get("deposits", 0) or 0)} for r in records],
+        "withdrawals": [{"date": str(r["date"]), "value": float(r.get("withdrawals", 0) or 0)} for r in records],
     }
 
 
@@ -1100,12 +1123,12 @@ def bonus_daily(
         "points": [
             {
                 "date": str(r["date"]),
-                "bonus_credited": float(r.get("bonus_credited", 0)),
-                "first_deposit_bonus_count": int(r.get("first_deposit_bonus_count", 0)),
-                "first_deposit_bonus_users": int(r.get("first_deposit_bonus_users", 0)),
-                "first_deposit_bonus_amount": float(r.get("first_deposit_bonus_amount", 0)),
+                "bonus_credited": float(r.get("bonus_credited", 0) or 0),
+                "first_deposit_bonus_count": int(r.get("first_deposit_bonus_count", 0) or 0),
+                "first_deposit_bonus_users": int(r.get("first_deposit_bonus_users", 0) or 0),
+                "first_deposit_bonus_amount": float(r.get("first_deposit_bonus_amount", 0) or 0),
             }
-            for _, r in df.iterrows()
+            for r in df.to_dict("records")
         ]
     }
 
@@ -1153,12 +1176,12 @@ def casino_daily(
         "points": [
             {
                 "date": str(r["date"]),
-                "stake": float(r.get("casino_stake", 0)),
-                "winnings": float(r.get("casino_winnings", 0)),
-                "ggr": float(r.get("casino_ggr", 0)),
-                "casino_actives": int(r.get("casino_actives", 0)) if pd.notna(r.get("casino_actives")) else 0,
+                "stake": float(r.get("casino_stake", 0) or 0),
+                "winnings": float(r.get("casino_winnings", 0) or 0),
+                "ggr": float(r.get("casino_ggr", 0) or 0),
+                "casino_actives": int(r.get("casino_actives", 0) or 0) if pd.notna(r.get("casino_actives")) else 0,
             }
-            for _, r in df.iterrows()
+            for r in df.to_dict("records")
         ]
     }
 

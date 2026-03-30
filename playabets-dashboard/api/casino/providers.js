@@ -1,4 +1,4 @@
-const { supaQueryAll, corsHeaders } = require("../_supabase");
+const { supaQueryAll, corsHeaders, requireAuth } = require("../_supabase");
 
 module.exports = async function handler(req, res) {
   if (req.method === "OPTIONS") {
@@ -9,6 +9,7 @@ module.exports = async function handler(req, res) {
 
   const headers = corsHeaders(req);
   Object.entries(headers).forEach(([k, v]) => res.setHeader(k, v));
+  if (requireAuth(req, res)) return;
 
   try {
     const start = String(req.query.start ?? "");

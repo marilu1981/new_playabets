@@ -69,10 +69,11 @@ async function apiFetch<T>(endpoint: string, params?: Record<string, string>): P
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
   try {
+    const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
     const res = await fetch(url.toString(), {
       headers: {
         "Content-Type": "application/json",
-        // Add auth header here: "Authorization": `Bearer ${getToken()}`
+        ...(apiKey ? { "X-API-Key": apiKey } : {}),
       },
       signal: controller.signal,
     });
