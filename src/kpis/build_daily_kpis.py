@@ -12,6 +12,7 @@ USERS_DIR = raw_dir("users")
 BETSLIPS_DIR = raw_dir("betslips")
 SESSIONS_DIR = raw_dir("sessions")
 CASINO_DIR = raw_dir("casino")
+FTD_DIR = raw_dir("first_deposits")
 
 SERVING_DIR = SERVING_ROOT
 OUT_KPIS = SERVING_DIR / "daily_kpis.parquet"
@@ -68,6 +69,7 @@ def main() -> None:
     betslips = read_all_parquets(BETSLIPS_DIR, "betslips_increment_*.parquet")
     sessions = read_all_parquets(SESSIONS_DIR, "sessions_increment_*.parquet") if SESSIONS_DIR.exists() else pd.DataFrame()
     casino = read_all_parquets(CASINO_DIR, "casino_increment_*.parquet") if CASINO_DIR.exists() else pd.DataFrame()
+    first_deposits = read_all_parquets(FTD_DIR, "first_deposits_increment_*.parquet") if FTD_DIR.exists() else pd.DataFrame()
 
     regs = compute_registrations_daily(users)
     bs_daily = compute_betslips_daily_kpis(betslips)
@@ -95,6 +97,7 @@ def main() -> None:
         betslips=betslips,
         casino=casino,
         sessions=sessions,
+        first_deposits=first_deposits,
         as_of=as_of,
         window=RFMWindow(days=30),
     )

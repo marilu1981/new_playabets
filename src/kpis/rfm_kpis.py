@@ -57,6 +57,7 @@ def build_rfm_users(
     betslips: pd.DataFrame,
     casino: Optional[pd.DataFrame],
     sessions: Optional[pd.DataFrame],
+    first_deposits: Optional[pd.DataFrame] = None,
     as_of: Optional[pd.Timestamp] = None,
     window: RFMWindow = RFMWindow(),
 ) -> pd.DataFrame:
@@ -316,6 +317,19 @@ def build_rfm_users(
         login_freq = pd.DataFrame(columns=["userid", "sessions_30d", "active_login_days_30d"])
         # login_freq = pd.DataFrame(columns=["userid", "sessions_30d", "active_login_days_30d"])
 
+    # --- First deposits: used for "New" segment
+    ftd_recency = pd.DataFrame(columns=["userid", "ftd_date"])
+    if first_deposits is not None and not first_deposits.empty:
+        fd, fdcol = normalize_cols(first_deposits)
+        uid_fd = fdcol.get("idutente") or fdcol.get("userid")
+        date_fd = fdcol.get("dataprimodeposito") or fdcol.get("ftd_date") or fdcol.get("firstdepositdate")
+        if uid_fd and date_fd:
+            ftd_recency = fd[[uid_fd, date_fd]].copy()
+            ftd_recency = ftd_recency.rename(columns={uid_fd: "userid", date_fd: "ftd_date"})
+            ftd_recency["userid"] = ftd_recency["userid"].astype("int64", errors="ignore")
+            ftd_recency["ftd_date"] = to_dt(ftd_recency["ftd_date"])
+            ftd_recency = ftd_recency.dropna(subset=["ftd_date"]).sort_values("ftd_date").drop_duplicates(subset=["userid"], keep="first")
+
     # --- Merge into RFM user table
     rfm = base.merge(last_login, on="userid", how="left")
     rfm = rfm.merge(sportsbook_last_activity, on="userid", how="left")
@@ -325,6 +339,8 @@ def build_rfm_users(
     rfm = rfm.merge(monetary_agg, on="userid", how="left")
     rfm = rfm.merge(casino_agg, on="userid", how="left")
     rfm = rfm.merge(product_activity, on="userid", how="left")
+    if not ftd_recency.empty:
+        rfm = rfm.merge(ftd_recency[["userid", "ftd_date"]], on="userid", how="left")
 
     for c in [
         "sessions_30d",
@@ -419,19 +435,19 @@ def build_rfm_users(
     if vip_threshold <= 0:
         vip_threshold = float("inf")
 
-    # Registration recency: use last_login_dt as proxy when reg date unavailable
-    reg_col = creation_col if creation_col and creation_col in rfm.columns else None
+    # FTD recency: "New" = first deposit within last 30 days
+    ftd_col = "ftd_date" if "ftd_date" in rfm.columns else None
 
     def segment(row) -> str:
         recency = row["recency_days"]
         monetary = row["monetary_30d"]
 
-        # New: registered within last 30 days (takes priority over Active)
-        if reg_col:
-            reg_date = row.get(reg_col)
-            if pd.notna(reg_date):
-                reg_recency = (as_of_date - pd.Timestamp(reg_date).date()).days
-                if reg_recency <= 30:
+        # New: FTD within last 30 days (takes priority over Active)
+        if ftd_col:
+            ftd_date = row.get(ftd_col)
+            if pd.notna(ftd_date):
+                ftd_recency_days = (as_of_date - pd.Timestamp(ftd_date).date()).days
+                if ftd_recency_days <= 30:
                     return "New"
 
         if recency <= 30:
