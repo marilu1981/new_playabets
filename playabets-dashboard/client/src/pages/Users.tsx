@@ -166,6 +166,10 @@ export default function UsersPage() {
   const [liveRegistrationsDaily, setLiveRegistrationsDaily] = useState<Array<{ date: string; value: number }> | null>(null);
   const [liveDailyActives, setLiveDailyActives] = useState<Array<{ date: string; actives: number }> | null>(null);
   const [liveStatusBreakdown, setLiveStatusBreakdown] = useState<Array<{ status: string; count: number }> | null>(null);
+  const [liveSelfExclusions, setLiveSelfExclusions] = useState<{
+    total: number; inProgress: number; pending: number; completed: number;
+    byPeriod: Array<{ period: string; count: number }>;
+  } | null>(null);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const fallbackYear = useMemo(() => {
@@ -238,12 +242,13 @@ export default function UsersPage() {
       if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
-      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes] = await Promise.allSettled([
+      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes] = await Promise.allSettled([
         fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
         fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(`/casino/daily?${query}`),
+        fetchJson<{ total: number; inProgress: number; pending: number; completed: number; byPeriod: Array<{ period: string; count: number }> }>(`/users/self-exclusions`),
       ]);
 
       if (cancelled) {
@@ -303,6 +308,12 @@ export default function UsersPage() {
         setLiveStatusBreakdown(statuses);
       } else {
         setLiveStatusBreakdown(null);
+      }
+
+      if (selfExRes.status === "fulfilled") {
+        setLiveSelfExclusions(selfExRes.value);
+      } else {
+        setLiveSelfExclusions(null);
       }
 
       if (dailyRes.status === "fulfilled" || casinoRes.status === "fulfilled") {
@@ -386,6 +397,9 @@ export default function UsersPage() {
     [filters],
   );
   const selfExclusionSummary = useMemo(() => {
+    if (liveSelfExclusions) {
+      return liveSelfExclusions;
+    }
     const scaledByPeriod = baseSelfExclusionSummary.byPeriod.map((row) => ({
       ...row,
       count: scaleNumber(row.count, multiplier),
@@ -402,7 +416,7 @@ export default function UsersPage() {
       total,
       byPeriod: scaledByPeriod,
     };
-  }, [multiplier]);
+  }, [liveSelfExclusions, multiplier]);
   const selfExclusionTrend = useMemo(
     () => {
       const filtered = filterByDateRange(baseSelfExclusionTrend, filters, (row) => row.date, { fallbackYear });
@@ -442,10 +456,7 @@ export default function UsersPage() {
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
         <KpiCard title="Frozen Accounts" value={formatCompact(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
         <KpiCard title="Pending KYC" value={formatCompact(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
-        <div className="relative">
-          <MockOverlay active badge label="Pending Data" />
-          <KpiCard title="Self-Exclusions" value={formatCompact(selfExclusionSummary.total)} subtitle="Pending live self-exclusions" change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
-        </div>
+        <KpiCard title="Self-Exclusions" value={formatCompact(selfExclusionSummary.total)} subtitle={liveSelfExclusions ? "Current active self-exclusions" : "Pending live self-exclusions"} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -596,9 +607,9 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Pending Data" />
+          <MockOverlay active={!liveSelfExclusions} badge label="Pending Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
-          <p className="text-xs text-white/40 mb-4">Responsible gaming overview — mock data</p>
+          <p className="text-xs text-white/40 mb-4">Responsible gaming overview{liveSelfExclusions ? " — live data" : " — mock data"}</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },

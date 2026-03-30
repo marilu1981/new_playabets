@@ -100,6 +100,7 @@ TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
 BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
+SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
 
 # Filter mappings (UI -> data values)
 _COUNTRY_MAP = {
@@ -845,6 +846,44 @@ def users_status_breakdown(
             "country": bool(_normalize_value(country)),
             "customer_status": bool(_normalize_value(customer_status)),
         },
+    }
+
+
+@app.get("/users/self-exclusions")
+def users_self_exclusions():
+    if not SELFEXCLUSIONS_PATH.exists():
+        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": []}
+
+    df = load_parquet_cached(SELFEXCLUSIONS_PATH, "selfexclusions")
+    if df.empty:
+        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": []}
+
+    df = normalize_cols(df)
+
+    status_col = next((c for c in df.columns if c == "selfexclusionstatus"), None)
+    period_col = next((c for c in df.columns if c == "selfexclusionperiod"), None)
+
+    total = len(df)
+    in_progress = 0
+    pending = 0
+    completed = 0
+    if status_col:
+        statuses = df[status_col].fillna("").astype(str).str.strip().str.lower()
+        in_progress = int((statuses == "in progress").sum())
+        pending = int((statuses == "pending").sum())
+        completed = int((statuses == "completed").sum())
+
+    by_period: list[dict] = []
+    if period_col:
+        counts = df[period_col].fillna("Unknown").astype(str).str.strip().value_counts()
+        by_period = [{"period": str(p), "count": int(c)} for p, c in counts.items()]
+
+    return {
+        "total": total,
+        "inProgress": in_progress,
+        "pending": pending,
+        "completed": completed,
+        "byPeriod": by_period,
     }
 
 
