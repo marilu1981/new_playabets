@@ -23,7 +23,7 @@ import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/componen
 import KpiCard from "@/components/KpiCard";
 import MockOverlay from "@/components/MockOverlay";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  AreaChart, Area, BarChart, Bar, LineChart, Line, ComposedChart, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import {
@@ -884,6 +884,20 @@ export default function Home() {
       avgFields: ["value", "ma7"],
     });
   }, [fallbackYear, filters, multiplier, sourceRevenueMetricsTrend]);
+
+  const turnoverWithMA = useMemo(() => {
+    const base = revenueMetricsTrend.map((row) => ({
+      date: row.date,
+      turnover: Number(row.turnover ?? 0),
+    }));
+    return base.map((row, idx) => {
+      const start = Math.max(0, idx - 6);
+      const window = base.slice(start, idx + 1);
+      const avg = window.reduce((sum, r) => sum + r.turnover, 0) / window.length;
+      return { ...row, ma7: Number(avg.toFixed(2)) };
+    });
+  }, [revenueMetricsTrend]);
+
   const detailedBreakdown = useMemo(() => {
     const dateFiltered = filterByDateRange(baseDetailedBreakdown, filters, (row) => row.date);
     const categorized = dateFiltered.filter((row) =>
@@ -1104,33 +1118,27 @@ export default function Home() {
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Revenue Trends — Daily View</h3>
-            <p className="text-xs text-white/40">{granularityLabel} GGR / NGR / Turnover — selected period</p>
+            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Turnover</h3>
+            <p className="text-xs text-white/40">{granularityLabel} total stakes (Sports + Casino) — selected period</p>
           </div>
-          <div className="flex gap-1">
-            {(["ggr", "ngr", "turnover"] as const).map((m) => (
-              <button key={m} style={toggleBtn(revMetric === m)} onClick={() => setRevMetric(m)}>
-                {m.toUpperCase()}
-              </button>
-            ))}
-          </div>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
         </div>
         <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={revenueMetricsTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+          <ComposedChart data={turnoverWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
             <defs>
-              <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={revMetric === "ggr" ? CHART_COLORS.gold : revMetric === "ngr" ? CHART_COLORS.green : CHART_COLORS.teal} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={revMetric === "ggr" ? CHART_COLORS.gold : revMetric === "ngr" ? CHART_COLORS.green : CHART_COLORS.teal} stopOpacity={0} />
+              <linearGradient id="turnoverGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={CHART_COLORS.teal} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={CHART_COLORS.teal} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
             <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => [`${formatCompact(v)}`, revMetric.toUpperCase()]} />
-            <Area type="monotone" dataKey={revMetric} name={revMetric.toUpperCase()}
-              stroke={revMetric === "ggr" ? CHART_COLORS.gold : revMetric === "ngr" ? CHART_COLORS.green : CHART_COLORS.teal}
-              fill="url(#revGrad)" strokeWidth={2} dot={false} />
-          </AreaChart>
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
+            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+            <Area type="monotone" dataKey="turnover" name="Daily Turnover" stroke={CHART_COLORS.teal} fill="url(#turnoverGrad)" strokeWidth={1.5} dot={false} strokeOpacity={0.7} />
+            <Line type="monotone" dataKey="ma7" name="7-day MA" stroke={CHART_COLORS.gold} strokeWidth={2.5} dot={false} />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
@@ -1382,58 +1390,58 @@ export default function Home() {
           )}
         </div>
 
-        {/* Daily Trend with 7-day Moving Average */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={showPendingOverlay} description="Daily trend pending live data" />
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Trend</h3>
-              <p className="text-xs text-white/40">GGR with 7-day moving average</p>
-            </div>
-            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
-          </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-              <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-              <Line type="monotone" dataKey="value" name="Daily GGR" stroke={CHART_COLORS.gold}  strokeWidth={1.5} dot={false} strokeOpacity={0.6} />
-              <Line type="monotone" dataKey="ma7"   name="7-day MA"  stroke={CHART_COLORS.teal}  strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
       </div>
 
-      {/* ── ORIGINAL CHARTS ─────────────────────────────────────────────── */}
-      {/* Stake vs Revenue */}
-      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
-            <p className="text-xs text-white/40">Same GGR basis as Revenue Trends chart</p>
+      {/* ── DAILY GGR — GROSS GAMING REVENUE ────────────────────────────── */}
+      <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
+        <MockOverlay active={showPendingOverlay} description="Daily GGR pending live data" />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Gross Gaming Revenue (GGR)</h3>
+            <p className="text-xs text-white/40">GGR = total stakes minus total winnings paid — {granularityLabel} view with 7-day moving average</p>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={CHART_COLORS.gold}  stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.gold}  stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={CHART_COLORS.green} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-              <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-              <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
-              <Area type="monotone" dataKey="revenue" name="Revenue" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2}   dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
+            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+            <Line type="monotone" dataKey="value" name="Daily GGR" stroke={CHART_COLORS.gold} strokeWidth={1.5} dot={false} strokeOpacity={0.6} />
+            <Line type="monotone" dataKey="ma7"   name="7-day MA"  stroke={CHART_COLORS.teal} strokeWidth={2.5} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* ── STAKE VS REVENUE ─────────────────────────────────────────────── */}
+      <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
+          <p className="text-xs text-white/40">Daily settled stake vs Gross Gaming Revenue — selected period</p>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <defs>
+              <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={CHART_COLORS.gold}  stopOpacity={0.3} />
+                <stop offset="95%" stopColor={CHART_COLORS.gold}  stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%"  stopColor={CHART_COLORS.green} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+            <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
+            <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
+            <Area type="monotone" dataKey="stake"   name="Stake"   stroke={CHART_COLORS.gold}  fill="url(#stakeGrad)"   strokeWidth={1.5} dot={false} />
+            <Area type="monotone" dataKey="revenue" name="Revenue (GGR)" stroke={CHART_COLORS.green} fill="url(#revenueGrad)" strokeWidth={2} dot={false} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
 
       {/* Betslip Status + User Status */}
