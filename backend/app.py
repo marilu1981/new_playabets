@@ -102,6 +102,10 @@ FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
 CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
 
+# Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
+# Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus — exclude them.
+DATA_START_DATE = date(2026, 1, 1)
+
 # Filter mappings (UI -> data values)
 _COUNTRY_MAP = {
     "ng": "Nigeria",
@@ -314,7 +318,7 @@ def _filtered_registration_counts(
         return {}
     users = users.copy()
     users["creationdate"] = to_dt(users["creationdate"]).dt.date
-    users = users[(users["creationdate"] >= start) & (users["creationdate"] <= end)]
+    users = users[(users["creationdate"] >= max(start, DATA_START_DATE)) & (users["creationdate"] <= end)]
     if users.empty:
         return {}
     counts = users.groupby("creationdate").size()
@@ -558,7 +562,8 @@ app.add_middleware(APIKeyMiddleware)
 def _filter_range(df: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
     if df.empty or "date" not in df.columns:
         return df
-    return df[(df["date"] >= start) & (df["date"] <= end)]
+    effective_start = max(start, DATA_START_DATE)
+    return df[(df["date"] >= effective_start) & (df["date"] <= end)]
 
 
 def _s(df: pd.DataFrame, col: str) -> float:
