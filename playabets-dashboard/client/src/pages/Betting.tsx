@@ -184,12 +184,6 @@ export default function BettingPage() {
     return scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]);
   }, [multiplier, liveOverviewKPIs]);
 
-  const pageMode = useMemo(() => {
-    if (liveOverviewKPIs || liveBetslipsByStatus || liveBetslipsByType || liveSettlementMetrics) {
-      return "partial";
-    }
-    return "mock";
-  }, [liveBetslipsByStatus, liveBetslipsByType, liveOverviewKPIs, liveSettlementMetrics]);
 
   const betslipsByStatus = useMemo(
     () =>
@@ -222,15 +216,15 @@ export default function BettingPage() {
   return (
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <div className="text-xs text-white/50 mb-3">
-        Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
-      </div>
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
-        <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
-        <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
-        <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
+      <div className="relative">
+        <MockOverlay active={!liveOverviewKPIs} badge label="Pending Data" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
+          <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
+          <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
+        </div>
       </div>
 
       <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>

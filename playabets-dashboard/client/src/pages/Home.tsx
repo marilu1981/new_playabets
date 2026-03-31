@@ -281,7 +281,7 @@ export default function Home() {
   return (
     <DashboardLayout
       title="Executive Overview"
-      subtitle="All bets are on! — Live platform summary"
+      subtitle="All bets are on! — Platform summary"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
       {/* ── HERO BANNER ─────────────────────────────────────────────────── */}
@@ -541,10 +541,10 @@ export default function Home() {
       <div className="mb-4">
         {/* Segment Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
+          <MockOverlay active={segmentPending} label="RFM Pending" description="RFM segment snapshot pending" />
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending live RFM" : "Live RFM snapshot"}</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending RFM" : "RFM snapshot"}</p>
             <p className="text-xs text-white/40">RFM analysis will categorise players into: VIP · Active · New · Cooling · Lapsed · Dormant</p>
           </div>
           <div className="flex items-center gap-4">

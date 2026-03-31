@@ -38,7 +38,6 @@ const CHART_COLORS = {
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 
-type DataMode = "mock" | "partial" | "live";
 
 async function fetchJson<T>(path: string): Promise<T> {
   return cachedFetch<T>(`${API_BASE_URL}${path}`);
@@ -153,7 +152,6 @@ function aggregateByGranularity<T extends Record<string, unknown>>(
 
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const [dataMode, setDataMode] = useState<DataMode>("mock");
   const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
   // If we already have a cached date the data fetch fires immediately — start non-loading
   // so returning to this page feels instant. On first load it starts as true.
@@ -255,10 +253,6 @@ export default function UsersPage() {
 
       const hasKpis = kpisRes.status === "fulfilled";
       const hasRegs = regsRes.status === "fulfilled";
-      const hasStatus = statusRes.status === "fulfilled";
-      const hasActives = dailyRes.status === "fulfilled" || casinoRes.status === "fulfilled";
-      const hasAnyLive = hasKpis || hasRegs || hasStatus || hasActives;
-      setDataMode(hasAnyLive ? "partial" : "mock");
       setIsLoading(false);
 
       if (hasKpis) {
@@ -417,17 +411,13 @@ export default function UsersPage() {
       subtitle="Player lifecycle, sessions, and responsible gaming"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
-      <div className="text-xs text-white/50 mb-3">
-        Data mode: {dataMode === "live" ? "Live" : dataMode === "partial" ? "Partial Live" : "Mock"}
-        {latestDataDate ? ` · Data through ${latestDataDate}` : ""}
-      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" loading={isLoading} />
         <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
         <KpiCard title="Frozen Accounts" value={formatCompact(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
         <KpiCard title="Pending KYC" value={formatCompact(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Self-Exclusions" value={formatCompact(selfExclusionSummary.total)} subtitle={liveSelfExclusions ? "Current active self-exclusions" : "Pending live self-exclusions"} change={3.2} changeLabel="vs last month" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+        <KpiCard title="Self-Exclusions" value={liveSelfExclusions ? formatCompact(selfExclusionSummary.total) : "Pending"} valueClassName={!liveSelfExclusions ? "text-white/30" : undefined} subtitle="Active self-exclusions" icon={<Shield size={18} />} accent="red" loading={isLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

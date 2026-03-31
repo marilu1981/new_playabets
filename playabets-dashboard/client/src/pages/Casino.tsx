@@ -13,7 +13,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LabelList,
 } from "recharts";
-import { Gamepad2, DollarSign, TrendingUp, Percent } from "lucide-react";
+import { Gamepad2, DollarSign, TrendingUp } from "lucide-react";
 import { casinoProviders as baseCasinoProviders, casinoKPIs as baseCasinoKPIs } from "@/lib/mockData";
 import { formatCompact } from "@/lib/formatters";
 import {
@@ -130,11 +130,10 @@ export default function CasinoPage() {
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <KpiCard title="Total Casino Stake" value={`${formatCompact(casinoKPIs.totalStake)}`} subtitle="All providers" change={18.4} changeLabel="vs last month" icon={<DollarSign size={18} />} accent="gold" />
         <KpiCard title="Total Winnings" value={`${formatCompact(casinoKPIs.totalWinnings)}`} subtitle="Paid to players" change={16.2} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="amber" />
         <KpiCard title="Gross Profit" value={`${formatCompact(casinoKPIs.grossProfit)}`} subtitle="Stake minus winnings" change={22.1} changeLabel="vs last month" icon={<Gamepad2 size={18} />} accent="green" />
-        <KpiCard title="Casino Margin" value={`${casinoKPIs.margin}%`} subtitle="House edge" change={0.4} changeLabel="vs last month" icon={<Percent size={18} />} accent="teal" />
       </div>
 
       {/* Charts */}
