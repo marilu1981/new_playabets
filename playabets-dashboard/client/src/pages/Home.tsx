@@ -347,8 +347,8 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
             {/* ── TODAY panel ── */}
-            <div className="rounded-xl overflow-hidden" style={{ background: "#16231c", border: "1px solid #245b13" }}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#006163" }}>
+            <div className="rounded-xl overflow-hidden" style={{ background: "#03190C", border: "1px solid #460505" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#073500" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>
