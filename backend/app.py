@@ -1240,6 +1240,38 @@ def rfm_users(
 # ---------------------------------------------------------------------------
 # Betting
 # ---------------------------------------------------------------------------
+@app.get("/sportsbook/kpis")
+def sportsbook_kpis(
+    start: date = Query(...),
+    end: date = Query(...),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
+):
+    df = _filter_range(load_parquet_cached(DAILY_KPIS_PATH, "daily_kpis"), start, end)
+    if df.empty:
+        return {"settled_stake": 0, "winnings": 0, "ggr": 0, "betslips": 0}
+    allowed_ids = _get_allowed_user_ids(territory, country, None, current_segment)
+    if allowed_ids is not None:
+        bs = _aggregate_betslips_for_users(start, end, allowed_ids)
+        return {
+            "settled_stake": round(bs["stake"], 2),
+            "winnings": round(bs["winnings"], 2),
+            "ggr": round(bs["ggr"], 2),
+            "betslips": bs["betslips"],
+        }
+    stake = _s(df, "placed_stake") or _s(df, "settled_stake")
+    winnings = _s(df, "settled_winnings")
+    ggr = _s(df, "ggr")
+    betslips = _i(df, "betslips_count")
+    return {
+        "settled_stake": round(stake, 2),
+        "winnings": round(winnings, 2),
+        "ggr": round(ggr, 2),
+        "betslips": betslips,
+    }
+
+
 @app.get("/betting/betslips-by-status")
 def betslips_by_status(
     start: date = Query(...),
