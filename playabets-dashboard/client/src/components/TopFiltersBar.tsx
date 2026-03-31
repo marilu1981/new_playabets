@@ -4,8 +4,7 @@
  * All controls share a standard width (140px dropdowns, 130px date inputs).
  * Labels sit in small caps above each control — no inline labels, no abbreviations.
  *
- * Row 1: Date From | Date To | Granularity | Territory | Country
- * Row 2: User Segment | [Reset]
+ * Row 1: Date From | Date To | Granularity | Territory | Country | RFM Segment | [Reset]
  */
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -260,13 +259,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-        </div>
-
-        {/* ROW 2 ─────────────────────────────────────────────────────────── */}
-        <div
-          className="flex items-end gap-3 px-5 pt-2 pb-3 flex-wrap"
-          style={{ borderTop: "1px solid oklch(1 0 0 / 5%)" }}
-        >
+          <Divider />
 
           <Field label="RFM Segment">
             <select
