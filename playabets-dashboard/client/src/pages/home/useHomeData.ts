@@ -1,6 +1,7 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
 import type { DashboardFilters } from "@/components/TopFiltersBar";
+import type { MetricRow } from "./homeUtils";
 import {
   overviewKPIs as baseOverviewKPIs,
   revenueTrend as baseRevenueTrend,
@@ -56,6 +57,12 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
   const [liveSegmentDistribution, setLiveSegmentDistribution] = useState<typeof baseSegmentDistribution | null>(null);
   const [hasSegmentData, setHasSegmentData] = useState<boolean>(false);
+  const [liveSummaryMetrics, setLiveSummaryMetrics] = useState<{
+    overview: MetricRow[];
+    sport: MetricRow[];
+    casino: MetricRow[];
+    playerHealth: MetricRow[];
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -172,6 +179,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
           `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
+        summary: fetchJson<{
+          current: Record<string, number>;
+          previous: Record<string, number>;
+          ytd: Record<string, number>;
+          rfm: { vip: number; active: number; new: number; cooling: number; lapsed: number; dormant: number };
+          self_exclusions: number;
+        }>(`/kpis/summary?start=${filters.dateFrom}&end=${filters.dateTo}`),
       };
 
       const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes] = await Promise.allSettled([
@@ -413,10 +427,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveConversionRateTrend(null);
       }
 
-      const [betslipStatusRes, userStatusRes, rfmSegmentsRes] = await Promise.allSettled([
+      const [betslipStatusRes, userStatusRes, rfmSegmentsRes, summaryRes] = await Promise.allSettled([
         requests.betslipStatus,
         requests.userStatus,
         requests.rfmSegments,
+        requests.summary,
       ]);
 
       if (cancelled) {
@@ -521,6 +536,59 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveSegmentTrend(null);
         setHasSegmentData(false);
       }
+
+      if (summaryRes.status === "fulfilled") {
+        const s = summaryRes.value;
+        const c = s.current;
+        const p = s.previous;
+        const y = s.ytd;
+        const rfm = s.rfm;
+        setLiveSummaryMetrics({
+          overview: [
+            { metric: "Registrations", current: c.registrations, previous: p.registrations, ytd: y.registrations },
+            { metric: "FTDs", current: c.ftds, previous: p.ftds, ytd: y.ftds },
+            { metric: "FTD Conversion", current: c.ftd_conv_rate, previous: p.ftd_conv_rate, ytd: y.ftd_conv_rate, isPercent: true },
+            { metric: "Active Players (Sports)", current: c.actives_sports, previous: p.actives_sports, ytd: y.actives_sports },
+            { metric: "Active Players (Casino)", current: c.actives_casino, previous: p.actives_casino, ytd: y.actives_casino },
+            { metric: "Total Turnover", current: c.turnover, previous: p.turnover, ytd: y.turnover, isCurrency: true },
+            { metric: "Total GGR", current: c.ggr, previous: p.ggr, ytd: y.ggr, isCurrency: true },
+            { metric: "NGR", current: c.ngr, previous: p.ngr, ytd: y.ngr, isCurrency: true },
+            { metric: "Hold / Margin %", current: c.hold_pct, previous: p.hold_pct, ytd: y.hold_pct, isPercent: true },
+            { metric: "Bonus Spent", current: c.bonus_spent, previous: p.bonus_spent, ytd: y.bonus_spent, isCurrency: true },
+          ],
+          sport: [
+            { metric: "Betslips Placed", current: c.sports_bets, previous: p.sports_bets, ytd: y.sports_bets },
+            { metric: "Betslips Settled", current: c.sports_settled, previous: p.sports_settled, ytd: y.sports_settled },
+            { metric: "Sports Turnover", current: c.sports_turnover, previous: p.sports_turnover, ytd: y.sports_turnover, isCurrency: true },
+            { metric: "Sports Winnings", current: c.sports_winnings, previous: p.sports_winnings, ytd: y.sports_winnings, isCurrency: true },
+            { metric: "Sports GGR", current: c.sports_ggr, previous: p.sports_ggr, ytd: y.sports_ggr, isCurrency: true },
+            { metric: "Hold / Margin %", current: c.sports_hold, previous: p.sports_hold, ytd: y.sports_hold, isPercent: true },
+            { metric: "Win Rate %", current: c.win_rate, previous: p.win_rate, ytd: y.win_rate, isPercent: true },
+            { metric: "Cancel Rate %", current: c.cancel_rate, previous: p.cancel_rate, ytd: y.cancel_rate, isPercent: true },
+            { metric: "Avg Stake / Bet", current: c.avg_stake, previous: p.avg_stake, ytd: y.avg_stake, isCurrency: true },
+          ],
+          casino: [
+            { metric: "Casino Bets", current: c.casino_bets, previous: p.casino_bets, ytd: y.casino_bets },
+            { metric: "Casino Stake", current: c.casino_stake, previous: p.casino_stake, ytd: y.casino_stake, isCurrency: true },
+            { metric: "Casino Winnings", current: c.casino_winnings, previous: p.casino_winnings, ytd: y.casino_winnings, isCurrency: true },
+            { metric: "Casino GGR", current: c.casino_ggr, previous: p.casino_ggr, ytd: y.casino_ggr, isCurrency: true },
+            { metric: "Casino Margin %", current: c.casino_margin, previous: p.casino_margin, ytd: y.casino_margin, isPercent: true },
+            { metric: "RTP %", current: c.casino_rtp, previous: p.casino_rtp, ytd: y.casino_rtp, isPercent: true },
+            { metric: "Active Casino Players", current: c.casino_actives, previous: p.casino_actives, ytd: y.casino_actives },
+          ],
+          playerHealth: [
+            { metric: "VIP Players", current: rfm.vip, previous: 0, ytd: rfm.vip },
+            { metric: "Active Players", current: rfm.active, previous: 0, ytd: rfm.active },
+            { metric: "New Players", current: rfm.new, previous: 0, ytd: rfm.new },
+            { metric: "Cooling Players", current: rfm.cooling, previous: 0, ytd: rfm.cooling },
+            { metric: "Lapsed Players", current: rfm.lapsed, previous: 0, ytd: rfm.lapsed },
+            { metric: "Dormant Players", current: rfm.dormant, previous: 0, ytd: rfm.dormant },
+            { metric: "Self-Exclusions", current: s.self_exclusions, previous: 0, ytd: s.self_exclusions },
+          ],
+        });
+      } else {
+        setLiveSummaryMetrics(null);
+      }
     }
 
     loadLiveData().catch(() => {
@@ -593,5 +661,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveSegmentDistribution,
     hasSegmentData,
     liveTodayKpis,
+    liveSummaryMetrics,
   };
 }

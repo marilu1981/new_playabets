@@ -887,6 +887,115 @@ def users_self_exclusions():
     }
 
 
+def _summary_period(start: date, end: date) -> dict:
+    """Aggregate all summary-table metrics for a given date range."""
+    df = _filter_range(load_daily_df(), start, end)
+    casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+    ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
+    bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
+
+    regs = _i(df, "registrations")
+    ftds = _i(ftd, "ftds")
+    conv_rate = round(ftds / regs * 100, 1) if regs > 0 else 0.0
+
+    sports_turnover = _s(df, "placed_stake")
+    sports_winnings = _s(df, "settled_winnings")
+    sports_ggr = _s(df, "ggr")
+    sports_bets = _i(df, "betslips_count")
+    sports_settled = _i(df, "betslips_settled_count")
+    avg_stake = round(sports_turnover / sports_bets, 2) if sports_bets > 0 else 0.0
+    sports_hold = round(sports_ggr / sports_turnover * 100, 1) if sports_turnover > 0 else 0.0
+    win_rate = round(_s(df, "win_rate"), 1) if "win_rate" in df.columns and len(df) > 0 else 0.0
+    cancel_rate = round(_s(df, "cancel_rate"), 1) if "cancel_rate" in df.columns and len(df) > 0 else 0.0
+
+    casino_stake = _s(casino, "casino_stake")
+    casino_winnings = _s(casino, "casino_winnings")
+    casino_ggr = _s(casino, "casino_ggr")
+    casino_bets = _i(casino, "casino_bets")
+    casino_actives = _i(casino, "casino_actives")
+    casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
+    casino_rtp = round(100.0 - casino_margin, 1)
+
+    total_ggr = sports_ggr + casino_ggr
+    bonus_spent = _s(bonus, "bonus_credited")
+    ngr = total_ggr - bonus_spent
+    total_turnover = sports_turnover + casino_stake
+    hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
+    actives_sports = _mean_i(df, "actives_sports")
+    actives_casino = _mean_i(casino, "casino_actives")
+
+    return {
+        "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
+        "actives_sports": actives_sports, "actives_casino": actives_casino,
+        "turnover": round(total_turnover, 2), "ggr": round(total_ggr, 2),
+        "ngr": round(ngr, 2), "hold_pct": hold_pct, "bonus_spent": round(bonus_spent, 2),
+        "sports_bets": sports_bets, "sports_settled": sports_settled,
+        "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
+        "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,
+        "win_rate": win_rate, "cancel_rate": cancel_rate, "avg_stake": avg_stake,
+        "casino_bets": casino_bets, "casino_stake": round(casino_stake, 2),
+        "casino_winnings": round(casino_winnings, 2), "casino_ggr": round(casino_ggr, 2),
+        "casino_margin": casino_margin, "casino_rtp": casino_rtp, "casino_actives": casino_actives,
+    }
+
+
+@app.get("/kpis/summary")
+def kpis_summary(
+    start: date = Query(...),
+    end: date = Query(...),
+    previous_start: Optional[date] = Query(None),
+    previous_end: Optional[date] = Query(None),
+    ytd_start: Optional[date] = Query(None),
+):
+    # Auto-compute previous period (same duration shifted back) if not provided
+    if previous_start is None or previous_end is None:
+        duration = (end - start).days
+        previous_end = start - pd.Timedelta(days=1)
+        previous_start = previous_end - pd.Timedelta(days=duration)
+        previous_end = previous_end.date() if hasattr(previous_end, "date") else previous_end
+        previous_start = previous_start.date() if hasattr(previous_start, "date") else previous_start
+
+    # Auto-compute YTD (Jan 1 of end year → end) if not provided
+    if ytd_start is None:
+        ytd_start = date(end.year, 1, 1)
+
+    current = _summary_period(start, end)
+    previous = _summary_period(previous_start, previous_end)
+    ytd = _summary_period(ytd_start, end)
+
+    # RFM snapshot (latest)
+    rfm_df = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+    rfm = {"vip": 0, "active": 0, "new": 0, "cooling": 0, "lapsed": 0, "dormant": 0}
+    if not rfm_df.empty and "segment" in rfm_df.columns:
+        counts = rfm_df["segment"].fillna("Unknown").value_counts().to_dict()
+        rfm = {
+            "vip": int(counts.get("VIP", 0)),
+            "active": int(counts.get("Active", 0)),
+            "new": int(counts.get("New", 0)),
+            "cooling": int(counts.get("Cooling", 0)),
+            "lapsed": int(counts.get("Lapsed", 0)),
+            "dormant": int(counts.get("Dormant", 0)),
+        }
+
+    self_ex_total = 0
+    if SELFEXCLUSIONS_PATH.exists():
+        ex_df = load_parquet_cached(SELFEXCLUSIONS_PATH, "selfexclusions")
+        self_ex_total = len(ex_df)
+
+    return {
+        "current": current,
+        "previous": previous,
+        "ytd": ytd,
+        "rfm": rfm,
+        "self_exclusions": self_ex_total,
+        "periods": {
+            "current": {"start": str(start), "end": str(end)},
+            "previous": {"start": str(previous_start), "end": str(previous_end)},
+            "ytd": {"start": str(ytd_start), "end": str(end)},
+        },
+    }
+
+
 # ---------------------------------------------------------------------------
 # RFM
 # ---------------------------------------------------------------------------

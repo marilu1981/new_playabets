@@ -16,7 +16,7 @@
  *   User Status list, Upcoming Events table
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
@@ -28,7 +28,7 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, DollarSign, Activity,
-  Zap, Download, UserPlus, ArrowUpRight, BarChart2, Percent,
+  Zap, Download, UserPlus, ArrowUpRight, BarChart2, Percent, Shield, AlertTriangle,
 } from "lucide-react";
 import {
   overviewKPIs as baseOverviewKPIs,
@@ -102,7 +102,7 @@ function getRfmSegmentBadgeStyle(segment: string) {
 export default function Home() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
-  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "all">("overview");
+  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "playerHealth">("overview");
   const {
     dataMode,
     latestDataDate,
@@ -125,6 +125,7 @@ export default function Home() {
     liveSegmentDistribution,
     hasSegmentData,
     liveTodayKpis,
+    liveSummaryMetrics,
   } = useHomeData({ filters, setFilters });
 /*
   const [dataMode, setDataMode] = useState<DataMode>("mock");
@@ -792,6 +793,9 @@ export default function Home() {
     });
   }, [fallbackYear, filters, multiplier, sourceConversionRateTrend]);
   const summaryMetrics = useMemo(() => {
+    if (liveSummaryMetrics) {
+      return liveSummaryMetrics;
+    }
     const scaleMetricRows = (rows: typeof baseSummaryMetrics.overview) =>
       rows.map((row) => ({
         ...row,
@@ -801,10 +805,11 @@ export default function Home() {
       }));
     return {
       overview: scaleMetricRows(baseSummaryMetrics.overview),
-      sportDetails: scaleMetricRows(baseSummaryMetrics.sportDetails),
-      casinoDetails: scaleMetricRows(baseSummaryMetrics.casinoDetails),
+      sport: scaleMetricRows(baseSummaryMetrics.sportDetails),
+      casino: scaleMetricRows(baseSummaryMetrics.casinoDetails),
+      playerHealth: [] as typeof baseSummaryMetrics.overview,
     };
-  }, [multiplier]);
+  }, [liveSummaryMetrics, multiplier]);
   const transactionSummary = useMemo(
     () => scaleObjectNumericFields(sourceTransactionSummary, multiplier),
     [multiplier, sourceTransactionSummary],
@@ -953,9 +958,9 @@ export default function Home() {
 
   const getSummaryRows = (): MetricRow[] => {
     if (summaryTab === "overview") return summaryMetrics.overview;
-    if (summaryTab === "sport")    return summaryMetrics.sportDetails;
-    if (summaryTab === "casino")   return summaryMetrics.casinoDetails;
-    return [...summaryMetrics.overview, ...summaryMetrics.sportDetails, ...summaryMetrics.casinoDetails];
+    if (summaryTab === "sport")    return summaryMetrics.sport;
+    if (summaryTab === "casino")   return summaryMetrics.casino;
+    return summaryMetrics.playerHealth;
   };
   const summaryRows = getSummaryRows();
   const renderSummaryMetricsTable = () => (
@@ -963,6 +968,7 @@ export default function Home() {
       summaryTab={summaryTab}
       setSummaryTab={setSummaryTab}
       summaryRows={summaryRows}
+      isLive={!!liveSummaryMetrics}
       exportFilename={`playabets_summary_${summaryTab}_${filters.dateFrom}_${filters.dateTo}.csv`}
       cardBg={CARD_BG}
       chartColors={CHART_COLORS}
@@ -1013,16 +1019,18 @@ export default function Home() {
 
       {/* ── DAILY HEALTH + PERIOD KPIs ───────────────────────────────────── */}
       {(() => {
-        const TILE_BG = "oklch(0.22 0.04 155 / 70%)";
+        const TILE_BG = "rgba(0,0,0,0.18)";
         const tile = (
           label: string,
           value: string,
           accent: string,
+          icon: ReactNode,
           pending = false,
         ) => (
           <div className="rounded-lg p-2.5" style={{ background: TILE_BG }}>
-            <div className="text-[9px] font-bold uppercase tracking-widest mb-1 truncate" style={{ color: accent }}>
-              {label}
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-[8px] font-bold uppercase tracking-widest truncate" style={{ color: accent }}>{label}</div>
+              <div style={{ color: accent, opacity: 0.55 }}>{icon}</div>
             </div>
             <div className={`text-base font-bold leading-tight ${pending ? "text-white/30" : "text-white"}`} style={FONT_MONO}>
               {value}
@@ -1040,32 +1048,38 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
             {/* ── TODAY panel ── */}
-            <div className="rounded-xl overflow-hidden" style={CARD_BG}>
+            <div className="rounded-xl overflow-hidden" style={{ background: "#115F32", border: "1px solid #1e7a40" }}>
               <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#CC9C1F" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>
               <div className="p-3">
                 <div className="grid grid-cols-3 gap-2 mb-3">
-                  {tile("GGR",            todayGGR,   CHART_COLORS.gold)}
-                  {tile("Turnover",       todayTurn,  CHART_COLORS.teal)}
-                  {tile("Deposits",       "Pending",  CHART_COLORS.amber, true)}
-                  {tile("Registrations",  todayRegs,  CHART_COLORS.teal)}
-                  {tile("Conv Rate",      `${periodConvRate}%`, CHART_COLORS.amber)}
-                  {tile("Sports Actives", todaySports, CHART_COLORS.green)}
-                  {tile("Casino Actives", todayCasino, CHART_COLORS.gold)}
+                  {tile("GGR",            todayGGR,              CHART_COLORS.gold,  <BarChart2 size={11} />)}
+                  {tile("Turnover",       todayTurn,             CHART_COLORS.teal,  <TrendingUp size={11} />)}
+                  {tile("Deposits",       "Pending",             CHART_COLORS.amber, <DollarSign size={11} />, true)}
+                  {tile("Registrations",  todayRegs,             CHART_COLORS.teal,  <UserPlus size={11} />)}
+                  {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber, <Percent size={11} />)}
+                  {tile("Sports Actives", todaySports,           CHART_COLORS.green, <Activity size={11} />)}
+                  {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,  <Zap size={11} />)}
                 </div>
                 {/* Alerts */}
-                <div className="border-t pt-2.5" style={{ borderColor: "oklch(1 0 0 / 8%)" }}>
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-white/35 mb-2">Alerts & Flags</div>
+                <div className="border-t pt-2.5" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>Alerts &amp; Flags</div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
-                      <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.red }}>AML Alerts</span>
-                      <span className="text-xs font-mono text-white/60">{formatCompact(complianceAlerts.amlAlerts)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Shield size={10} style={{ color: CHART_COLORS.red }} />
+                        <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.red }}>AML Alerts</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-white">{formatCompact(complianceAlerts.amlAlerts)}</span>
                     </div>
                     <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
-                      <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.amber }}>Flagged Tx</span>
-                      <span className="text-xs font-mono text-white/60">{formatCompact(complianceAlerts.flaggedTransactions)}</span>
+                      <div className="flex items-center gap-1.5">
+                        <AlertTriangle size={10} style={{ color: CHART_COLORS.amber }} />
+                        <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.amber }}>Flagged Tx</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-white">{formatCompact(complianceAlerts.flaggedTransactions)}</span>
                     </div>
                   </div>
                 </div>
@@ -1080,15 +1094,15 @@ export default function Home() {
               </div>
               <div className="p-3">
                 <div className="grid grid-cols-3 gap-2">
-                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),     CHART_COLORS.gold)}
-                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),       CHART_COLORS.teal)}
-                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits) : "Pending", CHART_COLORS.amber, !hasTransactionsData)}
-                  {tile("Registrations",  formatCompact(kpiRegistrations),              CHART_COLORS.teal)}
-                  {tile("FTDs",           formatCompact(kpiFtds),                       CHART_COLORS.gold)}
-                  {tile("Conv Rate",      `${periodConvRate}%`,                         CHART_COLORS.amber)}
-                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),    CHART_COLORS.green)}
-                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),    CHART_COLORS.gold)}
-                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending", CHART_COLORS.red, !hasTransactionsData)}
+                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),                                                    CHART_COLORS.gold,  <BarChart2 size={11} />)}
+                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),                                                       CHART_COLORS.teal,  <TrendingUp size={11} />)}
+                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",           CHART_COLORS.amber, <DollarSign size={11} />, !hasTransactionsData)}
+                  {tile("Registrations",  formatCompact(kpiRegistrations),                                                              CHART_COLORS.teal,  <UserPlus size={11} />)}
+                  {tile("FTDs",           formatCompact(kpiFtds),                                                                       CHART_COLORS.gold,  <Users size={11} />)}
+                  {tile("Conv Rate",      `${periodConvRate}%`,                                                                         CHART_COLORS.amber, <Percent size={11} />)}
+                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),                                                    CHART_COLORS.green, <Activity size={11} />)}
+                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),                                                    CHART_COLORS.gold,  <Zap size={11} />)}
+                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",         CHART_COLORS.red,   <ArrowUpRight size={11} />, !hasTransactionsData)}
                 </div>
               </div>
             </div>

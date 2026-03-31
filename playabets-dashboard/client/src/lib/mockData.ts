@@ -298,9 +298,7 @@ export const summaryMetrics = {
   overview: [
     { metric: "Registrations", current: 5_480, previous: 6_920, ytd: 57_220 },
     { metric: "FTDs", current: 2_142, previous: 2_740, ytd: 22_480 },
-    { metric: "V_FTDs", current: 257, previous: 329, ytd: 2_698 },
-    { metric: "Top_FTDs", current: 86, previous: 110, ytd: 899 },
-    { metric: "Conversion Rate", current: 39.1, previous: 39.6, ytd: 39.3, isPercent: true },
+    { metric: "FTD Conversion", current: 39.1, previous: 39.6, ytd: 39.3, isPercent: true },
     { metric: "Actives", current: 38_412, previous: 35_480, ytd: 38_412 },
     { metric: "Total GGR", current: 1_378_900, previous: 1_308_200, ytd: 9_842_100, isCurrency: true },
     { metric: "NGR", current: 1_130_698, previous: 1_072_724, ytd: 8_070_522, isCurrency: true },

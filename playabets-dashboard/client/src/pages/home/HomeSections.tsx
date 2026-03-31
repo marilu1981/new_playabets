@@ -157,22 +157,24 @@ export function SummaryMetricsTable({
   setSummaryTab,
   summaryRows,
   exportFilename,
+  isLive = false,
   cardBg,
   chartColors,
   fontSerif,
   fontMono,
 }: {
-  summaryTab: "overview" | "sport" | "casino" | "all";
-  setSummaryTab: (tab: "overview" | "sport" | "casino" | "all") => void;
+  summaryTab: "overview" | "sport" | "casino" | "playerHealth";
+  setSummaryTab: (tab: "overview" | "sport" | "casino" | "playerHealth") => void;
   summaryRows: MetricRow[];
   exportFilename: string;
+  isLive?: boolean;
 } & Pick<SectionStyleProps, "cardBg" | "chartColors" | "fontSerif" | "fontMono">) {
   return (
     <div className="rounded-xl p-5 mb-4" style={cardBg}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-white" style={fontSerif}>Summary Metrics</h3>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
+          {!isLive && <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data</span>}
         </div>
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
@@ -199,7 +201,7 @@ export function SummaryMetricsTable({
           { key: "overview", label: "Overview" },
           { key: "sport", label: "Sport Details" },
           { key: "casino", label: "Casino Details" },
-          { key: "all", label: "All Metrics" },
+          { key: "playerHealth", label: "Player Health" },
         ] as const).map(({ key, label }) => (
           <button
             key={key}
