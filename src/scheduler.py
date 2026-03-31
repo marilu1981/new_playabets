@@ -164,6 +164,15 @@ def run_pipeline() -> None:
     log.info("=" * 60)
 
 
+def _compact() -> None:
+    """Compact raw increment files into full files after every pipeline run."""
+    log.info("--- COMPACTION ---")
+    try:
+        _run_module("src.tools.compact_raw")
+    except Exception as exc:
+        log.warning("Compaction failed: %s", exc)
+
+
 def main() -> None:
     log.info("Playa Bets Scheduler starting — interval: %d minutes", INTERVAL_MINUTES)
     log.info("Project root: %s", PROJECT_ROOT)
@@ -172,6 +181,7 @@ def main() -> None:
 
     # Run immediately on start
     run_pipeline()
+    _compact()
 
     if RUN_ONCE:
         log.info("SCHEDULER_RUN_ONCE=1 - exiting after single pipeline run")
@@ -185,6 +195,7 @@ def main() -> None:
                  datetime.fromtimestamp(time.time() + interval_seconds).strftime("%H:%M:%S"))
         time.sleep(interval_seconds)
         run_pipeline()
+        _compact()
 
 
 if __name__ == "__main__":
