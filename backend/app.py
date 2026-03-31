@@ -100,7 +100,8 @@ RFM_MONTHLY_PATH        = _SERVING / "rfm_monthly_snapshots.parquet"
 TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
 BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
-CASINO_DAILY_PATH      = _SERVING / "casino_daily.parquet"
+CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
+CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
 
 # Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
@@ -1469,13 +1470,22 @@ def casino_kpis(
     end: date = Query(...),
 ):
     df = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+    stake    = _s(df, "casino_stake")
+    winnings = _s(df, "casino_winnings")
+    ggr      = _s(df, "casino_ggr")
     return {
         "range": {"start": str(start), "end": str(end)},
-        "casino_stake": _s(df, "casino_stake"),
-        "casino_winnings": _s(df, "casino_winnings"),
-        "casino_ggr": _s(df, "casino_ggr"),
-        "casino_bets": _i(df, "casino_bets"),
-        "casino_actives": _i(df, "casino_actives"),
+        # field names matched to what Casino.tsx expects
+        "stake":    stake,
+        "winnings": winnings,
+        "ggr":      ggr,
+        "bets":     _i(df, "casino_bets"),
+        "actives":  _i(df, "casino_actives"),
+        "hold_pct": round(ggr / stake * 100, 2) if stake else 0.0,
+        # also expose raw names for other consumers
+        "casino_stake":    stake,
+        "casino_winnings": winnings,
+        "casino_ggr":      ggr,
     }
 
 
@@ -1507,28 +1517,26 @@ def casino_providers(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
 ):
-    """Provider breakdown from raw casino parquet files."""
-    from pathlib import Path as _P
-    import glob
-
-    raw_files = sorted((_ROOT / "data" / "raw" / "casino").glob("casino_increment_*.parquet"))
-    if not raw_files:
+    """Provider breakdown from pre-aggregated casino_providers_daily.parquet."""
+    df = load_parquet_cached(CASINO_PROVIDERS_DAILY_PATH, "casino_providers_daily")
+    if df.empty:
         return {"providers": []}
-
-    df = pd.concat([pd.read_parquet(f) for f in raw_files], ignore_index=True)
-    if start and end and "PlacementDate" in df.columns:
-        df["_d"] = pd.to_datetime(df["PlacementDate"], errors="coerce").dt.date
-        df = df[(df["_d"] >= start) & (df["_d"] <= end)]
-
-    if "ProviderName" not in df.columns:
+    if start and end and "date" in df.columns:
+        df = _filter_range(df, start, end)
+    if df.empty:
         return {"providers": []}
-
     out = (
-        df.groupby("ProviderName")
-        .agg(stake=("Stake", "sum"), winnings=("Winnings", "sum"), bets=("BetsNumber", "sum"))
+        df.groupby("provider_name")
+        .agg(stake=("stake", "sum"), winnings=("winnings", "sum"), bets=("bets", "sum"))
         .reset_index()
+        .rename(columns={"provider_name": "provider"})
     )
     out["ggr"] = out["stake"] - out["winnings"]
+    out["profit"] = out["ggr"]
+    # carry casino_type from the most common type per provider
+    if "casino_type" in df.columns:
+        type_map = df.groupby("provider_name")["casino_type"].agg(lambda x: x.mode().iloc[0] if len(x) else "Casino")
+        out["casino_type"] = out["provider"].map(type_map).fillna("Casino")
     return {"providers": out.sort_values("ggr", ascending=False).to_dict(orient="records")}
 
 
@@ -1537,7 +1545,7 @@ def casino_types(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
 ):
-    raw_files = sorted((_ROOT / "data" / "raw" / "casino").glob("casino_increment_*.parquet"))
+    raw_files = sorted((RAW_ROOT / "casino").glob("casino_increment_*.parquet"))
     if not raw_files:
         return {"types": []}
 

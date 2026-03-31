@@ -375,13 +375,12 @@ export default function Home() {
                 </div>
                 <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
                   <div className="grid grid-cols-3 gap-2">
-                    {tile("GGR",            todayGGR,              CHART_COLORS.gold,            <BarChart2 size={11} />)}
-                    {tile("Turnover",       todayTurn,             "oklch(0.75 0.13 220)",       <TrendingUp size={11} />)}
-                    {tile("Deposits",       "Pending",             CHART_COLORS.amber,           <DollarSign size={11} />, true)}
-                    {tile("Registrations",  todayRegs,             "oklch(0.75 0.13 220)",       <UserPlus size={11} />)}
-                    {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber,           <Percent size={11} />)}
-                    {tile("Sports Actives", todaySports,           "oklch(0.82 0.10 160)",       <Activity size={11} />)}
-                    {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,            <Zap size={11} />)}
+                    {tile("GGR",            todayGGR,             CHART_COLORS.gold,          <BarChart2 size={11} />)}
+                    {tile("Turnover",       todayTurn,            "oklch(0.75 0.13 220)",     <TrendingUp size={11} />)}
+                    {tile("Registrations",  todayRegs,            "oklch(0.75 0.13 220)",     <UserPlus size={11} />)}
+                    {tile("Conv Rate",      `${periodConvRate}%`, CHART_COLORS.amber,         <Percent size={11} />)}
+                    {tile("Sports Actives", todaySports,          "oklch(0.82 0.10 160)",     <Activity size={11} />)}
+                    {tile("Casino Actives", todayCasino,          CHART_COLORS.gold,          <Zap size={11} />)}
                   </div>
                 </div>
               </div>
@@ -393,17 +392,27 @@ export default function Home() {
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Period KPIs</span>
                 <span className="text-xs text-white/70 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
               </div>
-              <div className="p-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),                                                    CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),                                                       "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",           CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
-                  {tile("Registrations",  formatCompact(kpiRegistrations),                                                              "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                  {tile("FTDs",           formatCompact(kpiFtds),                                                                       CHART_COLORS.gold,      <Users size={11} />)}
-                  {tile("Conv Rate",      `${periodConvRate}%`,                                                                         CHART_COLORS.amber,     <Percent size={11} />)}
-                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),                                                    "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
-                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),                                                    CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
-                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",         CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+              <div className="p-3 space-y-3">
+                {/* Revenue group */}
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Revenue</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {tile("GGR",         formatCompact(overviewKPIs.grossRevenue),                                              CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                    {tile("Turnover",    formatCompact(overviewKPIs.totalStake),                                                 "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                    {tile("Deposits",    hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",    CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
+                    {tile("Withdrawals", hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",  CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                  </div>
+                </div>
+                {/* Players group */}
+                <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
+                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Players</div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {tile("Registrations",  formatCompact(kpiRegistrations),                   "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                    {tile("FTDs",           formatCompact(kpiFtds),                            CHART_COLORS.gold,      <Users size={11} />)}
+                    {tile("Conv Rate",      `${periodConvRate}%`,                              CHART_COLORS.amber,     <Percent size={11} />)}
+                    {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),         "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
+                    {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),         CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
+                  </div>
                 </div>
               </div>
             </div>
