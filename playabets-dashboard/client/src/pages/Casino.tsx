@@ -117,6 +117,15 @@ export default function CasinoPage() {
       })),
     [casinoProviders, totalStakeSafe],
   );
+
+  const top10ByProfit = useMemo(
+    () => [...casinoProviders].sort((a, b) => b.profit - a.profit).slice(0, 10),
+    [casinoProviders],
+  );
+  const top10ByStake = useMemo(
+    () => [...providerShareData].sort((a, b) => b.sharePct - a.sharePct).slice(0, 10),
+    [providerShareData],
+  );
   return (
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
@@ -134,9 +143,9 @@ export default function CasinoPage() {
         <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
-          <p className="text-xs text-white/40 mb-4">Gross profit per casino provider</p>
+          <p className="text-xs text-white/40 mb-4">Gross profit per casino provider — top 10</p>
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={casinoProviders} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
+            <BarChart data={top10ByProfit} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
               <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="provider" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
@@ -157,9 +166,9 @@ export default function CasinoPage() {
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
-          <p className="text-xs text-white/40 mb-4">By provider</p>
+          <p className="text-xs text-white/40 mb-4">By provider — top 10</p>
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart data={providerShareData} layout="vertical" margin={{ top: 0, right: 22, bottom: 0, left: 100 }}>
+            <BarChart data={top10ByStake} layout="vertical" margin={{ top: 0, right: 22, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
               <XAxis
                 type="number"
