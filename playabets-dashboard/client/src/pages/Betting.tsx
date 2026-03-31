@@ -317,7 +317,6 @@ export default function BettingPage() {
 
         {/* By Bet Type (Single/Multiple) */}
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">By Bet Type</h3>
           <p className="text-xs text-white/40 mb-4">Single / Multiple / Combined</p>
           <div className="space-y-3">
@@ -346,7 +345,6 @@ export default function BettingPage() {
       {/* Top Sports */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Top Sports by Stake</h3>
           <p className="text-xs text-white/40 mb-4">Total stake by sport</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -361,7 +359,6 @@ export default function BettingPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Sport Revenue Table</h3>
           <p className="text-xs text-white/40 mb-4">Bets, stake, and gross revenue per sport</p>
           <div className="overflow-x-auto">

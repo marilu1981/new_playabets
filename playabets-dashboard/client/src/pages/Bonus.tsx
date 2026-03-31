@@ -159,7 +159,6 @@ export default function BonusPage() {
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Freebet Funnel</h3>
           <p className="text-xs text-white/40 mb-4">Issued → Used → Expired</p>
           <div className="space-y-4">
