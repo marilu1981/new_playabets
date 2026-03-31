@@ -23,9 +23,7 @@ export interface DashboardFilters {
 }
 
 export const defaultFilters: DashboardFilters = {
-  dateFrom: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-    .toISOString()
-    .split("T")[0],
+  dateFrom: "2026-01-01",
   dateTo: new Date().toISOString().split("T")[0],
   granularity: "daily",
   brand: "all",
