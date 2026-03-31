@@ -1471,7 +1471,20 @@ def bonus_campaigns(status: Optional[str] = Query(None)):
     d = campaigns.copy()
     if status and "CampaignStatus" in d.columns:
         d = d[d["CampaignStatus"].str.lower() == status.lower()]
-    return {"campaigns": d.to_dict(orient="records")}
+    rows = []
+    for r in d.to_dict(orient="records"):
+        rows.append({
+            "campaignId": r.get("CampaignID") or r.get("campaignId") or r.get("campaignid"),
+            "name": r.get("Name") or r.get("name") or "Unknown Campaign",
+            "status": r.get("CampaignStatus") or r.get("campaignStatus") or r.get("status") or "Unknown",
+            "bonusType": r.get("BonusType") or r.get("bonusType") or r.get("bonustype") or "Unknown",
+            "startDate": str(r.get("ValidityStartDate") or r.get("startDate") or ""),
+            "endDate": str(r.get("ValidityEndDate") or r.get("endDate") or ""),
+            "usersEnrolled": None,
+            "totalPaid": None,
+            "roi": None,
+        })
+    return {"campaigns": rows}
 
 
 @app.get("/bonus/freebets")
