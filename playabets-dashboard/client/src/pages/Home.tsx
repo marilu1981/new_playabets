@@ -38,7 +38,6 @@ import {
   playerAcquisition as basePlayerAcquisition,
   revenueMetricsTrend as baseRevenueMetricsTrend,
   segmentDistribution as baseSegmentDistribution,
-  depositWithdrawalFlow as baseDepositWithdrawalFlow,
   conversionRateTrend as baseConversionRateTrend,
   summaryMetrics as baseSummaryMetrics,
   transactionSummary as baseTransactionSummary,
@@ -158,7 +157,6 @@ export default function Home() {
 */
 
   const showPendingOverlay = dataMode !== "live";
-  const depositFlowPending = true;
   const geoPending = true;
   const betslipStatusPending = !hasBetslipStatusData;
   const userStatusPending = !hasUserStatusData;
@@ -764,14 +762,6 @@ export default function Home() {
       pct: Number(((row.count / total) * 100).toFixed(1)),
     }));
   }, [filters, liveSegmentDistribution, multiplier]);
-  const depositWithdrawalFlow = useMemo(
-    () => scaleArrayNumericFields(
-      filterMonthRows(baseDepositWithdrawalFlow, filters, (row) => row.month, fallbackYear),
-      multiplier,
-      ["month"],
-    ),
-    [filters, fallbackYear, multiplier],
-  );
   const conversionRateTrend = useMemo(() => {
     const filtered = filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date);
     const normalized = filtered.map((row) => {
@@ -1049,22 +1039,13 @@ export default function Home() {
 
             {/* ── TODAY panel ── */}
             <div className="rounded-xl overflow-hidden" style={{ background: "#115F32", border: "1px solid #1e7a40" }}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#CC9C1F" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#0D4726" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>
               <div className="p-3">
-                <div className="grid grid-cols-3 gap-2 mb-3">
-                  {tile("GGR",            todayGGR,              CHART_COLORS.gold,  <BarChart2 size={11} />)}
-                  {tile("Turnover",       todayTurn,             CHART_COLORS.teal,  <TrendingUp size={11} />)}
-                  {tile("Deposits",       "Pending",             CHART_COLORS.amber, <DollarSign size={11} />, true)}
-                  {tile("Registrations",  todayRegs,             CHART_COLORS.teal,  <UserPlus size={11} />)}
-                  {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber, <Percent size={11} />)}
-                  {tile("Sports Actives", todaySports,           CHART_COLORS.green, <Activity size={11} />)}
-                  {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,  <Zap size={11} />)}
-                </div>
                 {/* Alerts */}
-                <div className="border-t pt-2.5" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                <div className="mb-3">
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>Alerts &amp; Flags</div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
@@ -1081,6 +1062,17 @@ export default function Home() {
                       </div>
                       <span className="text-xs font-mono font-bold text-white">{formatCompact(complianceAlerts.flaggedTransactions)}</span>
                     </div>
+                  </div>
+                </div>
+                <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                  <div className="grid grid-cols-3 gap-2">
+                    {tile("GGR",            todayGGR,              CHART_COLORS.gold,  <BarChart2 size={11} />)}
+                    {tile("Turnover",       todayTurn,             CHART_COLORS.teal,  <TrendingUp size={11} />)}
+                    {tile("Deposits",       "Pending",             CHART_COLORS.amber, <DollarSign size={11} />, true)}
+                    {tile("Registrations",  todayRegs,             CHART_COLORS.teal,  <UserPlus size={11} />)}
+                    {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber, <Percent size={11} />)}
+                    {tile("Sports Actives", todaySports,           CHART_COLORS.green, <Activity size={11} />)}
+                    {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,  <Zap size={11} />)}
                   </div>
                 </div>
               </div>
@@ -1252,7 +1244,7 @@ export default function Home() {
       </div>
 
       {/* ── SEGMENT DISTRIBUTION + DEPOSIT VS WITHDRAWAL ─────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="mb-4">
         {/* Segment Distribution */}
         <div className="relative rounded-xl p-5" style={CARD_BG}>
           <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
@@ -1287,47 +1279,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Deposit vs Withdrawal Flow */}
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={depositFlowPending} description="Mock data - pending transactions flow" />
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Deposit vs Withdrawal Flow</h3>
-            <p className="text-xs text-white/40">Net cash flow by month</p>
-          </div>
-          {depositWithdrawalFlow.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={depositWithdrawalFlow} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
-                <XAxis dataKey={liveSegmentTrend && liveSegmentTrend.length > 0 ? "date" : "month"} tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "oklch(0.65 0.01 0)" }} />
-                <Bar dataKey="deposits"    name="Deposits"    fill={CHART_COLORS.green} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="withdrawals" name="Withdrawals" fill={CHART_COLORS.red}   radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
-              No deposit/withdrawal rows for current date range.
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── SEGMENT PERFORMANCE KPI ROW ─────────────────────────────────── */}
-      <div className="relative rounded-xl p-5 mb-4" style={CARD_BG}>
-        <MockOverlay active={segmentPending} label="RFM Pending" description="Live RFM segment snapshot pending" />
-        <h3 className="text-sm font-semibold text-white mb-4" style={FONT_SERIF}>Segment Performance</h3>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-white/50 mb-4">{segmentPending ? "Pending live RFM segments" : "Live RFM segments"}: VIP · Active · New · Cooling · Lapsed · Dormant</p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {segmentDistribution.map((s) => (
-            <div key={s.segment} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.16 0.04 155)" }}>
-              <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: s.color }}>{s.segment}</div>
-              <div className="text-xl font-bold text-white mb-0.5" style={FONT_MONO}>{formatCompact(s.count)}</div>
-              <div className="text-xs text-white/40">{s.pct}% of Total</div>
-            </div>
-          ))}
-        </div>
       </div>
 
 
