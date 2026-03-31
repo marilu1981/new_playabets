@@ -307,7 +307,7 @@ export default function Home() {
           <div className="flex items-center gap-4 mt-3">
             <div className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.75 0.17 145)" }}>
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              Data Connected ({dataMode === "live" ? "Live" : dataMode === "partial" ? "Partial Live" : "Mock"})
+              Data Connected
             </div>
             <div className="text-xs text-white/40">Last refresh: {latestDataDate ?? "…"}</div>
           </div>

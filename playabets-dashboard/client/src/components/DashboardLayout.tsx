@@ -7,6 +7,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "../lib/supabase";
+import { getLatestDataDate } from "@/lib/apiCache";
 import {
   LayoutDashboard,
   Users,
@@ -142,6 +143,12 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
     month: "long",
     day: "numeric",
   });
+
+  const [lastDataDate, setLastDataDate] = useState<string | null>(() => getLatestDataDate());
+  useEffect(() => {
+    const id = setInterval(() => setLastDataDate(getLatestDataDate()), 15_000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -312,13 +319,12 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
               <Calendar size={12} />
               <span>{today}</span>
             </div>
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium"
-              style={{ background: "oklch(0.62 0.17 145 / 15%)", color: "oklch(0.75 0.17 145)" }}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              Live
-            </div>
+            {lastDataDate && (
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40">
+                <Activity size={11} style={{ color: "oklch(0.75 0.17 145)" }} />
+                <span>Last data: {lastDataDate}</span>
+              </div>
+            )}
             <button className="relative text-white/40 hover:text-white/70 transition-colors">
               <Bell size={18} />
               <span
