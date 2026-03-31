@@ -4,7 +4,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import KpiCard from "@/components/KpiCard";
 import MockOverlay from "@/components/MockOverlay";
 import { formatCompact } from "@/lib/formatters";
-import { fmtMetric, pctChange, type DataMode, type MetricRow } from "./homeUtils";
+import { fmtMetric, isPctChangeReliable, pctChange, type DataMode, type MetricRow } from "./homeUtils";
 
 type ChartColors = Record<string, string>;
 
@@ -163,8 +163,8 @@ export function SummaryMetricsTable({
   fontSerif,
   fontMono,
 }: {
-  summaryTab: "overview" | "sport" | "casino" | "playerHealth";
-  setSummaryTab: (tab: "overview" | "sport" | "casino" | "playerHealth") => void;
+  summaryTab: "overview" | "sport" | "casino";
+  setSummaryTab: (tab: "overview" | "sport" | "casino") => void;
   summaryRows: MetricRow[];
   exportFilename: string;
   isLive?: boolean;
@@ -201,7 +201,6 @@ export function SummaryMetricsTable({
           { key: "overview", label: "Overview" },
           { key: "sport", label: "Sport Details" },
           { key: "casino", label: "Casino Details" },
-          { key: "playerHealth", label: "Player Health" },
         ] as const).map(({ key, label }) => (
           <button
             key={key}
@@ -229,13 +228,16 @@ export function SummaryMetricsTable({
           <tbody>
             {summaryRows.map((row) => {
               const chg = pctChange(row.current, row.previous);
+              const reliable = isPctChangeReliable(row.current, row.previous);
               return (
                 <tr key={row.metric} className="hover:bg-white/2 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                   <td className="py-2.5 pr-4 text-white/80 text-xs font-medium">{row.metric}</td>
                   <td className="py-2.5 pr-4 text-white text-xs font-mono" style={fontMono}>{fmtMetric(row.current, row)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono" style={fontMono}>{fmtMetric(row.previous, row)}</td>
-                  <td className="py-2.5 pr-4 text-xs font-semibold font-mono" style={{ ...fontMono, color: chg >= 0 ? chartColors.green : chartColors.red }}>
-                    {chg >= 0 ? "+" : ""}{chg}%
+                  <td className={`py-2.5 pr-4 text-xs font-mono ${reliable ? "text-white/50" : "text-white/25"}`} style={fontMono}>
+                    {reliable ? fmtMetric(row.previous, row) : "—"}
+                  </td>
+                  <td className="py-2.5 pr-4 text-xs font-semibold font-mono" style={{ ...fontMono, color: reliable ? (chg >= 0 ? chartColors.green : chartColors.red) : "oklch(0.45 0.01 155)" }}>
+                    {reliable ? `${chg >= 0 ? "+" : ""}${chg}%` : "—"}
                   </td>
                   <td className="py-2.5 text-white/60 text-xs font-mono" style={fontMono}>{fmtMetric(row.ytd, row)}</td>
                 </tr>

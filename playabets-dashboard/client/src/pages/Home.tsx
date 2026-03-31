@@ -99,9 +99,15 @@ function getRfmSegmentBadgeStyle(segment: string) {
 
 
 export default function Home() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = useState<DashboardFilters>(() => {
+    const cached = getLatestDataDate();
+    if (cached && /^\d{4}-\d{2}-\d{2}$/.test(cached)) {
+      return { ...defaultFilters, dateFrom: `${cached.slice(0, 7)}-01`, dateTo: cached };
+    }
+    return defaultFilters;
+  });
   const [revMetric, setRevMetric] = useState<"ggr" | "ngr" | "turnover">("ggr");
-  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino" | "playerHealth">("overview");
+  const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino">("overview");
   const {
     dataMode,
     latestDataDate,
@@ -765,23 +771,19 @@ export default function Home() {
   const conversionRateTrend = useMemo(() => {
     const filtered = filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date);
     const normalized = filtered.map((row) => {
-      const cast = row as { rate?: number; rate7d?: number; rate30d?: number };
+      const cast = row as { rate?: number; rate7d?: number | null; rate30d?: number | null };
       if (cast.rate7d === undefined && cast.rate30d === undefined && typeof cast.rate === "number") {
         return { ...row, rate7d: cast.rate, rate30d: cast.rate };
       }
       return row;
     });
-    const scaled = scaleArrayNumericFields(
-      normalized,
-      multiplier,
-      ["date"],
-    );
-    return aggregateByGranularity(scaled, filters.granularity, (row) => row.date, {
+    // Rates are percentages — exclude from scaling (multiplier applies to counts, not ratios)
+    return aggregateByGranularity(normalized, filters.granularity, (row) => row.date, {
       labelKey: "date",
       fallbackYear,
       avgFields: ["rate7d", "rate30d"],
     });
-  }, [fallbackYear, filters, multiplier, sourceConversionRateTrend]);
+  }, [fallbackYear, filters, sourceConversionRateTrend]);
   const summaryMetrics = useMemo(() => {
     if (liveSummaryMetrics) {
       return liveSummaryMetrics;
@@ -797,7 +799,6 @@ export default function Home() {
       overview: scaleMetricRows(baseSummaryMetrics.overview),
       sport: scaleMetricRows(baseSummaryMetrics.sportDetails),
       casino: scaleMetricRows(baseSummaryMetrics.casinoDetails),
-      playerHealth: [] as typeof baseSummaryMetrics.overview,
     };
   }, [liveSummaryMetrics, multiplier]);
   const transactionSummary = useMemo(
@@ -947,10 +948,9 @@ export default function Home() {
 
 
   const getSummaryRows = (): MetricRow[] => {
-    if (summaryTab === "overview") return summaryMetrics.overview;
-    if (summaryTab === "sport")    return summaryMetrics.sport;
-    if (summaryTab === "casino")   return summaryMetrics.casino;
-    return summaryMetrics.playerHealth;
+    if (summaryTab === "sport")  return summaryMetrics.sport;
+    if (summaryTab === "casino") return summaryMetrics.casino;
+    return summaryMetrics.overview;
   };
   const summaryRows = getSummaryRows();
   const renderSummaryMetricsTable = () => (
@@ -1066,13 +1066,13 @@ export default function Home() {
                 </div>
                 <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
                   <div className="grid grid-cols-3 gap-2">
-                    {tile("GGR",            todayGGR,              CHART_COLORS.gold,  <BarChart2 size={11} />)}
-                    {tile("Turnover",       todayTurn,             CHART_COLORS.teal,  <TrendingUp size={11} />)}
-                    {tile("Deposits",       "Pending",             CHART_COLORS.amber, <DollarSign size={11} />, true)}
-                    {tile("Registrations",  todayRegs,             CHART_COLORS.teal,  <UserPlus size={11} />)}
-                    {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber, <Percent size={11} />)}
-                    {tile("Sports Actives", todaySports,           CHART_COLORS.green, <Activity size={11} />)}
-                    {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,  <Zap size={11} />)}
+                    {tile("GGR",            todayGGR,              CHART_COLORS.gold,            <BarChart2 size={11} />)}
+                    {tile("Turnover",       todayTurn,             "oklch(0.75 0.13 220)",       <TrendingUp size={11} />)}
+                    {tile("Deposits",       "Pending",             CHART_COLORS.amber,           <DollarSign size={11} />, true)}
+                    {tile("Registrations",  todayRegs,             "oklch(0.75 0.13 220)",       <UserPlus size={11} />)}
+                    {tile("Conv Rate",      `${periodConvRate}%`,  CHART_COLORS.amber,           <Percent size={11} />)}
+                    {tile("Sports Actives", todaySports,           "oklch(0.82 0.10 160)",       <Activity size={11} />)}
+                    {tile("Casino Actives", todayCasino,           CHART_COLORS.gold,            <Zap size={11} />)}
                   </div>
                 </div>
               </div>
@@ -1086,15 +1086,15 @@ export default function Home() {
               </div>
               <div className="p-3">
                 <div className="grid grid-cols-3 gap-2">
-                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),                                                    CHART_COLORS.gold,  <BarChart2 size={11} />)}
-                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),                                                       CHART_COLORS.teal,  <TrendingUp size={11} />)}
-                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",           CHART_COLORS.amber, <DollarSign size={11} />, !hasTransactionsData)}
-                  {tile("Registrations",  formatCompact(kpiRegistrations),                                                              CHART_COLORS.teal,  <UserPlus size={11} />)}
-                  {tile("FTDs",           formatCompact(kpiFtds),                                                                       CHART_COLORS.gold,  <Users size={11} />)}
-                  {tile("Conv Rate",      `${periodConvRate}%`,                                                                         CHART_COLORS.amber, <Percent size={11} />)}
-                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),                                                    CHART_COLORS.green, <Activity size={11} />)}
-                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),                                                    CHART_COLORS.gold,  <Zap size={11} />)}
-                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",         CHART_COLORS.red,   <ArrowUpRight size={11} />, !hasTransactionsData)}
+                  {tile("GGR",            formatCompact(overviewKPIs.grossRevenue),                                                    CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                  {tile("Turnover",       formatCompact(overviewKPIs.totalStake),                                                       "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                  {tile("Deposits",       hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",           CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
+                  {tile("Registrations",  formatCompact(kpiRegistrations),                                                              "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                  {tile("FTDs",           formatCompact(kpiFtds),                                                                       CHART_COLORS.gold,      <Users size={11} />)}
+                  {tile("Conv Rate",      `${periodConvRate}%`,                                                                         CHART_COLORS.amber,     <Percent size={11} />)}
+                  {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),                                                    "oklch(0.82 0.10 160)", <Activity size={11} />)}
+                  {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),                                                    CHART_COLORS.gold,      <Zap size={11} />)}
+                  {tile("Withdrawals",    hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",         CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
                 </div>
               </div>
             </div>

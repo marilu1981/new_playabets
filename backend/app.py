@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 import sys
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional, Literal
 
@@ -950,10 +950,8 @@ def kpis_summary(
     # Auto-compute previous period (same duration shifted back) if not provided
     if previous_start is None or previous_end is None:
         duration = (end - start).days
-        previous_end = start - pd.Timedelta(days=1)
-        previous_start = previous_end - pd.Timedelta(days=duration)
-        previous_end = previous_end.date() if hasattr(previous_end, "date") else previous_end
-        previous_start = previous_start.date() if hasattr(previous_start, "date") else previous_start
+        previous_end = start - timedelta(days=1)
+        previous_start = previous_end - timedelta(days=duration)
 
     # Auto-compute YTD (Jan 1 of end year → end) if not provided
     if ytd_start is None:

@@ -223,7 +223,17 @@ export function toggleBtn(active: boolean): CSSProperties {
 
 export function pctChange(current: number, previous: number): number {
   if (previous === 0) return 0;
-  return parseFloat(((current - previous) / previous * 100).toFixed(1));
+  return parseFloat(((current - previous) / Math.abs(previous) * 100).toFixed(1));
+}
+
+/** Returns true when the previous value is too sparse to produce a meaningful change %. */
+export function isPctChangeReliable(current: number, previous: number): boolean {
+  if (previous === 0) return current === 0;
+  const chg = Math.abs((current - previous) / Math.abs(previous) * 100);
+  // If previous is less than 5% of current, prior period had negligible volume
+  if (current !== 0 && Math.abs(previous) < Math.abs(current) * 0.05) return false;
+  // Cap at ±500% — beyond that the comparison is not useful
+  return chg <= 500;
 }
 
 export function fmtMetric(val: number, row: MetricRow): string {

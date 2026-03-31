@@ -34,12 +34,17 @@ export function invalidateCache(): void {
   cache.clear();
   inFlight.clear();
   _latestDataDate = null;
+  try { sessionStorage.removeItem(LATEST_DATE_KEY); } catch { /* ignore */ }
 }
 
 // ── Persistent latestDataDate ─────────────────────────────────────────────────
-// Stored at module level so it survives React component unmount/remount.
-// This prevents the 30-second wait when navigating back to a page.
-let _latestDataDate: string | null = null;
+// Stored in sessionStorage so it survives React component unmount/remount AND
+// cold page loads within the same browser session. Clears automatically when
+// the tab is closed, so the next fresh session always re-validates with the API.
+const LATEST_DATE_KEY = "pb_latest_data_date";
+let _latestDataDate: string | null = (() => {
+  try { return sessionStorage.getItem(LATEST_DATE_KEY); } catch { return null; }
+})();
 
 export function getLatestDataDate(): string | null {
   return _latestDataDate;
@@ -47,6 +52,7 @@ export function getLatestDataDate(): string | null {
 
 export function setLatestDataDate(date: string): void {
   _latestDataDate = date;
+  try { sessionStorage.setItem(LATEST_DATE_KEY, date); } catch { /* ignore */ }
 }
 
 /**
