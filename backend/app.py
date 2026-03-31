@@ -1474,6 +1474,44 @@ def bonus_campaigns(status: Optional[str] = Query(None)):
     return {"campaigns": d.to_dict(orient="records")}
 
 
+@app.get("/bonus/freebets")
+def bonus_freebets(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+):
+    if not FREEBETS_PATH.exists():
+        return {"issued": 0, "used": 0, "expired": 0, "pending": 0, "total_amount": 0.0, "has_data": False}
+    df = load_parquet_cached(FREEBETS_PATH, "freebets")
+    if df.empty:
+        return {"issued": 0, "used": 0, "expired": 0, "pending": 0, "total_amount": 0.0, "has_data": False}
+    if start or end:
+        df = df.copy()
+        df["_date"] = to_dt(df["InsertDate"]).dt.date
+        if start:
+            df = df[df["_date"] >= start]
+        if end:
+            df = df[df["_date"] <= end]
+    if df.empty:
+        return {"issued": 0, "used": 0, "expired": 0, "pending": 0, "total_amount": 0.0, "has_data": True}
+    total = len(df)
+    total_amount = float(df["Amount"].sum()) if "Amount" in df.columns else 0.0
+    status_col = "FreeBetStatus" if "FreeBetStatus" in df.columns else None
+    if not status_col:
+        return {"issued": total, "used": 0, "expired": 0, "pending": total, "total_amount": round(total_amount, 2), "has_data": True}
+    s = df[status_col].fillna("").str.lower()
+    used = int(s.str.contains("wagered|used|played|won|lost|settled").sum())
+    expired = int(s.str.contains("expired|void|cancel").sum())
+    pending = int(s.str.contains("active|pending|new|open|issued").sum())
+    return {
+        "issued": total,
+        "used": used,
+        "expired": expired,
+        "pending": pending,
+        "total_amount": round(total_amount, 2),
+        "has_data": True,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Casino
 # ---------------------------------------------------------------------------

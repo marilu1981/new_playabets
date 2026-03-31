@@ -58,6 +58,7 @@ export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveBonusCards, setLiveBonusCards] = useState<BonusCards | null>(null);
   const [liveCampaigns, setLiveCampaigns] = useState<BonusCampaignRow[] | null>(null);
+  const [liveFreebets, setLiveFreebets] = useState<{ issued: number; used: number; expired: number; pending: number; total_amount: number } | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -106,6 +107,24 @@ export default function BonusPage() {
         setLiveCampaigns(campaigns.length > 0 ? campaigns : null);
       })
       .catch(() => setLiveCampaigns(null));
+
+    fetchJson<{ issued?: number; used?: number; expired?: number; pending?: number; total_amount?: number; has_data?: boolean }>(
+      `/bonus/freebets?${query}`
+    )
+      .then((d) => {
+        if (d.has_data === false || (d.issued ?? 0) === 0) {
+          setLiveFreebets(null);
+          return;
+        }
+        setLiveFreebets({
+          issued: Number(d.issued ?? 0),
+          used: Number(d.used ?? 0),
+          expired: Number(d.expired ?? 0),
+          pending: Number(d.pending ?? 0),
+          total_amount: Number(d.total_amount ?? 0),
+        });
+      })
+      .catch(() => setLiveFreebets(null));
   }, [filters.dateFrom, filters.dateTo]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
@@ -137,9 +156,18 @@ export default function BonusPage() {
     };
   }, [bonusKPIs, liveBonusCards]);
 
-  const issuedSafe = Math.max(1, bonusKPIs.freebetsIssued);
-  const freebetUsageRate = (bonusKPIs.freebetsUsed / issuedSafe * 100).toFixed(1);
-  const pageMode = liveBonusCards || liveCampaigns ? "partial" : "mock";
+  const freebetStats = useMemo(() => {
+    if (liveFreebets) return liveFreebets;
+    return {
+      issued: bonusKPIs.freebetsIssued,
+      used: bonusKPIs.freebetsUsed,
+      expired: bonusKPIs.freebetsExpired,
+      pending: bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired,
+      total_amount: 0,
+    };
+  }, [liveFreebets, bonusKPIs]);
+  const issuedSafe = Math.max(1, freebetStats.issued);
+  const pageMode = liveBonusCards || liveCampaigns || liveFreebets ? "partial" : "mock";
 
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
@@ -159,14 +187,15 @@ export default function BonusPage() {
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+          <MockOverlay active={!liveFreebets} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-white mb-1">Freebet Funnel</h3>
           <p className="text-xs text-white/40 mb-4">Issued → Used → Expired</p>
           <div className="space-y-4">
             {[
-              { label: "Issued", value: bonusKPIs.freebetsIssued, color: CHART_COLORS.gold, pct: 100 },
-              { label: "Used", value: bonusKPIs.freebetsUsed, color: CHART_COLORS.green, pct: bonusKPIs.freebetsUsed / issuedSafe * 100 },
-              { label: "Expired", value: bonusKPIs.freebetsExpired, color: CHART_COLORS.red, pct: bonusKPIs.freebetsExpired / issuedSafe * 100 },
-              { label: "Pending", value: bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired, color: CHART_COLORS.amber, pct: (bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired) / issuedSafe * 100 },
+              { label: "Issued", value: freebetStats.issued, color: CHART_COLORS.gold, pct: 100 },
+              { label: "Used", value: freebetStats.used, color: CHART_COLORS.green, pct: freebetStats.used / issuedSafe * 100 },
+              { label: "Expired", value: freebetStats.expired, color: CHART_COLORS.red, pct: freebetStats.expired / issuedSafe * 100 },
+              { label: "Pending", value: freebetStats.pending, color: CHART_COLORS.amber, pct: freebetStats.pending / issuedSafe * 100 },
             ].map((f) => (
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1.5">
