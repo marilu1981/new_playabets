@@ -21,7 +21,7 @@ import {
 } from "recharts";
 import {
   Users, TrendingUp, DollarSign, Activity,
-  Zap, UserPlus, ArrowUpRight, BarChart2, Percent, Shield, AlertTriangle,
+  Zap, UserPlus, ArrowUpRight, BarChart2, Percent,
 } from "lucide-react";
 import {
   overviewKPIs as baseOverviewKPIs,
@@ -33,7 +33,6 @@ import {
   summaryMetrics as baseSummaryMetrics,
   transactionSummary as baseTransactionSummary,
   dailyTrendWithMA as baseDailyTrendWithMA,
-  complianceKPIs as baseComplianceKPIs,
 } from "@/lib/mockData";
 import { formatCompact } from "@/lib/formatters";
 import {
@@ -256,10 +255,7 @@ export default function Home() {
   const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
   const periodConvRate =
     kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
-  const complianceAlerts = useMemo(
-    () => scaleObjectNumericFields(baseComplianceKPIs, multiplier),
-    [multiplier],
-  );
+
 
 
   const getSummaryRows = (): MetricRow[] => {
@@ -353,27 +349,7 @@ export default function Home() {
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>
               <div className="p-3">
-                {/* Alerts */}
-                <div className="mb-3">
-                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.45)" }}>Alerts &amp; Flags</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
-                      <div className="flex items-center gap-1.5">
-                        <Shield size={10} style={{ color: CHART_COLORS.red }} />
-                        <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.red }}>AML Alerts</span>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-white">{formatCompact(complianceAlerts.amlAlerts)}</span>
-                    </div>
-                    <div className="rounded-lg px-3 py-2 flex items-center justify-between" style={{ background: TILE_BG }}>
-                      <div className="flex items-center gap-1.5">
-                        <AlertTriangle size={10} style={{ color: CHART_COLORS.amber }} />
-                        <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: CHART_COLORS.amber }}>Flagged Tx</span>
-                      </div>
-                      <span className="text-xs font-mono font-bold text-white">{formatCompact(complianceAlerts.flaggedTransactions)}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                <div className="pt-1" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
                   <div className="grid grid-cols-3 gap-2">
                     {tile("GGR",            todayGGR,             CHART_COLORS.gold,          <BarChart2 size={11} />)}
                     {tile("Turnover",       todayTurn,            "oklch(0.75 0.13 220)",     <TrendingUp size={11} />)}
