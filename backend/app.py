@@ -461,8 +461,15 @@ def _status_counts() -> list[dict[str, object]]:
 def _build_conversion_cohorts() -> tuple[pd.DataFrame, Optional[date]]:
     users_dir = _RAW / "users"
     ftd_dir = _RAW / "first_deposits"
-    user_files = sorted(users_dir.glob("users_increment_*.parquet")) if users_dir.exists() else []
-    ftd_files = sorted(ftd_dir.glob("first_deposits_increment_*.parquet")) if ftd_dir.exists() else []
+    def _raw_files(directory: Path, increment_glob: str, full_glob: str) -> list:
+        if not directory.exists():
+            return []
+        full = sorted(directory.glob(full_glob))
+        incs = sorted(directory.glob(increment_glob))
+        return full + incs  # full first (historical), then any new increments
+
+    user_files = _raw_files(users_dir, "users_increment_*.parquet", "users_full.parquet")
+    ftd_files = _raw_files(ftd_dir, "first_deposits_increment_*.parquet", "first_deposits_full.parquet")
     if not user_files or not ftd_files:
         empty = pd.DataFrame(
             columns=["date", "registrations", "ftds_d7", "ftds_d30", "rate_d7", "rate_d30"]
@@ -1653,7 +1660,12 @@ def casino_types(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
 ):
-    raw_files = sorted((RAW_ROOT / "casino").glob("casino_increment_*.parquet"))
+    casino_dir = RAW_ROOT / "casino"
+    full_file = casino_dir / "casino_full.parquet"
+    raw_files = (
+        ([full_file] if full_file.exists() else [])
+        + sorted(casino_dir.glob("casino_increment_*.parquet"))
+    )
     if not raw_files:
         return {"types": []}
 

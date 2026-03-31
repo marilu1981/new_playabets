@@ -6,9 +6,13 @@ import pandas as pd
 
 def read_all_parquets(folder: Path, pattern: str) -> pd.DataFrame:
     files = sorted(folder.glob(pattern))
-    if not files:
+    # After compaction, increment files are merged into *_full.parquet.
+    # Always include the full file so the pipeline doesn't lose historical data.
+    full_files = sorted(f for f in folder.glob("*_full.parquet") if f not in set(files))
+    all_files = full_files + files  # full first (historical), then increments (newest)
+    if not all_files:
         return pd.DataFrame()
-    return pd.concat((pd.read_parquet(f) for f in files), ignore_index=True)
+    return pd.concat((pd.read_parquet(f) for f in all_files), ignore_index=True)
 
 
 def normalize_cols(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, str]]:
