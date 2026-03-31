@@ -55,6 +55,8 @@ import {
 } from "./home/homeUtils";
 import { useHomeData } from "./home/useHomeData";
 import { SummaryMetricsTable } from "./home/HomeSections";
+import ReportButton from "@/components/ReportButton";
+import type { ReportData } from "@/lib/generateReport";
 
 
 export default function Home() {
@@ -82,6 +84,7 @@ export default function Home() {
     hasSegmentData,
     liveTodayKpis,
     liveSummaryMetrics,
+    liveNgr,
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
@@ -258,6 +261,34 @@ export default function Home() {
 
 
 
+  const reportData: ReportData = useMemo(() => {
+    const stake = overviewKPIs.totalStake ?? 0;
+    const winnings = overviewKPIs.totalWinnings ?? 0;
+    return {
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      dataDate: latestDataDate,
+      totalBetslips: overviewKPIs.totalBetslips ?? 0,
+      totalStake: stake,
+      totalWinnings: winnings,
+      grossMargin: stake > 0 ? ((stake - winnings) / stake) * 100 : 0,
+      registrations: kpiRegistrations,
+      ftds: kpiFtds,
+      activePlayersSports: overviewKPIs.activesSports ?? 0,
+      activePlayersCasino: overviewKPIs.activesCasino ?? 0,
+      segments: segmentDistribution.map((s) => ({ segment: s.segment, count: s.count, pct: s.pct })),
+      casinoGGR: 0,
+      casinoStake: 0,
+      casinoMargin: 0,
+      casinoProviderCount: 0,
+      totalDeposits: transactionSummary.totalDeposits ?? 0,
+      totalWithdrawals: transactionSummary.totalWithdrawals ?? 0,
+      bonusesCredited: 0,
+      freebetUsagePct: 0,
+      ngr: liveNgr,
+    };
+  }, [filters, latestDataDate, overviewKPIs, kpiRegistrations, kpiFtds, segmentDistribution, transactionSummary, liveNgr]);
+
   const getSummaryRows = (): MetricRow[] => {
     if (summaryTab === "sport")  return summaryMetrics.sport;
     if (summaryTab === "casino") return summaryMetrics.casino;
@@ -306,6 +337,7 @@ export default function Home() {
               Data Connected
             </div>
             <div className="text-xs text-white/40">Last refresh: {getLastUpdated() ?? latestDataDate ?? "…"}</div>
+            <ReportButton data={reportData} />
           </div>
         </div>
       </div>
