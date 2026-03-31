@@ -17,6 +17,7 @@ FTD_DIR = raw_dir("first_deposits")
 SERVING_DIR = SERVING_ROOT
 OUT_KPIS = SERVING_DIR / "daily_kpis.parquet"
 OUT_RFM = SERVING_DIR / "rfm_users.parquet"
+OUT_RFM_MONTHLY = SERVING_DIR / "rfm_monthly_snapshots.parquet"
 
 print("PROJECT_ROOT:", PROJECT_ROOT)
 print("USERS_DIR:", USERS_DIR, "exists:", USERS_DIR.exists())
@@ -156,6 +157,29 @@ def main() -> None:
 
     print(f"Wrote KPIs: {OUT_KPIS} ({len(daily)} rows)")
     print(f"Wrote RFM users: {OUT_RFM} ({len(rfm_users)} rows)")
+
+    # Upsert current-month RFM snapshot into rfm_monthly_snapshots.parquet
+    rfm_monthly_cols = ["date", "rfm_vip", "rfm_active", "rfm_new", "rfm_cooling", "rfm_lapsed", "rfm_dormant"]
+    monthly_row_cols = [c for c in rfm_monthly_cols if c in rfm_daily.columns]
+    if monthly_row_cols:
+        new_row = rfm_daily[monthly_row_cols].copy()
+        if OUT_RFM_MONTHLY.exists():
+            existing = pd.read_parquet(OUT_RFM_MONTHLY)
+            existing["date"] = pd.to_datetime(existing["date"])
+            new_row["date"] = pd.to_datetime(new_row["date"])
+            snap_date = pd.Timestamp(snapshot_date)
+            # Remove any row with the same year-month as the new snapshot
+            existing = existing[
+                ~((existing["date"].dt.year == snap_date.year) &
+                  (existing["date"].dt.month == snap_date.month))
+            ]
+            combined = pd.concat([existing, new_row], ignore_index=True)
+        else:
+            combined = new_row
+            combined["date"] = pd.to_datetime(combined["date"])
+        combined = combined.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+        combined.to_parquet(OUT_RFM_MONTHLY, index=False)
+        print(f"Upserted RFM monthly snapshot: {OUT_RFM_MONTHLY} ({len(combined)} rows)")
 
 
 if __name__ == "__main__":

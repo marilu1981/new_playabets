@@ -111,6 +111,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         start: filters.dateFrom,
         end: filters.dateTo,
       });
+      if (filters.brand !== "all") params.set("brand", filters.brand);
       if (filters.territory !== "all") params.set("territory", filters.territory);
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);

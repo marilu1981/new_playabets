@@ -92,8 +92,9 @@ USERS_RAW = _first_existing_path(_RAW / "users", _RAW / "Users")
 BETSLIPS_RAW = _first_existing_path(_RAW / "betslips", _RAW / "BetSlips")
 
 DATA_PATH        = _SERVING / "daily_kpis.parquet"
-RFM_USERS_PATH   = _SERVING / "rfm_users.parquet"
-RFM_ROLLING_PATH = _SERVING / "rfm_rolling_daily.parquet"
+RFM_USERS_PATH          = _SERVING / "rfm_users.parquet"
+RFM_ROLLING_PATH        = _SERVING / "rfm_rolling_daily.parquet"
+RFM_MONTHLY_PATH        = _SERVING / "rfm_monthly_snapshots.parquet"
 
 # Domain-specific serving files (written by build_daily_kpis or domain scripts)
 TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
@@ -892,6 +893,71 @@ def users_self_exclusions():
     }
 
 
+@app.get("/users/self-exclusions/trend")
+def users_self_exclusions_trend(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+):
+    """Return monthly self-exclusion trend: how many started/active/completed per month."""
+    if not SELFEXCLUSIONS_PATH.exists():
+        return {"points": []}
+
+    df = load_parquet_cached(SELFEXCLUSIONS_PATH, "selfexclusions")
+    if df.empty:
+        return {"points": []}
+
+    df, _ = normalize_cols(df)
+
+    # Try common date column names for exclusion start date
+    date_col = next(
+        (c for c in df.columns if c in ("startdate", "selfexclusiondate", "creationdate", "insertdate", "startdt")),
+        None,
+    )
+    status_col = next((c for c in df.columns if c == "selfexclusionstatus"), None)
+
+    if not date_col:
+        return {"points": []}
+
+    df["_dt"] = pd.to_datetime(df[date_col], errors="coerce")
+    df = df.dropna(subset=["_dt"])
+    df["_month"] = df["_dt"].dt.to_period("M").dt.to_timestamp()
+
+    if start:
+        df = df[df["_dt"].dt.date >= start]
+    if end:
+        df = df[df["_dt"].dt.date <= end]
+
+    if df.empty:
+        return {"points": []}
+
+    if status_col:
+        statuses = df[status_col].fillna("").astype(str).str.strip().str.lower()
+        df["_status_norm"] = statuses
+        monthly = df.groupby("_month").apply(
+            lambda g: pd.Series({
+                "started": len(g),
+                "completed": int((g["_status_norm"] == "completed").sum()),
+                "active": int((g["_status_norm"] == "in progress").sum()),
+            })
+        ).reset_index()
+    else:
+        monthly = df.groupby("_month").size().reset_index(name="started")
+        monthly["completed"] = 0
+        monthly["active"] = 0
+
+    points = [
+        {
+            "date": str(r["_month"].date()),
+            "started": int(r.get("started", 0)),
+            "active": int(r.get("active", 0)),
+            "completed": int(r.get("completed", 0)),
+        }
+        for _, r in monthly.iterrows()
+    ]
+    points.sort(key=lambda x: x["date"])
+    return {"points": points}
+
+
 def _summary_period(start: date, end: date) -> dict:
     """Aggregate all summary-table metrics for a given date range."""
     df = _filter_range(load_daily_df(), start, end)
@@ -1008,19 +1074,24 @@ def rfm_segments(
     end: Optional[date] = Query(None),
     mode: Optional[str] = Query(None),
 ):
+    rfm_cols = ["date", "rfm_vip", "rfm_active", "rfm_new", "rfm_cooling", "rfm_lapsed", "rfm_dormant"]
+
+    # 1. Monthly snapshots (backfilled history) — highest priority
+    if str(mode or "").lower() != "snapshot" and RFM_MONTHLY_PATH.exists():
+        monthly = load_parquet_cached(RFM_MONTHLY_PATH, "rfm_monthly")
+        if not monthly.empty and all(col in monthly.columns for col in rfm_cols):
+            d = monthly[rfm_cols].copy()
+            if start and end:
+                d = _filter_range(d, start, end)
+            rows = d.to_dict(orient="records")
+            if rows:
+                return {"rows": rows, "source": "rfm_monthly"}
+
+    # 2. Daily KPIs rfm columns (single-day snapshots attached to each run)
     if str(mode or "").lower() != "snapshot":
         daily = load_daily_df()
-        wanted = [
-            "date",
-            "rfm_vip",
-            "rfm_active",
-            "rfm_new",
-            "rfm_cooling",
-            "rfm_lapsed",
-            "rfm_dormant",
-        ]
-        if not daily.empty and all(col in daily.columns for col in wanted):
-            d = daily[wanted].copy()
+        if not daily.empty and all(col in daily.columns for col in rfm_cols):
+            d = daily[rfm_cols].copy()
             if start and end:
                 d = _filter_range(d, start, end)
             rows = d.to_dict(orient="records")

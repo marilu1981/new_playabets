@@ -24,11 +24,9 @@ import {
   betsByType as baseBetsByType,
   betsByApplication as baseBetsByApplication,
   topSports as baseTopSports,
-  upcomingEvents as baseUpcomingEvents,
 } from "@/lib/mockData";
-import { formatNumber, formatCompact, formatCurrency } from "@/lib/formatters";
+import { formatCompact, formatCurrency } from "@/lib/formatters";
 import {
-  filterByDateRange,
   getFilterMultiplier,
   scaleArrayNumericFields,
   scaleObjectNumericFields,
@@ -221,15 +219,6 @@ export default function BettingPage() {
   const topSports = useMemo(
     () => scaleArrayNumericFields(baseTopSports, multiplier, ["sport", "sportId"]),
     [multiplier],
-  );
-  const upcomingEvents = useMemo(
-    () =>
-      scaleArrayNumericFields(
-        filterByDateRange(baseUpcomingEvents, filters, (row) => row.startDate),
-        multiplier,
-        ["eventId", "sport", "event", "startDate", "status"],
-      ),
-    [filters, multiplier],
   );
   const totalBetslipsSafe = Math.max(
     1,
@@ -446,35 +435,6 @@ export default function BettingPage() {
         );
       })()}
 
-      {/* Event Program */}
-      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <MockOverlay active badge label="Mock Data" />
-        <h3 className="text-sm font-semibold text-white mb-1">Event Program</h3>
-        <p className="text-xs text-white/40 mb-4">view_EventProgram — upcoming and live events</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-                {["Event ID", "Sport", "Event Name", "Start Time", "Status", "Open Bets"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-4 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {upcomingEvents.map((e) => (
-                <tr key={e.eventId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-mono">#{e.eventId}</td>
-                  <td className="py-2.5 pr-4 text-white/60 text-xs">{e.sport}</td>
-                  <td className="py-2.5 pr-4 text-white/80 font-medium">{e.event}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{e.startDate}</td>
-                  <td className="py-2.5 pr-4"><StatusBadge status={e.status} dot /></td>
-                  <td className="py-2.5 text-right font-mono text-xs" style={{color: CHART_COLORS.gold }}>{formatNumber(e.openBets)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </DashboardLayout>
   );
 }

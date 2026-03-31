@@ -12,19 +12,16 @@ import MockOverlay from "@/components/MockOverlay";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
-  PieChart, Pie, Cell,
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
   overviewKPIs as baseOverviewKPIs,
   usersByStatus as baseUsersByStatus,
   userRegistrations as baseUserRegistrations,
-  usersByCurrency as baseUsersByCurrency,
-  recentSessions as baseRecentSessions,
   selfExclusionSummary as baseSelfExclusionSummary,
   selfExclusionTrend as baseSelfExclusionTrend,
 } from "@/lib/mockData";
-import { formatNumber, formatCompact } from "@/lib/formatters";
+import { formatCompact } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -170,6 +167,7 @@ export default function UsersPage() {
     total: number; inProgress: number; pending: number; completed: number;
     byPeriod: Array<{ period: string; count: number }>;
   } | null>(null);
+  const [liveSelfExclusionTrend, setLiveSelfExclusionTrend] = useState<Array<{ date: string; started: number; active: number; completed: number }> | null>(null);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const fallbackYear = useMemo(() => {
@@ -242,13 +240,14 @@ export default function UsersPage() {
       if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
-      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes] = await Promise.allSettled([
+      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes, selfExTrendRes] = await Promise.allSettled([
         fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
         fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(`/casino/daily?${query}`),
         fetchJson<{ total: number; inProgress: number; pending: number; completed: number; byPeriod: Array<{ period: string; count: number }> }>(`/users/self-exclusions`),
+        fetchJson<{ points: Array<{ date: string; started: number; active: number; completed: number }> }>(`/users/self-exclusions/trend?start=${filters.dateFrom}&end=${filters.dateTo}`),
       ]);
 
       if (cancelled) {
@@ -316,6 +315,12 @@ export default function UsersPage() {
         setLiveSelfExclusions(null);
       }
 
+      if (selfExTrendRes.status === "fulfilled" && (selfExTrendRes.value.points?.length ?? 0) > 0) {
+        setLiveSelfExclusionTrend(selfExTrendRes.value.points);
+      } else {
+        setLiveSelfExclusionTrend(null);
+      }
+
       if (dailyRes.status === "fulfilled" || casinoRes.status === "fulfilled") {
         const sportsbookRows = dailyRes.status === "fulfilled" ? dailyRes.value.rows ?? [] : [];
         const casinoRows = casinoRes.status === "fulfilled" ? casinoRes.value.points ?? [] : [];
@@ -362,10 +367,6 @@ export default function UsersPage() {
     () => scaleArrayNumericFields(statusSource, statusMultiplier, ["status", "statusId"]),
     [statusSource, statusMultiplier],
   );
-  const usersByCurrency = useMemo(
-    () => scaleArrayNumericFields(baseUsersByCurrency, multiplier, ["currency", "currencyId"]),
-    [multiplier],
-  );
   const userRegistrations = useMemo(
     () =>
       scaleArrayNumericFields(
@@ -392,10 +393,6 @@ export default function UsersPage() {
     },
     [filters, fallbackYear, liveDailyActives],
   );
-  const recentSessions = useMemo(
-    () => filterByDateRange(baseRecentSessions, filters, (row) => row.loginDate),
-    [filters],
-  );
   const selfExclusionSummary = useMemo(() => {
     if (liveSelfExclusions) {
       return liveSelfExclusions;
@@ -419,10 +416,11 @@ export default function UsersPage() {
   }, [liveSelfExclusions, multiplier]);
   const selfExclusionTrend = useMemo(
     () => {
-      const filtered = filterByDateRange(baseSelfExclusionTrend, filters, (row) => row.date, { fallbackYear });
+      const source = liveSelfExclusionTrend ?? baseSelfExclusionTrend;
+      const filtered = filterByDateRange(source, filters, (row) => row.date, { fallbackYear });
       return aggregateByGranularity(filtered, filters.granularity ?? "daily", (row) => row.date, { fallbackYear });
     },
-    [fallbackYear, filters],
+    [fallbackYear, filters, liveSelfExclusionTrend],
   );
   const overviewKPIs = useMemo(() => {
     const totalUsers = usersByStatus.reduce((sum, row) => sum + row.count, 0);
@@ -491,74 +489,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        {/* User Status */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active={!liveStatusBreakdown} description="User status pending live data" />
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-white">User Status</h3>
-              <p className="text-xs text-white/40">Distribution by account status</p>
-            </div>
-            {liveStatusBreakdown ? (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.62 0.17 145 / 15%)", color: CHART_COLORS.green }}>Live</span>
-            ) : (
-              <span className="text-[10px] px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>Mock</span>
-            )}
-          </div>
-          {(() => {
-            const STATUS_COLORS = ["oklch(0.62 0.17 145)", "oklch(0.55 0.22 25)", "oklch(0.72 0.17 60)", "oklch(0.65 0.15 195)", "#6b7280"];
-            return (
-              <>
-                <ResponsiveContainer width="100%" height={140}>
-                  <PieChart>
-                    <Pie data={usersByStatus} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="count" nameKey="status" paddingAngle={2}>
-                      {usersByStatus.map((_, i) => <Cell key={i} fill={STATUS_COLORS[i % STATUS_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
-                  {usersByStatus.map((row, i) => (
-                    <div key={row.status} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[i % STATUS_COLORS.length] }} />
-                        <span className="text-white/60 truncate max-w-[110px]">{row.status}</span>
-                      </div>
-                      <span className="text-white/70 font-mono">{formatCompact(row.count)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            );
-          })()}
-        </div>
-
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Users by Currency</h3>
-          <p className="text-xs text-white/40 mb-4">African market distribution — mock data</p>
-          <div className="space-y-3">
-            {usersByCurrency.map((c, i) => {
-              const pct = (c.users / totalUsersSafe * 100).toFixed(1);
-              const colors = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.red, "oklch(0.72 0.17 60)"];
-              return (
-                <div key={c.currency}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-white/60">{c.currency}</span>
-                    <span className="text-white/80 font-medium">
-                      {formatNumber(c.users)} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: colors[i] }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
@@ -590,7 +520,7 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <MockOverlay active badge label="Pending Data" />
+          <MockOverlay active={!liveSelfExclusionTrend} description="Self-exclusion trend loading…" />
           <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusions Over Time</h3>
           <p className="text-xs text-white/40 mb-4">{granularityLabel} responsible-gaming trend</p>
           <ResponsiveContainer width="100%" height={220}>
@@ -638,37 +568,6 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-        <MockOverlay active badge label="Mock Data" />
-        <div className="flex items-center gap-2 mb-4">
-          <Clock size={16} style={{ color: "oklch(0.72 0.14 85)" }} />
-          <h3 className="text-sm font-semibold text-white">Recent Sessions</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-                {["Session ID", "User ID", "Username", "Login Time", "IP Address", "Platform", "State"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-4 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recentSessions.map((s) => (
-                <tr key={s.sessionId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-medium">#{s.sessionId}</td>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs font-medium">{s.userId}</td>
-                  <td className="py-2.5 pr-4 text-white/80 text-sm">{s.username}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs">{s.loginDate.split(" ")[1]}</td>
-                  <td className="py-2.5 pr-4 text-white/40 text-xs">{s.ip}</td>
-                  <td className="py-2.5 pr-4 text-white/60 text-xs">{s.app}</td>
-                  <td className="py-2.5"><StatusBadge status={s.state} dot /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </DashboardLayout>
   );
 }

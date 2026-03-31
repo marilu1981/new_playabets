@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { Gamepad2, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { casinoProviders as baseCasinoProviders, casinoKPIs as baseCasinoKPIs } from "@/lib/mockData";
-import { formatCompact, formatNumber } from "@/lib/formatters";
+import { formatCompact } from "@/lib/formatters";
 import {
   getFilterMultiplier,
   scaleArrayNumericFields,
