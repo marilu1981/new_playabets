@@ -55,6 +55,20 @@ export function setLatestDataDate(date: string): void {
   try { sessionStorage.setItem(LATEST_DATE_KEY, date); } catch { /* ignore */ }
 }
 
+const LATEST_UPDATED_KEY = "pb_last_updated";
+let _lastUpdated: string | null = (() => {
+  try { return sessionStorage.getItem(LATEST_UPDATED_KEY); } catch { return null; }
+})();
+
+export function getLastUpdated(): string | null {
+  return _lastUpdated;
+}
+
+export function setLastUpdated(ts: string): void {
+  _lastUpdated = ts;
+  try { sessionStorage.setItem(LATEST_UPDATED_KEY, ts); } catch { /* ignore */ }
+}
+
 /**
  * Fetch JSON with caching. Returns cached result immediately if available,
  * otherwise fetches from the network and caches the result.

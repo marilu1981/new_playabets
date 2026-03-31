@@ -7,7 +7,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "../lib/supabase";
-import { getLatestDataDate } from "@/lib/apiCache";
+import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
 import {
   LayoutDashboard,
   Users,
@@ -145,8 +145,12 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
   });
 
   const [lastDataDate, setLastDataDate] = useState<string | null>(() => getLatestDataDate());
+  const [lastUpdated, setLastUpdatedState] = useState<string | null>(() => getLastUpdated());
   useEffect(() => {
-    const id = setInterval(() => setLastDataDate(getLatestDataDate()), 15_000);
+    const id = setInterval(() => {
+      setLastDataDate(getLatestDataDate());
+      setLastUpdatedState(getLastUpdated());
+    }, 15_000);
     return () => clearInterval(id);
   }, []);
 
@@ -319,10 +323,10 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
               <Calendar size={12} />
               <span>{today}</span>
             </div>
-            {lastDataDate && (
+            {(lastUpdated || lastDataDate) && (
               <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40">
                 <Activity size={11} style={{ color: "oklch(0.75 0.17 145)" }} />
-                <span>Last data: {lastDataDate}</span>
+                <span>Last data: {lastUpdated ?? lastDataDate}</span>
               </div>
             )}
             <button className="relative text-white/40 hover:text-white/70 transition-colors">

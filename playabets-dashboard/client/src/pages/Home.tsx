@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState, type ReactNode } from "react";
-import { getLatestDataDate } from "@/lib/apiCache";
+import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
 import MockOverlay from "@/components/MockOverlay";
@@ -309,7 +309,7 @@ export default function Home() {
               <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
               Data Connected
             </div>
-            <div className="text-xs text-white/40">Last refresh: {latestDataDate ?? "…"}</div>
+            <div className="text-xs text-white/40">Last refresh: {getLastUpdated() ?? latestDataDate ?? "…"}</div>
           </div>
         </div>
       </div>
@@ -330,7 +330,7 @@ export default function Home() {
               <div className="text-[8px] font-bold uppercase tracking-widest truncate" style={{ color: accent }}>{label}</div>
               <div style={{ color: accent, opacity: 0.55 }}>{icon}</div>
             </div>
-            <div className={`text-base font-bold leading-tight ${pending ? "text-white/30" : "text-white"}`} style={FONT_MONO}>
+            <div className={`text-lg font-bold leading-tight ${pending ? "text-white/30" : "text-white"}`} style={FONT_MONO}>
               {value}
             </div>
             {subtitle && <div className="text-[7px] text-white/35 leading-tight mt-0.5">{subtitle}</div>}

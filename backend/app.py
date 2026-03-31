@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 import sys
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Literal
 
@@ -853,13 +853,20 @@ def conversion_cohorts_timeseries(
 # ---------------------------------------------------------------------------
 # KPI series / rolling / latest (legacy endpoints kept for compatibility)
 # ---------------------------------------------------------------------------
+_SAST = timezone(timedelta(hours=2))
+
 @app.get("/kpis/latest")
 def kpis_latest():
     df = load_daily_df()
     if df.empty:
         raise HTTPException(404, "KPI table is empty")
     row = df.iloc[-1].to_dict()
-    return {k: (str(v) if k == "date" else (v.item() if hasattr(v, "item") else v)) for k, v in row.items()}
+    result = {k: (str(v) if k == "date" else (v.item() if hasattr(v, "item") else v)) for k, v in row.items()}
+    if DATA_PATH.exists():
+        mtime = DATA_PATH.stat().st_mtime
+        sast_dt = datetime.fromtimestamp(mtime, tz=_SAST)
+        result["last_updated"] = sast_dt.strftime("%Y-%m-%d %H:%M SAST")
+    return result
 
 
 @app.get("/kpis/series")

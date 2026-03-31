@@ -1,5 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { getLatestDataDate, setLatestDataDate as persistLatestDate } from "@/lib/apiCache";
+import { getLatestDataDate, setLatestDataDate as persistLatestDate, getLastUpdated, setLastUpdated } from "@/lib/apiCache";
 import type { DashboardFilters } from "@/components/TopFiltersBar";
 import type { MetricRow } from "./homeUtils";
 import {
@@ -66,7 +66,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchJson<{ date?: string }>("/kpis/latest")
+    fetchJson<{ date?: string; last_updated?: string }>("/kpis/latest")
       .then((latest) => {
         if (cancelled) {
           return;
@@ -77,6 +77,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }
         persistLatestDate(maxDate);
         setLatestDataDate(maxDate);
+        if (latest.last_updated) setLastUpdated(latest.last_updated);
         setFilters((prev) => {
           let dateTo = prev.dateTo;
           let dateFrom = prev.dateFrom;
