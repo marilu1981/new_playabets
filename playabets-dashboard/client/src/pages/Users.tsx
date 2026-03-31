@@ -159,7 +159,6 @@ export default function UsersPage() {
   // so returning to this page feels instant. On first load it starts as true.
   const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
-  const [liveRegistrations, setLiveRegistrations] = useState<typeof baseUserRegistrations | null>(null);
   const [liveRegistrationsDaily, setLiveRegistrationsDaily] = useState<Array<{ date: string; value: number }> | null>(null);
   const [liveDailyActives, setLiveDailyActives] = useState<Array<{ date: string; actives: number }> | null>(null);
   const [liveStatusBreakdown, setLiveStatusBreakdown] = useState<Array<{ status: string; count: number }> | null>(null);
@@ -246,7 +245,7 @@ export default function UsersPage() {
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
         fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(`/casino/daily?${query}`),
-        fetchJson<{ total: number; inProgress: number; pending: number; completed: number; byPeriod: Array<{ period: string; count: number }> }>(`/users/self-exclusions`),
+        fetchJson<{ total: number; inProgress: number; pending: number; completed: number; byPeriod: Array<{ period: string; count: number }>; has_data?: boolean }>(`/users/self-exclusions`),
         fetchJson<{ points: Array<{ date: string; started: number; active: number; completed: number }> }>(`/users/self-exclusions/trend?start=${filters.dateFrom}&end=${filters.dateTo}`),
       ]);
 
@@ -272,24 +271,6 @@ export default function UsersPage() {
       }
 
       if (hasRegs) {
-        const byMonth = new Map<string, { month: string; registrations: number; churned: number }>();
-        for (const row of regsRes.value.registrations ?? []) {
-          const dt = new Date(`${row.date}T00:00:00Z`);
-          if (Number.isNaN(dt.getTime())) {
-            continue;
-          }
-          const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}`;
-          const label = `${dt.toLocaleString("en-US", { month: "short", timeZone: "UTC" })} ${dt.getUTCFullYear()}`;
-          const bucket = byMonth.get(key) ?? { month: label, registrations: 0, churned: 0 };
-          // API returns { date, registrations } — fall back to .value for compatibility
-          bucket.registrations += Number((row as { date: string; registrations?: number; value?: number }).registrations ?? (row as { date: string; registrations?: number; value?: number }).value ?? 0);
-          byMonth.set(key, bucket);
-        }
-        const monthly = Array.from(byMonth.entries())
-          .sort(([a], [b]) => a.localeCompare(b))
-          .slice(-12)
-          .map(([, v]) => v);
-        setLiveRegistrations(monthly);
         setLiveRegistrationsDaily((regsRes.value.registrations ?? []).map((r) => ({
           date: r.date,
           // API returns { date, registrations } — fall back to .value for compatibility
@@ -309,7 +290,7 @@ export default function UsersPage() {
         setLiveStatusBreakdown(null);
       }
 
-      if (selfExRes.status === "fulfilled") {
+      if (selfExRes.status === "fulfilled" && selfExRes.value.has_data !== false) {
         setLiveSelfExclusions(selfExRes.value);
       } else {
         setLiveSelfExclusions(null);
@@ -367,15 +348,7 @@ export default function UsersPage() {
     () => scaleArrayNumericFields(statusSource, statusMultiplier, ["status", "statusId"]),
     [statusSource, statusMultiplier],
   );
-  const userRegistrations = useMemo(
-    () =>
-      scaleArrayNumericFields(
-        filterByDateRange(liveRegistrations ?? baseUserRegistrations, filters, (row) => row.month, { fallbackYear }),
-        multiplier,
-        ["month"],
-      ),
-    [filters, fallbackYear, multiplier, liveRegistrations],
-  );
+
   const registrationsTrend = useMemo(() => {
     const source = liveRegistrationsDaily
       ? liveRegistrationsDaily.map((row) => ({ date: row.date, value: row.value }))

@@ -941,11 +941,11 @@ def users_status_breakdown(
 @app.get("/users/self-exclusions")
 def users_self_exclusions():
     if not SELFEXCLUSIONS_PATH.exists():
-        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": []}
+        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": [], "has_data": False}
 
     df = load_parquet_cached(SELFEXCLUSIONS_PATH, "selfexclusions")
     if df.empty:
-        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": []}
+        return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": [], "has_data": False}
 
     df, _ = normalize_cols(df)
 
@@ -973,6 +973,7 @@ def users_self_exclusions():
         "pending": pending,
         "completed": completed,
         "byPeriod": by_period,
+        "has_data": True,
     }
 
 
