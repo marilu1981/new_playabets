@@ -187,7 +187,10 @@ def load_betslips_raw() -> pd.DataFrame:
         latest_files = sorted(base.glob("betslips_latest*.parquet"))
         full_file = base / "betslips_full.parquet"
 
-        if inc_files:
+        if full_file.exists() and inc_files:
+            files = [full_file] + inc_files
+            key = "betslips_raw_full_plus_inc"
+        elif inc_files:
             files = inc_files
             key = "betslips_raw_increment"
         elif latest_files:
@@ -404,7 +407,16 @@ def _filtered_registration_total(
 
 
 def _load_latest_users() -> pd.DataFrame:
-    users = read_all_parquets(USERS_RAW, "users_increment_*.parquet") if USERS_RAW.exists() else pd.DataFrame()
+    if not USERS_RAW.exists():
+        return pd.DataFrame()
+    full_file = USERS_RAW / "users_full.parquet"
+    inc_files = sorted(USERS_RAW.glob("users_increment_*.parquet"))
+    if full_file.exists() and inc_files:
+        users = pd.concat([pd.read_parquet(full_file)] + [pd.read_parquet(f) for f in inc_files], ignore_index=True)
+    elif full_file.exists():
+        users = pd.read_parquet(full_file)
+    else:
+        users = read_all_parquets(USERS_RAW, "users_increment_*.parquet")
     if users.empty:
         return users
 
