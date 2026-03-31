@@ -147,10 +147,11 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
   const [lastDataDate, setLastDataDate] = useState<string | null>(() => getLatestDataDate());
   const [lastUpdated, setLastUpdatedState] = useState<string | null>(() => getLastUpdated());
   useEffect(() => {
+    // Poll frequently so the timestamp appears as soon as useHomeData fetches /kpis/latest
     const id = setInterval(() => {
       setLastDataDate(getLatestDataDate());
       setLastUpdatedState(getLastUpdated());
-    }, 15_000);
+    }, 2_000);
     return () => clearInterval(id);
   }, []);
 
@@ -319,12 +320,12 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
 
           {/* Top bar right */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40">
+            <div className="hidden lg:flex items-center gap-1.5 text-xs text-white/40">
               <Calendar size={12} />
               <span>{today}</span>
             </div>
             {(lastUpdated || lastDataDate) && (
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-white/40">
+              <div className="flex items-center gap-1.5 text-xs text-white/40">
                 <Activity size={11} style={{ color: "oklch(0.75 0.17 145)" }} />
                 <span>Last data: {lastUpdated ?? lastDataDate}</span>
               </div>
