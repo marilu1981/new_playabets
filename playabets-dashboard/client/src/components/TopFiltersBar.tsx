@@ -276,11 +276,11 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               style={SELECT_STYLE}
             >
               <option value="all">All Segments</option>
-              <option value="Champions">Champions</option>
-              <option value="Loyal">Loyal</option>
-              <option value="Big Spenders">Big Spenders</option>
-              <option value="Mid">Mid</option>
-              <option value="At Risk">At Risk</option>
+              <option value="VIP">VIP</option>
+              <option value="Active">Active</option>
+              <option value="New">New</option>
+              <option value="Cooling">Cooling</option>
+              <option value="Lapsed">Lapsed</option>
               <option value="Dormant">Dormant</option>
             </select>
           </Field>

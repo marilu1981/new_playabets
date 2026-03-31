@@ -307,14 +307,78 @@ def _apply_user_filters(
     return filtered
 
 
+def _get_allowed_user_ids(
+    territory: Optional[str] = None,
+    country: Optional[str] = None,
+    customer_status: Optional[str] = None,
+    current_segment: Optional[str] = None,
+) -> Optional[set[str]]:
+    """Return set of allowed UserIDs based on all active filters, or None if no filters active."""
+    has_user_filter = any(_normalize_value(v) for v in (territory, country, customer_status))
+    seg = _normalize_value(current_segment)
+
+    if not has_user_filter and not seg:
+        return None
+
+    allowed: Optional[set[str]] = None
+
+    if has_user_filter:
+        users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+        allowed = set(users["userid"].astype(str).dropna()) if "userid" in users.columns else set()
+
+    if seg:
+        rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+        if not rfm.empty and "segment" in rfm.columns and "userid" in rfm.columns:
+            seg_ids = set(
+                rfm[rfm["segment"].astype(str) == seg]["userid"].astype(str).dropna()
+            )
+        else:
+            seg_ids = set()
+        allowed = seg_ids if allowed is None else allowed & seg_ids
+
+    return allowed
+
+
+def _aggregate_betslips_for_users(
+    start: date,
+    end: date,
+    allowed_ids: set[str],
+) -> dict:
+    """Aggregate sportsbook betslip metrics filtered to a set of UserIDs."""
+    df = load_betslips_raw()
+    if df.empty:
+        return {"stake": 0.0, "winnings": 0.0, "ggr": 0.0, "betslips": 0}
+    df, bcol = normalize_cols(df)
+    placement_col = bcol.get("placementdate") or bcol.get("placedate") or bcol.get("betdate") or bcol.get("date")
+    stake_col = bcol.get("stake")
+    winnings_col = bcol.get("winnings") or bcol.get("userwinnings")
+    user_id_col = bcol.get("userid")
+    if not placement_col or not user_id_col:
+        return {"stake": 0.0, "winnings": 0.0, "ggr": 0.0, "betslips": 0}
+    df["_date"] = to_dt(df[placement_col]).dt.date
+    df = _filter_range(df, start, end)
+    df = df[df[user_id_col].astype(str).isin(allowed_ids)]
+    if df.empty:
+        return {"stake": 0.0, "winnings": 0.0, "ggr": 0.0, "betslips": 0}
+    stake = float(df[stake_col].sum()) if stake_col and stake_col in df.columns else 0.0
+    winnings = float(df[winnings_col].sum()) if winnings_col and winnings_col in df.columns else 0.0
+    return {"stake": stake, "winnings": winnings, "ggr": stake - winnings, "betslips": len(df)}
+
+
 def _filtered_registration_counts(
     start: date,
     end: date,
     territory: Optional[str] = None,
     country: Optional[str] = None,
     customer_status: Optional[str] = None,
+    current_segment: Optional[str] = None,
 ) -> dict[date, int]:
-    users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+    allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+    users = _load_users_for_filters()
+    if allowed_ids is not None:
+        if "userid" not in users.columns:
+            return {}
+        users = users[users["userid"].astype(str).isin(allowed_ids)]
     if users.empty or "creationdate" not in users.columns:
         return {}
     users = users.copy()
@@ -332,8 +396,9 @@ def _filtered_registration_total(
     territory: Optional[str] = None,
     country: Optional[str] = None,
     customer_status: Optional[str] = None,
+    current_segment: Optional[str] = None,
 ) -> int:
-    counts = _filtered_registration_counts(start, end, territory, country, customer_status)
+    counts = _filtered_registration_counts(start, end, territory, country, customer_status, current_segment)
     return int(sum(counts.values()))
 
 
@@ -616,17 +681,28 @@ def kpis(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
+    allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+
     df = _filter_range(load_daily_df(), start, end)
     tx = _load_transactions_df(start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
     casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
 
-    sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
-    sportsbook_winnings = _s(df, "settled_winnings")
-    sportsbook_ggr = _s(df, "ggr")
-    sportsbook_actives = _mean_i(df, "actives_sports")
+    # When user/segment filter active, re-aggregate sportsbook metrics from raw betslips
+    if allowed_ids is not None:
+        bs = _aggregate_betslips_for_users(start, end, allowed_ids)
+        sportsbook_turnover = bs["stake"]
+        sportsbook_winnings = bs["winnings"]
+        sportsbook_ggr = bs["ggr"]
+        sportsbook_actives = 0  # cannot derive actives from betslip filter alone
+    else:
+        sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
+        sportsbook_winnings = _s(df, "settled_winnings")
+        sportsbook_ggr = _s(df, "ggr")
+        sportsbook_actives = _mean_i(df, "actives_sports")
 
     casino_turnover = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
@@ -639,10 +715,7 @@ def kpis(
     bonus_spent = _s(bonus, "bonus_credited")
     ngr = ggr - bonus_spent
 
-    user_filtered = any(_normalize_value(v) for v in (territory, country, customer_status))
-    filtered_registrations = (
-        _filtered_registration_total(start, end, territory, country, customer_status) if user_filtered else None
-    )
+    filtered_registrations = _filtered_registration_total(start, end, territory, country, customer_status, current_segment) if allowed_ids is not None else None
 
     return {
         "range": {"start": str(start), "end": str(end)},
@@ -671,6 +744,7 @@ def kpis(
             "territory": bool(_normalize_value(territory)),
             "country": bool(_normalize_value(country)),
             "customer_status": bool(_normalize_value(customer_status)),
+            "current_segment": bool(_normalize_value(current_segment)),
             "registrations_filtered": filtered_registrations is not None,
         },
     }
@@ -705,10 +779,11 @@ def registrations_timeseries(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
-    user_filtered = any(_normalize_value(v) for v in (territory, country, customer_status))
-    if user_filtered:
-        counts = _filtered_registration_counts(start, end, territory, country, customer_status)
+    allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+    if allowed_ids is not None:
+        counts = _filtered_registration_counts(start, end, territory, country, customer_status, current_segment)
         dates = pd.date_range(start, end, freq="D").date
         regs = [{"date": str(d), "value": int(counts.get(d, 0))} for d in dates]
         ftds = [{"date": str(d), "value": 0} for d in dates]
@@ -811,6 +886,7 @@ def kpis_daily(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
     df = load_daily_df()
     if df.empty:
@@ -818,12 +894,10 @@ def kpis_daily(
     d = df.copy()
     if start and end and "date" in d.columns:
         d = _filter_range(d, start, end)
-        if any(_normalize_value(v) for v in (territory, country, customer_status)):
-            regs_by_date = _filtered_registration_counts(start, end, territory, country, customer_status)
-            if regs_by_date:
-                d["registrations"] = d["date"].map(lambda x: int(regs_by_date.get(x, 0)))
-            else:
-                d["registrations"] = 0
+        allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+        if allowed_ids is not None:
+            regs_by_date = _filtered_registration_counts(start, end, territory, country, customer_status, current_segment)
+            d["registrations"] = d["date"].map(lambda x: int(regs_by_date.get(x, 0)))
     d = d.sort_values("date")
     if metrics:
         wanted = [c.strip() for c in metrics.split(",") if c.strip()]
@@ -838,8 +912,15 @@ def users_status_breakdown(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
     users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
+    seg = _normalize_value(current_segment)
+    if seg and not users.empty and "userid" in users.columns:
+        rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+        if not rfm.empty and "segment" in rfm.columns and "userid" in rfm.columns:
+            seg_ids = set(rfm[rfm["segment"].astype(str) == seg]["userid"].astype(str).dropna())
+            users = users[users["userid"].astype(str).isin(seg_ids)]
     if users.empty or "userstatus" not in users.columns:
         return {"statuses": []}
     statuses = users["userstatus"].fillna("Unknown").astype(str).str.strip()
@@ -851,6 +932,7 @@ def users_status_breakdown(
             "territory": bool(_normalize_value(territory)),
             "country": bool(_normalize_value(country)),
             "customer_status": bool(_normalize_value(customer_status)),
+            "current_segment": bool(seg),
         },
     }
 
@@ -1163,6 +1245,7 @@ def betslips_by_status(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
     customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
     df = load_betslips_raw()
     if df.empty:
@@ -1178,11 +1261,8 @@ def betslips_by_status(
     df = _filter_range(df, start, end)
     if df.empty:
         return []
-    if any(_normalize_value(v) for v in (territory, country, customer_status)) and user_id_col:
-        users = _apply_user_filters(_load_users_for_filters(), territory, country, customer_status)
-        if users.empty or "userid" not in users.columns:
-            return []
-        allowed_ids = set(users["userid"].astype(str).dropna())
+    allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+    if allowed_ids is not None and user_id_col:
         df = df[df[user_id_col].astype(str).isin(allowed_ids)]
         if df.empty:
             return []
@@ -1207,6 +1287,10 @@ def betslips_by_status(
 def betslips_by_type(
     start: date = Query(...),
     end: date = Query(...),
+    territory: Optional[str] = Query(None),
+    country: Optional[str] = Query(None),
+    customer_status: Optional[str] = Query(None),
+    current_segment: Optional[str] = Query(None),
 ):
     df = load_betslips_raw()
     if df.empty:
@@ -1215,12 +1299,18 @@ def betslips_by_type(
     type_col = bcol.get("betsliptype") or bcol.get("betsliptypeid") or bcol.get("bettype") or bcol.get("bettypeid") or bcol.get("type")
     type_id_col = bcol.get("betsliptypeid") or bcol.get("bettypeid")
     placement_col = bcol.get("placementdate") or bcol.get("placedate") or bcol.get("betdate") or bcol.get("date")
+    user_id_col = bcol.get("userid")
     if not type_col or not placement_col:
         return []
     df["_date"] = to_dt(df[placement_col]).dt.date
     df = _filter_range(df, start, end)
     if df.empty:
         return []
+    allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+    if allowed_ids is not None and user_id_col:
+        df = df[df[user_id_col].astype(str).isin(allowed_ids)]
+        if df.empty:
+            return []
     grouped = df.groupby(type_col).size().reset_index(name="count")
     if type_id_col and type_id_col in df.columns and type_id_col != type_col:
         id_map = df[[type_col, type_id_col]].dropna().drop_duplicates()

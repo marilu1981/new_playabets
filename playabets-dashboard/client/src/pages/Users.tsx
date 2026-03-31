@@ -21,7 +21,7 @@ import {
   selfExclusionSummary as baseSelfExclusionSummary,
   selfExclusionTrend as baseSelfExclusionTrend,
 } from "@/lib/mockData";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,

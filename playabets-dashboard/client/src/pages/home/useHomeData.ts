@@ -128,6 +128,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         end: filters.dateTo,
         reg_start: regsStartDate,
       });
+      if (filters.territory !== "all") regsParams.set("territory", filters.territory);
+      if (filters.country !== "all") regsParams.set("country", filters.country);
+      if (filters.currentSegment !== "all") regsParams.set("current_segment", filters.currentSegment);
       const regsQuery = regsParams.toString();
 
       const requests = {

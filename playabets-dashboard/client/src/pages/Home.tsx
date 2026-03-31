@@ -348,7 +348,7 @@ export default function Home() {
 
             {/* ── TODAY panel ── */}
             <div className="rounded-xl overflow-hidden" style={{ background: "#0D351F", border: "1px solid #1e7a40" }}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#0D4726" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#006163" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
                 <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
               </div>

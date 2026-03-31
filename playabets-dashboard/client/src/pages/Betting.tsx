@@ -62,7 +62,11 @@ export default function BettingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+    const params = new URLSearchParams({ start: filters.dateFrom, end: filters.dateTo });
+    if (filters.territory !== "all") params.set("territory", filters.territory);
+    if (filters.country !== "all") params.set("country", filters.country);
+    if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
+    const query = params.toString();
     Promise.allSettled([
       fetchJson<{
         settled_stake?: number;
@@ -175,7 +179,7 @@ export default function BettingPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters.dateFrom, filters.dateTo]);
+  }, [filters.dateFrom, filters.dateTo, filters.territory, filters.country, filters.currentSegment]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const overviewKPIs = useMemo(() => {
