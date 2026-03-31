@@ -13,7 +13,7 @@ import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
 import { TrendingUp, Activity, Zap, Target } from "lucide-react";
@@ -21,11 +21,8 @@ import {
   overviewKPIs as baseOverviewKPIs,
   betslipsByStatus as baseBetslipsByStatus,
   betslipsByType as baseBetslipsByType,
-  betsByType as baseBetsByType,
-  betsByApplication as baseBetsByApplication,
-  topSports as baseTopSports,
 } from "@/lib/mockData";
-import { formatCompact, formatCurrency } from "@/lib/formatters";
+import { formatCompact } from "@/lib/formatters";
 import {
   getFilterMultiplier,
   scaleArrayNumericFields,
@@ -212,25 +209,12 @@ export default function BettingPage() {
       ),
     [liveBetslipsByType, multiplier],
   );
-  const betsByType = useMemo(
-    () => scaleArrayNumericFields(baseBetsByType, multiplier, ["betType"]),
-    [multiplier],
-  );
-  const betsByApplication = useMemo(
-    () => scaleArrayNumericFields(baseBetsByApplication, multiplier, ["app", "percentage"]),
-    [multiplier],
-  );
-  const topSports = useMemo(
-    () => scaleArrayNumericFields(baseTopSports, multiplier, ["sport", "sportId"]),
-    [multiplier],
-  );
   const totalBetslipsSafe = Math.max(
     1,
     liveBetslipsByStatus
       ? betslipsByStatus.reduce((sum, row) => sum + row.count, 0)
       : overviewKPIs.totalBetslips,
   );
-  const totalBetTypeCount = Math.max(1, betsByType.reduce((sum, row) => sum + row.count, 0));
   const margin = overviewKPIs.totalStake > 0
     ? ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1)
     : "0.0";
@@ -243,10 +227,10 @@ export default function BettingPage() {
       </div>
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="All time" change={12.1} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="gold" />
-        <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="All betslips" change={9.4} changeLabel="vs last month" icon={<Zap size={18} />} accent="teal" />
-        <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" change={8.1} changeLabel="vs last month" icon={<Activity size={18} />} accent="amber" />
-        <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" change={0.8} changeLabel="vs last month" icon={<Target size={18} />} accent="green" />
+        <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+        <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
+        <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
+        <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
       </div>
 
       <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
@@ -255,12 +239,11 @@ export default function BettingPage() {
           <h3 className="text-sm font-semibold text-white mb-1">Bet Settlement Monitor</h3>
           <p className="text-xs text-white/40">Settlement flow, cancellations, and current exposure</p>
         </div>
-        <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard title="Settled Betslips" value={formatCompact(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
           <KpiCard title="Won Betslips" value={formatCompact(liveSettlementMetrics?.wonCount ?? 0)} subtitle="Selected range" icon={<Target size={18} />} accent="green" />
           <KpiCard title="Cancelled Betslips" value={formatCompact(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range" icon={<Activity size={18} />} accent="amber" />
           <KpiCard title="Cancel Rate" value={`${liveSettlementMetrics?.cancelRate ?? 0}%`} subtitle="Average across selected days" icon={<Zap size={18} />} accent="red" />
-          <KpiCard title="Open Exposure" value={formatCurrency(liveSettlementMetrics?.openExposureStake ?? 0)} subtitle="Latest available day" icon={<TrendingUp size={18} />} accent="teal" />
         </div>
       </div>
 
@@ -315,81 +298,7 @@ export default function BettingPage() {
           </div>
         </div>
 
-        {/* By Bet Type (Single/Multiple) */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1">By Bet Type</h3>
-          <p className="text-xs text-white/40 mb-4">Single / Multiple / Combined</p>
-          <div className="space-y-3">
-            {betsByType.map((b, i) => {
-              const colors = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green, CHART_COLORS.amber];
-              const pct = (b.count / totalBetTypeCount * 100).toFixed(0);
-              return (
-                <div key={b.betType}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-white/60">{b.betType}</span>
-                    <span className="text-white/80 font-mono">
-                      {formatCompact(b.count)} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: colors[i] }} />
-                  </div>
-                  <div className="text-xs text-white/30 mt-0.5">Stake: {formatCompact(b.stake)}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
-
-      {/* Top Sports */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1">Top Sports by Stake</h3>
-          <p className="text-xs text-white/40 mb-4">Total stake by sport</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topSports.slice(0, 7)} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="sport" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Stake"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
-              <Bar dataKey="stake" fill={CHART_COLORS.teal} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
-          <h3 className="text-sm font-semibold text-white mb-1">Sport Revenue Table</h3>
-          <p className="text-xs text-white/40 mb-4">Bets, stake, and gross revenue per sport</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
-                  {["Sport", "Bets", "Stake", "Revenue", "Margin"].map((h) => (
-                    <th key={h} className="text-left font-semibold uppercase tracking-wider text-white/30 pb-2 pr-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {topSports.map((s) => (
-                  <tr key={s.sport} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                    <td className="py-2 pr-3 text-white/80 font-medium">{s.sport}</td>
-                    <td className="py-2 pr-3 text-white/50 font-mono">{formatCompact(s.bets)}</td>
-                    <td className="py-2 pr-3 text-white/50 font-mono">{ formatCompact(s.stake)}</td>
-                    <td className="py-2 pr-3 font-mono" style={{color: CHART_COLORS.gold }}>{ formatCompact(s.revenue)}</td>
-                    <td className="py-2">
-                      <span className="text-xs" style={{ color: CHART_COLORS.green }}>
-                        {(s.revenue / s.stake * 100).toFixed(1)}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
 
     </DashboardLayout>
   );
