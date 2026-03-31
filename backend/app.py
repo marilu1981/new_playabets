@@ -947,7 +947,7 @@ def users_self_exclusions():
     if df.empty:
         return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": []}
 
-    df = normalize_cols(df)
+    df, _ = normalize_cols(df)
 
     status_col = next((c for c in df.columns if c == "selfexclusionstatus"), None)
     period_col = next((c for c in df.columns if c == "selfexclusionperiod"), None)
@@ -1399,31 +1399,43 @@ def transactions_trend(
 # Bonus
 # ---------------------------------------------------------------------------
 @app.get("/bonus/kpis")
-def bonus_kpis():
-    campaigns = load_parquet_cached(CAMPAIGNS_PATH, "campaigns")
-    freebets  = load_parquet_cached(FREEBETS_PATH, "freebets")
+def bonus_kpis(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+):
+    df = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
 
-    total_campaigns = int(len(campaigns)) if not campaigns.empty else 0
-    active_campaigns = 0
-    if not campaigns.empty and "CampaignStatus" in campaigns.columns:
-        active_campaigns = int((campaigns["CampaignStatus"].str.lower() == "active").sum())
-    elif not campaigns.empty and "CampaignStatusID" in campaigns.columns:
-        active_campaigns = int((campaigns["CampaignStatusID"] == 1).sum())
+    if df.empty:
+        return {
+            "total_bonuses_credited": 0,
+            "average_daily_bonus_per_user": 0,
+            "est_total_bonuses_per_user": 0,
+            "average_daily_unique_bonus_users": 0,
+            "bonuses_paid_total_count": 0,
+        }
 
-    first_deposit_campaigns = 0
-    if not campaigns.empty and "BonusType" in campaigns.columns:
-        bt = campaigns["BonusType"].fillna("").astype(str).str.lower()
-        first_deposit_campaigns = int((bt.str.contains("first", na=False) & bt.str.contains("deposit", na=False)).sum())
+    credited_col = "bonus_credited" if "bonus_credited" in df.columns else None
+    count_col = "bonus_count" if "bonus_count" in df.columns else None
+    users_col = "unique_bonus_users" if "unique_bonus_users" in df.columns else None
 
-    total_freebets  = int(len(freebets)) if not freebets.empty else 0
-    freebet_amount  = float(freebets["Amount"].sum()) if not freebets.empty and "Amount" in freebets.columns else 0.0
+    total_credited = float(df[credited_col].sum()) if credited_col else 0.0
+    total_count = int(df[count_col].sum()) if count_col else 0
+    avg_daily_users = float(df[users_col].mean()) if users_col else 0.0
+
+    if credited_col and users_col:
+        df["_per_user"] = df[credited_col] / df[users_col].clip(lower=1)
+        avg_daily_bonus_per_user = float(df["_per_user"].mean())
+        est_total_per_user = float(df["_per_user"].sum())
+    else:
+        avg_daily_bonus_per_user = 0.0
+        est_total_per_user = 0.0
 
     return {
-        "total_campaigns": total_campaigns,
-        "active_campaigns": active_campaigns,
-        "first_deposit_campaigns": first_deposit_campaigns,
-        "total_freebets": total_freebets,
-        "total_freebet_amount": freebet_amount,
+        "total_bonuses_credited": round(total_credited, 2),
+        "average_daily_bonus_per_user": round(avg_daily_bonus_per_user, 2),
+        "est_total_bonuses_per_user": round(est_total_per_user, 2),
+        "average_daily_unique_bonus_users": round(avg_daily_users, 1),
+        "bonuses_paid_total_count": total_count,
     }
 
 
