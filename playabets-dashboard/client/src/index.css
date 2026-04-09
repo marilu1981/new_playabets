@@ -70,9 +70,9 @@
   --warning: oklch(0.80 0.19 83);       /* yellow for warnings */
 
   /* Light theme */
-  --background: oklch(1 0 0);                    /* #ffffff white */
+  --background: oklch(0.96 0.004 130);           /* #f4f6f4 light gray — main page bg */
   --foreground: oklch(0.08 0 0);                 /* near-black */
-  --card: oklch(0.97 0.004 130);                 /* very light green-tinted white */
+  --card: oklch(1 0 0);                          /* #ffffff white cards */
   --card-foreground: oklch(0.08 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.08 0 0);
@@ -98,8 +98,8 @@
   --chart-4: oklch(0.55 0.16 250);   /* blue */
   --chart-5: oklch(0.55 0.22 25);    /* red */
 
-  /* Sidebar — Forest Leaf dark (stays dark per brand guidelines) */
-  --sidebar: oklch(0.18 0.06 145);
+  /* Sidebar — near-black charcoal */
+  --sidebar: oklch(0.16 0.01 240);
   --sidebar-foreground: oklch(0.95 0 0);
   --sidebar-primary: oklch(0.69 0.19 129);
   --sidebar-primary-foreground: oklch(0 0 0);

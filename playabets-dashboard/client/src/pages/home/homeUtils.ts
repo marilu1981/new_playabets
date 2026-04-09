@@ -6,25 +6,28 @@ import type { DashboardFilters } from "@/components/TopFiltersBar";
 export const HERO_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-2_1771727908000_na1fn_cGxheWFiZXRzLWhlcm8tYmFubmVy.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTJfMTc3MTcyNzkwODAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMV2hsY204dFltRnVibVZ5LnBuZz94LW9zcy1wcm9jZXNzPWltYWdlL3Jlc2l6ZSx3XzE5MjAsaF8xOTIwL2Zvcm1hdCx3ZWJwL3F1YWxpdHkscV84MCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5ODc2MTYwMH19fV19&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=LHsnks1NO7SQ87OPqfr8X3UCWGKR~-4dFr0yVglkj0GAbZntP4Bq2VV88L-8FWkj-8edRLrlOJK73a4zD7Y7gnEAI9d6hcIeI7KCSJrwwvRW6UB4wYIBKcBGFFUxVdkuimzCKyEvj9PaaWLFw9ouP3Vbvp~P0BXrFkfjceNgumru40JCmdXs7tF5ZUtwpNldD~AWzgTIY-AdzkE4FML0W4RYJRXT7w~1Qnz5onsasdZIf27SUcyL1J0I-hug5HoXudlGMHMVhXBfL68bTeaaUTETPQLgYKwGeKSdDqRDAWfCqjgqLVzCnAKBODZh2PIZGvl4Na8qo18vldMjr9oPZg__";
 
 export const CHART_COLORS = {
-  gold: "oklch(0.72 0.14 85)",
-  green: "oklch(0.62 0.17 145)",
-  teal: "oklch(0.65 0.15 195)",
-  amber: "oklch(0.72 0.17 60)",
-  red: "oklch(0.55 0.22 25)",
+  gold:  "#7ab800",   /* Playa Green — primary brand */
+  green: "#3d8c2e",   /* darker green, readable on light bg */
+  teal:  "#0d8f8f",
+  amber: "#ffb500",   /* Sunny Yellow */
+  red:   "#d94040",
 };
 
 export const CARD_BG: CSSProperties = {
-  background: "oklch(0.19 0.04 155)",
-  border: "1px solid oklch(1 0 0 / 6%)",
+  background: "#ffffff",
+  border: "1px solid #e4ece4",
+  boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
 };
 
 export const FONT_SERIF: CSSProperties = {};
 export const FONT_MONO: CSSProperties = {};
 
 export const TT_STYLE: CSSProperties = {
-  background: "oklch(0.22 0.04 155)",
-  border: "1px solid oklch(1 0 0 / 10%)",
+  background: "#ffffff",
+  border: "1px solid #dde8dd",
+  color: "#111111",
   fontSize: 11,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.10)",
 };
 
 export const COUNTRY_BRAND_MAP: Record<string, string> = {
@@ -209,9 +212,9 @@ export function aggregateByGranularity<T extends Record<string, unknown>>(
 
 export function toggleBtn(active: boolean): CSSProperties {
   return {
-    background: active ? "oklch(0.72 0.14 85)" : "oklch(0.24 0.04 155)",
-    color: active ? "oklch(0.12 0.04 155)" : "oklch(0.55 0.01 155)",
-    border: "1px solid oklch(1 0 0 / 8%)",
+    background: active ? "#7ab800" : "#f0f5f0",
+    color: active ? "#000000" : "#555555",
+    border: `1px solid ${active ? "#7ab800" : "#d0ddd0"}`,
     fontWeight: active ? 700 : 500,
     transition: "all 0.15s",
     cursor: "pointer",

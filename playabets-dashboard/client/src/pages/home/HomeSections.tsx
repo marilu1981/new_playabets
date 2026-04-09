@@ -145,7 +145,7 @@ export function HomePrimaryKpis({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} icon={<Percent size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Top_FTDs (TBC from RFM)" value="TBC" valueClassName="text-white/35" subtitle="High-value FTDs" icon={<Zap size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Top_FTDs (TBC from RFM)" value="TBC" valueClassName="text-gray-300" subtitle="High-value FTDs" icon={<Zap size={18} />} accent="gold" loading={isLoading} />
         <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD" icon={<Percent size={18} />} accent="amber" loading={isLoading} />
       </div>
     </>
@@ -174,7 +174,7 @@ export function SummaryMetricsTable({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-white" style={fontSerif}>Summary Metrics</h3>
-          {!isLive && <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data</span>}
+          {!isLive && <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Mock Data</span>}
         </div>
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
@@ -196,7 +196,7 @@ export function SummaryMetricsTable({
           Export to Excel
         </button>
       </div>
-      <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "oklch(1 0 0 / 8%)" }}>
+      <div className="flex gap-1 mb-4 border-b" style={{ borderColor: "#dde8dd" }}>
         {([
           { key: "overview", label: "Overview" },
           { key: "sport", label: "Sport Details" },
@@ -219,9 +219,9 @@ export function SummaryMetricsTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+            <tr style={{ borderBottom: "1px solid #dde8dd" }}>
               {["Metric", "Current Period", "Previous Period", "Change %", "YTD"].map((h) => (
-                <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-4 whitespace-nowrap" style={{ color: "oklch(0.45 0.01 155)" }}>{h}</th>
+                <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-4 whitespace-nowrap" style={{ color: "#666666" }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -230,16 +230,16 @@ export function SummaryMetricsTable({
               const chg = pctChange(row.current, row.previous);
               const reliable = isPctChangeReliable(row.current, row.previous);
               return (
-                <tr key={row.metric} className="hover:bg-white/2 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/80 text-xs font-medium">{row.metric}</td>
-                  <td className="py-2.5 pr-4 text-white text-xs font-mono" style={fontMono}>{fmtMetric(row.current, row)}</td>
-                  <td className={`py-2.5 pr-4 text-xs font-mono ${reliable ? "text-white/50" : "text-white/25"}`} style={fontMono}>
+                <tr key={row.metric} className="hover:bg-gray-50 transition-colors" style={{ borderBottom: "1px solid #eef3ee" }}>
+                  <td className="py-2.5 pr-4 text-gray-700 text-xs font-medium">{row.metric}</td>
+                  <td className="py-2.5 pr-4 text-gray-900 text-xs font-mono" style={fontMono}>{fmtMetric(row.current, row)}</td>
+                  <td className={`py-2.5 pr-4 text-xs font-mono ${reliable ? "text-gray-500" : "text-gray-300"}`} style={fontMono}>
                     {reliable ? fmtMetric(row.previous, row) : "—"}
                   </td>
                   <td className="py-2.5 pr-4 text-xs font-semibold font-mono" style={{ ...fontMono, color: reliable ? (chg >= 0 ? chartColors.green : chartColors.red) : "oklch(0.45 0.01 155)" }}>
                     {reliable ? `${chg >= 0 ? "+" : ""}${chg}%` : "—"}
                   </td>
-                  <td className="py-2.5 text-white/60 text-xs font-mono" style={fontMono}>{fmtMetric(row.ytd, row)}</td>
+                  <td className="py-2.5 text-gray-500 text-xs font-mono" style={fontMono}>{fmtMetric(row.ytd, row)}</td>
                 </tr>
               );
             })}
@@ -305,7 +305,7 @@ function StatusPiePanel({
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLORS[i % STATUS_COLORS.length] }} />
               <span className="text-white/60 truncate max-w-[110px]">{row.status}</span>
             </div>
-            <span className="text-white/70 font-mono text-xs" style={fontMono}>{formatCompact(row.count)}</span>
+            <span className="text-gray-700 font-mono text-xs" style={fontMono}>{formatCompact(row.count)}</span>
           </div>
         ))}
       </div>
@@ -350,7 +350,7 @@ export function DetailedBreakdownTable({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-white" style={fontSerif}>Detailed Breakdown</h3>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/50">Mock Data - TBC</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Mock Data - TBC</span>
           </div>
           <p className="text-xs text-white/40">Date · Brand · Segment · Territory · Value · % Change</p>
         </div>
@@ -377,17 +377,17 @@ export function DetailedBreakdownTable({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+            <tr style={{ borderBottom: "1px solid #dde8dd" }}>
               {["Date", "Brand", "Segment", "Territory", "Value", "% Change"].map((h) => (
-                <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-6 whitespace-nowrap" style={{ color: "oklch(0.45 0.01 155)" }}>{h}</th>
+                <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider pb-2 pr-6 whitespace-nowrap" style={{ color: "#666666" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {detailedBreakdown.map((row, idx) => (
-              <tr key={idx} className="hover:bg-white/2 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                <td className="py-2.5 pr-6 text-white/50 text-xs font-mono" style={fontMono}>{row.date}</td>
-                <td className="py-2.5 pr-6 text-white/80 text-xs font-medium">{row.brand}</td>
+              <tr key={idx} className="hover:bg-gray-50 transition-colors" style={{ borderBottom: "1px solid #eef3ee" }}>
+                <td className="py-2.5 pr-6 text-gray-500 text-xs font-mono" style={fontMono}>{row.date}</td>
+                <td className="py-2.5 pr-6 text-gray-700 text-xs font-medium">{row.brand}</td>
                 <td className="py-2.5 pr-6">
                   <span className="text-xs px-2 py-0.5 rounded font-semibold" style={{
                     background:
@@ -407,7 +407,7 @@ export function DetailedBreakdownTable({
                   }}>{row.segment}</span>
                 </td>
                 <td className="py-2.5 pr-6 text-white/60 text-xs">{row.territory}</td>
-                <td className="py-2.5 pr-6 text-white text-xs font-mono" style={fontMono}>{formatCompact(row.value)}</td>
+                <td className="py-2.5 pr-6 text-gray-900 text-xs font-mono" style={fontMono}>{formatCompact(row.value)}</td>
                 <td className="py-2.5 text-xs font-semibold font-mono" style={{ ...fontMono, color: row.pctChange >= 0 ? chartColors.green : chartColors.red }}>
                   {row.pctChange >= 0 ? "+" : ""}{row.pctChange}%
                 </td>

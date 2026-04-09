@@ -25,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // Brand assets — local files in /public/brand/
-const LOGO_FULL   = "/brand/logo-black.png";    // full horizontal logo, black — on green sidebar
+const LOGO_FULL   = "/brand/logo-white.png";    // full horizontal logo, white — on dark Forest Leaf sidebar
 const LOGO_ICON   = "/brand/icon-white.png";     // lion icon only, white — collapsed sidebar
 const ICON_CASINO = "/brand/icon-dice-green.png"; // green dice — Casino nav
 const ICON_BOLT   = "/brand/icon-bolt-green.png"; // green bolt — Bonus nav
@@ -167,7 +167,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
-          background: `linear-gradient(180deg, #7ab800 0%, #093508 100%)`,
+          background: "#111827",
           borderRight: "1px solid rgba(255,255,255,0.08)",
         }}
       >

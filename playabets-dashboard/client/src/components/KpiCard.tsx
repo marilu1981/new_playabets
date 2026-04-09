@@ -49,8 +49,8 @@ export default function KpiCard({
       className={cn("stat-card rounded-lg p-4 relative", className)}
       style={{
         background: "#ffffff",
-        border: "1px solid #dde8dd",
-        boxShadow: "0 2px 8px rgba(9, 53, 8, 0.07)",
+        border: "1px solid #e4ece4",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
       }}
     >
       {/* Top accent line — brand gradient */}

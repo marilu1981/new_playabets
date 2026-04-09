@@ -344,7 +344,7 @@ export default function Home() {
 
       {/* ── DAILY HEALTH + PERIOD KPIs ───────────────────────────────────── */}
       {(() => {
-        const TILE_BG = "rgba(0,0,0,0.18)";
+        const TILE_BG = "#f5f9f5";
         const tile = (
           label: string,
           value: string,
@@ -353,15 +353,15 @@ export default function Home() {
           pending = false,
           subtitle?: string,
         ) => (
-          <div className="rounded-lg p-2.5" style={{ background: TILE_BG }}>
+          <div className="rounded-lg p-2.5" style={{ background: TILE_BG, border: "1px solid #dde8dd" }}>
             <div className="flex items-center justify-between mb-1.5">
               <div className="text-[8px] font-bold uppercase tracking-widest truncate" style={{ color: accent }}>{label}</div>
-              <div style={{ color: accent, opacity: 0.55 }}>{icon}</div>
+              <div style={{ color: accent, opacity: 0.65 }}>{icon}</div>
             </div>
-            <div className={`text-lg font-bold leading-tight ${pending ? "text-white/30" : "text-white"}`} style={FONT_MONO}>
+            <div className={`text-lg font-bold leading-tight ${pending ? "text-gray-300" : "text-gray-900"}`} style={FONT_MONO}>
               {value}
             </div>
-            {subtitle && <div className="text-[7px] text-white/35 leading-tight mt-0.5">{subtitle}</div>}
+            {subtitle && <div className="text-[7px] text-gray-400 leading-tight mt-0.5">{subtitle}</div>}
           </div>
         );
 
@@ -375,13 +375,13 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
 
             {/* ── TODAY panel ── */}
-            <div className="rounded-xl overflow-hidden" style={{ background: "#03190C", border: "1px solid #004e21" }}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "#073300" }}>
-                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Today</span>
-                <span className="text-xs text-white/70 font-mono">{latestDataDate ?? "…"}</span>
+            <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #7ab800, #093508)" }}>
+                <span className="text-xs font-bold uppercase tracking-widest text-white">Today</span>
+                <span className="text-xs text-white/80 font-mono">{latestDataDate ?? "…"}</span>
               </div>
               <div className="p-3">
-                <div className="pt-1" style={{ borderColor: "rgba(255,255,255,0.12)" }}>
+                <div className="pt-1">
                   <div className="grid grid-cols-3 gap-2">
                     {tile("GGR",            todayGGR,             CHART_COLORS.gold,          <BarChart2 size={11} />)}
                     {tile("Turnover",       todayTurn,            "oklch(0.75 0.13 220)",     <TrendingUp size={11} />)}
@@ -396,14 +396,14 @@ export default function Home() {
 
             {/* ── PERIOD panel ── */}
             <div className="rounded-xl overflow-hidden" style={CARD_BG}>
-              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "oklch(0.42 0.13 195)" }}>
-                <span className="text-xs font-bold uppercase tracking-widest text-white/90">Period KPIs</span>
-                <span className="text-xs text-white/70 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
+              <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #093508, #7ab800)" }}>
+                <span className="text-xs font-bold uppercase tracking-widest text-white">Period KPIs</span>
+                <span className="text-xs text-white/80 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
               </div>
               <div className="p-3 space-y-3">
                 {/* Revenue group */}
                 <div>
-                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Revenue</div>
+                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Revenue</div>
                   <div className="grid grid-cols-4 gap-2">
                     {tile("GGR",         formatCompact(overviewKPIs.grossRevenue),                                              CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",    formatCompact(overviewKPIs.totalStake),                                                 "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
@@ -412,8 +412,8 @@ export default function Home() {
                   </div>
                 </div>
                 {/* Players group */}
-                <div className="border-t pt-3" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.35)" }}>Players</div>
+                <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
+                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
                   <div className="grid grid-cols-5 gap-2">
                     {tile("Registrations",  formatCompact(kpiRegistrations),                   "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
                     {tile("FTDs",           formatCompact(kpiFtds),                            CHART_COLORS.gold,      <Users size={11} />)}
@@ -432,10 +432,10 @@ export default function Home() {
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Turnover</h3>
-            <p className="text-xs text-white/40">{granularityLabel} total stakes (Sports + Casino) — selected period</p>
+            <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Daily Turnover</h3>
+            <p className="text-xs text-gray-500">{granularityLabel} total stakes (Sports + Casino) — selected period</p>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(13,143,143,0.10)", color: CHART_COLORS.teal }}>7-day MA</span>
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <ComposedChart data={turnoverWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -445,7 +445,7 @@ export default function Home() {
                 <stop offset="95%" stopColor={CHART_COLORS.teal} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
             <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
             <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
@@ -461,14 +461,14 @@ export default function Home() {
         <MockOverlay active={showPendingOverlay} description="Daily GGR pending live data" />
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Daily Gross Gaming Revenue (GGR)</h3>
-            <p className="text-xs text-white/40">GGR = total stakes minus total winnings paid — {granularityLabel} view with 7-day moving average</p>
+            <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Daily Gross Gaming Revenue (GGR)</h3>
+            <p className="text-xs text-gray-500">GGR = total stakes minus total winnings paid — {granularityLabel} view with 7-day moving average</p>
           </div>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.65 0.15 195 / 15%)", color: CHART_COLORS.teal }}>7-day MA</span>
+          <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(13,143,143,0.10)", color: CHART_COLORS.teal }}>7-day MA</span>
         </div>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={dailyTrendWithMA} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
             <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
             <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
@@ -482,8 +482,8 @@ export default function Home() {
       {/* ── STAKE VS REVENUE ─────────────────────────────────────────────── */}
       <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Stake vs Revenue</h3>
-          <p className="text-xs text-white/40">Daily settled stake vs Gross Gaming Revenue — selected period</p>
+          <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Stake vs Revenue</h3>
+          <p className="text-xs text-gray-500">Daily settled stake vs Gross Gaming Revenue — selected period</p>
         </div>
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={stakeVsRevenueTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -497,7 +497,7 @@ export default function Home() {
                 <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
             <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
             <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
             <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${formatCompact(v)}`} />
@@ -514,14 +514,14 @@ export default function Home() {
         <div className="rounded-xl p-5" style={CARD_BG}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Monthly Player Acquisition</h3>
-              <p className="text-xs text-white/40">Registrations vs FTDs</p>
+              <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Monthly Player Acquisition</h3>
+              <p className="text-xs text-gray-500">Registrations vs FTDs</p>
             </div>
           </div>
           {playerAcquisition.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={playerAcquisition} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatCompact(v)} />
@@ -531,7 +531,7 @@ export default function Home() {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-[200px] rounded-lg border border-white/10 bg-white/[0.02] flex items-center justify-center text-xs text-white/50">
+            <div className="h-[200px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-xs text-gray-400">
               No player-acquisition rows for current date range.
             </div>
           )}
@@ -541,20 +541,20 @@ export default function Home() {
         <div className="rounded-xl p-5" style={CARD_BG}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Conversion Rate</h3>
-              <p className="text-xs text-white/40">Registration → FTD rate ({filters.granularity})</p>
-              <p className="text-[10px] text-white/35 mt-1">
+              <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Conversion Rate</h3>
+              <p className="text-xs text-gray-500">Registration → FTD rate ({filters.granularity})</p>
+              <p className="text-[10px] text-gray-400 mt-1">
                 FTDs ÷ registrations: 7d = users who registered and made their first deposit within 7 days
                 (dated to registration day). 30d = same within 30 days.
               </p>
             </div>
-            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(0.72 0.14 85 / 15%)", color: CHART_COLORS.gold }}>
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(122,184,0,0.10)", color: CHART_COLORS.gold }}>
               7d / 30d
             </span>
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={conversionRateTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={40} domain={[0, "auto"]} />
               <Tooltip
@@ -575,9 +575,9 @@ export default function Home() {
         <div className="relative rounded-xl p-5" style={CARD_BG}>
           <MockOverlay active={segmentPending} label="RFM Pending" description="RFM segment snapshot pending" />
           <div className="mb-4">
-            <h3 className="text-sm font-semibold text-white" style={FONT_SERIF}>Segment Distribution — Actives</h3>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/50">{segmentPending ? "Pending RFM" : "RFM snapshot"}</p>
-            <p className="text-xs text-white/40">RFM analysis will categorise players into: VIP · Active · New · Cooling · Lapsed · Dormant</p>
+            <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Segment Distribution — Actives</h3>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">{segmentPending ? "Pending RFM" : "RFM snapshot"}</p>
+            <p className="text-xs text-gray-500">RFM analysis will categorise players into: VIP · Active · New · Cooling · Lapsed · Dormant</p>
           </div>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={160} height={160}>
@@ -593,11 +593,11 @@ export default function Home() {
                 <div key={s.segment} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
-                    <span className="text-xs text-white/70 font-medium">{s.segment}</span>
+                    <span className="text-xs text-gray-700 font-medium">{s.segment}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-mono text-white/80" style={FONT_MONO}>{formatCompact(s.count)}</span>
-                    <span className="text-xs text-white/40 ml-1">({s.pct}%)</span>
+                    <span className="text-xs font-mono text-gray-800" style={FONT_MONO}>{formatCompact(s.count)}</span>
+                    <span className="text-xs text-gray-400 ml-1">({s.pct}%)</span>
                   </div>
                 </div>
               ))}
