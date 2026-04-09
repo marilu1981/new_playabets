@@ -364,7 +364,7 @@ export default function Home() {
               <div className="text-[8px] font-bold uppercase tracking-widest truncate" style={{ color: accent }}>{label}</div>
               <div style={{ color: accent, opacity: 0.65 }}>{icon}</div>
             </div>
-            <div className={`text-lg font-bold leading-tight ${pending ? "text-gray-300" : "text-gray-900"}`} style={FONT_MONO}>
+            <div className={`text-sm font-bold leading-tight break-all ${pending ? "text-gray-300" : "text-gray-900"}`} style={FONT_MONO}>
               {value}
             </div>
             {subtitle && <div className="text-[7px] text-gray-400 leading-tight mt-0.5">{subtitle}</div>}
@@ -378,10 +378,10 @@ export default function Home() {
         const todayCasino  = liveTodayKpis ? formatFull(liveTodayKpis.activeCasino)  : (isLoading ? "…" : "—");
 
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row gap-4 mb-6">
 
             {/* ── TODAY panel ── */}
-            <div className="rounded-xl overflow-hidden" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+            <div className="rounded-xl overflow-hidden lg:w-[36%]" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #7ab800, #093508)" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white">Today</span>
                 <span className="text-xs text-white/80 font-mono">{latestDataDate ?? "…"}</span>
@@ -401,7 +401,7 @@ export default function Home() {
             </div>
 
             {/* ── PERIOD panel ── */}
-            <div className="rounded-xl overflow-hidden" style={CARD_BG}>
+            <div className="rounded-xl overflow-hidden lg:flex-1" style={CARD_BG}>
               <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #093508, #7ab800)" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white">Period KPIs</span>
                 <span className="text-xs text-white/80 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
