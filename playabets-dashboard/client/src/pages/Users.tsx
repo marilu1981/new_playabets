@@ -318,7 +318,6 @@ export default function UsersPage() {
 
     loadLiveData().catch(() => {
       if (!cancelled) {
-        setDataMode("mock");
         setIsLoading(false);
       }
     });

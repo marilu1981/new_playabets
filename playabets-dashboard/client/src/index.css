@@ -1,9 +1,8 @@
 /*
- * PLAYA BETS ANALYTICS DASHBOARD — "Savanna Gold" Design System
- * Design Movement: Premium African Sports Analytics
- * Color Philosophy: Deep forest green (#1A3A2A) + warm gold (#D4A017) + off-white (#F7F3EE)
- * Typography: DM Sans throughout — consistent, clean, highly readable at all sizes
- * Layout: Fixed 240px sidebar + main content area with responsive grid
+ * PLAYA BETS ANALYTICS DASHBOARD — Brand Identity Design System
+ * Brand Colors: Playa Green #7ab800 · Forest Leaf #093508 · Sunny Yellow #ffb500 · Black #000000 · White #ffffff
+ * Typography: Roboto Slab (headings) + Roboto (body) — aligned with brand guidelines
+ * Layout: Fixed 240px sidebar (Forest Leaf dark) + light main content area
  */
 
 @import "tailwindcss";
@@ -53,59 +52,61 @@
   --color-gold-light: var(--gold-light);
   --color-forest: var(--forest);
   --color-forest-deep: var(--forest-deep);
+  --color-brand-yellow: var(--brand-yellow);
   --color-positive: var(--positive);
   --color-negative: var(--negative);
   --color-warning: var(--warning);
 }
 
 :root {
-  /* Savanna Gold palette */
-  --gold: oklch(0.72 0.14 85);         /* #D4A017 warm gold */
-  --gold-light: oklch(0.85 0.10 85);   /* lighter gold */
-  --forest: oklch(0.28 0.07 155);      /* #1A3A2A deep forest green */
-  --forest-deep: oklch(0.18 0.06 155); /* darker forest */
-  --positive: oklch(0.62 0.17 145);    /* green for positive metrics */
-  --negative: oklch(0.55 0.22 25);     /* red for negative metrics */
-  --warning: oklch(0.72 0.17 60);      /* amber for warnings */
+  /* Playabets brand palette */
+  --gold: oklch(0.69 0.19 129);         /* #7ab800 Playa Green — primary brand */
+  --gold-light: oklch(0.82 0.12 129);   /* lighter Playa Green */
+  --forest: oklch(0.18 0.06 145);       /* #093508 Forest Leaf */
+  --forest-deep: oklch(0.13 0.05 145);  /* darker Forest Leaf */
+  --brand-yellow: oklch(0.80 0.19 83);  /* #ffb500 Sunny Yellow */
+  --positive: oklch(0.55 0.17 145);     /* green for positive metrics */
+  --negative: oklch(0.55 0.22 25);      /* red for negative metrics */
+  --warning: oklch(0.80 0.19 83);       /* yellow for warnings */
 
-  /* Core theme — dark mode by default (forest green bg) */
-  --background: oklch(0.14 0.04 155);
-  --foreground: oklch(0.95 0.01 85);
-  --card: oklch(0.19 0.04 155);
-  --card-foreground: oklch(0.95 0.01 85);
-  --popover: oklch(0.22 0.04 155);
-  --popover-foreground: oklch(0.95 0.01 85);
-  --primary: oklch(0.72 0.14 85);
-  --primary-foreground: oklch(0.12 0.04 155);
-  --secondary: oklch(0.24 0.05 155);
-  --secondary-foreground: oklch(0.85 0.01 85);
-  --muted: oklch(0.22 0.04 155);
-  --muted-foreground: oklch(0.65 0.03 155);
-  --accent: oklch(0.28 0.06 155);
-  --accent-foreground: oklch(0.95 0.01 85);
+  /* Light theme */
+  --background: oklch(1 0 0);                    /* #ffffff white */
+  --foreground: oklch(0.08 0 0);                 /* near-black */
+  --card: oklch(0.97 0.004 130);                 /* very light green-tinted white */
+  --card-foreground: oklch(0.08 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.08 0 0);
+  --primary: oklch(0.69 0.19 129);               /* Playa Green */
+  --primary-foreground: oklch(0.05 0 0);         /* black on green */
+  --secondary: oklch(0.94 0.02 130);             /* light green tint */
+  --secondary-foreground: oklch(0.18 0.06 145);  /* Forest Leaf */
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --accent: oklch(0.80 0.19 83);                 /* Sunny Yellow */
+  --accent-foreground: oklch(0.05 0 0);
   --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.72 0.14 85);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.88 0.01 130);                /* subtle green-tinted border */
+  --input: oklch(0.93 0.005 130);
+  --ring: oklch(0.69 0.19 129);                  /* Playa Green focus ring */
   --radius: 0.5rem;
 
-  /* Chart colors — gold to teal spectrum */
-  --chart-1: oklch(0.72 0.14 85);   /* gold */
-  --chart-2: oklch(0.62 0.17 145);  /* green */
-  --chart-3: oklch(0.65 0.15 195);  /* teal */
-  --chart-4: oklch(0.55 0.12 260);  /* blue */
-  --chart-5: oklch(0.72 0.17 60);   /* amber */
+  /* Chart colors — brand palette */
+  --chart-1: oklch(0.69 0.19 129);   /* Playa Green */
+  --chart-2: oklch(0.18 0.06 145);   /* Forest Leaf */
+  --chart-3: oklch(0.80 0.19 83);    /* Sunny Yellow */
+  --chart-4: oklch(0.55 0.16 250);   /* blue */
+  --chart-5: oklch(0.55 0.22 25);    /* red */
 
-  /* Sidebar */
-  --sidebar: oklch(0.16 0.05 155);
-  --sidebar-foreground: oklch(0.90 0.02 85);
-  --sidebar-primary: oklch(0.72 0.14 85);
-  --sidebar-primary-foreground: oklch(0.12 0.04 155);
-  --sidebar-accent: oklch(0.24 0.05 155);
-  --sidebar-accent-foreground: oklch(0.95 0.01 85);
-  --sidebar-border: oklch(1 0 0 / 6%);
-  --sidebar-ring: oklch(0.72 0.14 85);
+  /* Sidebar — Forest Leaf dark (stays dark per brand guidelines) */
+  --sidebar: oklch(0.18 0.06 145);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-primary: oklch(0.69 0.19 129);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.23 0.07 145);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.69 0.19 129);
 }
 
 @layer base {
@@ -114,15 +115,15 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Roboto', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
+    font-family: 'Roboto Slab', serif;
+    font-weight: 800;
     letter-spacing: -0.01em;
   }
   .font-data {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-variant-numeric: tabular-nums;
     font-weight: 500;
   }
@@ -188,14 +189,14 @@
     color: var(--warning);
   }
 
-  /* Gold divider */
+  /* Brand divider */
   .gold-divider {
     height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.4;
+    background: linear-gradient(90deg, #7ab800, #093508);
+    opacity: 0.35;
   }
 
-  /* Stat card shimmer */
+  /* Stat card top accent */
   .stat-card {
     position: relative;
     overflow: hidden;
@@ -207,14 +208,14 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.6;
+    background: linear-gradient(90deg, #7ab800, #093508);
+    opacity: 0.75;
   }
 
   /* Sidebar active indicator */
   .nav-active {
     border-left: 3px solid var(--gold);
-    background: oklch(0.24 0.05 155);
+    background: oklch(0.23 0.07 145);
   }
 
   /* Data value styling */
@@ -223,25 +224,25 @@
     font-size: 0.875rem;
   }
 
-  /* Status badge variants */
+  /* Status badge variants — tuned for light backgrounds */
   .badge-enabled {
-    background: oklch(0.62 0.17 145 / 20%);
-    color: oklch(0.75 0.17 145);
-    border: 1px solid oklch(0.62 0.17 145 / 30%);
+    background: oklch(0.69 0.19 129 / 12%);
+    color: oklch(0.40 0.14 129);
+    border: 1px solid oklch(0.69 0.19 129 / 28%);
   }
   .badge-disabled {
-    background: oklch(0.55 0.22 25 / 20%);
-    color: oklch(0.70 0.18 25);
-    border: 1px solid oklch(0.55 0.22 25 / 30%);
+    background: oklch(0.55 0.22 25 / 12%);
+    color: oklch(0.40 0.18 25);
+    border: 1px solid oklch(0.55 0.22 25 / 28%);
   }
   .badge-pending {
-    background: oklch(0.72 0.17 60 / 20%);
-    color: oklch(0.80 0.14 60);
-    border: 1px solid oklch(0.72 0.17 60 / 30%);
+    background: oklch(0.80 0.19 83 / 18%);
+    color: oklch(0.42 0.15 83);
+    border: 1px solid oklch(0.80 0.19 83 / 35%);
   }
   .badge-frozen {
-    background: oklch(0.65 0.15 195 / 20%);
-    color: oklch(0.75 0.12 195);
-    border: 1px solid oklch(0.65 0.15 195 / 30%);
+    background: oklch(0.65 0.15 195 / 12%);
+    color: oklch(0.38 0.12 195);
+    border: 1px solid oklch(0.65 0.15 195 / 28%);
   }
 }

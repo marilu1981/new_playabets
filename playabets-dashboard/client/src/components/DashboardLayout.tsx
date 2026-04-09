@@ -13,8 +13,6 @@ import {
   Users,
   TrendingUp,
   DollarSign,
-  Gamepad2,
-  Gift,
   ChevronLeft,
   ChevronRight,
   Bell,
@@ -26,15 +24,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Brand asset CDN URLs
-const LOGO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/pbuUURJRZjCKidPW.webp";
-const ICON_HOME_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/yTIiRqYmTtWpCAUn.webp";
-const ICON_MENU_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/NECQouaMlxDKVVSb.webp";
-const ICON_CASINO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/auPImKIFmTCssqJk.webp";
-const ICON_AVIATOR_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/DhSUshpvZmpTpzks.webp";
-const ICON_LOTTO_URL = "https://files.manuscdn.com/user_upload_by_module/session_file/310519663254543073/NfZtMAIBTwiiYSra.webp";
-
-const SIDEBAR_BG = "https://private-us-east-1.manuscdn.com/sessionFile/cKq6wfrB6w3tj51hFB9kbf/sandbox/bUQudPFuU0QLod3pzEsnEY-img-1_1771727906000_na1fn_cGxheWFiZXRzLXNpZGViYXItYmc.png?x-oss-process=image/resize,w_1920,h_1920/format,webp/quality,q_80&Expires=1798761600&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9wcml2YXRlLXVzLWVhc3QtMS5tYW51c2Nkbi5jb20vc2Vzc2lvbkZpbGUvY0txNndmckI2dzN0ajUxaEZCOWtiZi9zYW5kYm94L2JVUXVkUEZ1VTBRTG9kM3B6RXNuRVktaW1nLTFfMTc3MTcyNzkwNjAwMF9uYTFmbl9jR3hoZVdGaVpYUnpMWE5wWkdWaVlYSXRZbWMucG5nP3gtb3NzLXByb2Nlc3M9aW1hZ2UvcmVzaXplLHdfMTkyMCxoXzE5MjAvZm9ybWF0LHdlYnAvcXVhbGl0eSxxXzgwIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk4NzYxNjAwfX19XX0_&Key-Pair-Id=K2HSFNDJXOU9YS&Signature=pA3ZsPLcJLMkqkREcWT7Rd9tENWAsrsx9Ru083kHTN4aFF5tN2T7jqaVZPKjBsWtApcwGBmct60iicQph7tC~NmVWsY3VQZDWMhIvCRTc~JzKnbOKqStYxb4aNbVbnwi2aD3OkcOl8RoOb7N-WPikZ618dX699qOzcBxJvcV2w-yFcegNZnzWfp5yyDkRRZaOcL5q244vfRhWpDV-ge-IOl-E-wg80lUuDO-fsvkoTMRVfjMeZQsVApScGPyFz102jRAD3H8fHiZRQ1mMmnyLxy25Lfxib4AfxFAiG8zS6H-wh9RbIPOUE~QPf2FgmELJWYVznZUEetqzaP869oijA__";
+// Brand assets — local files in /public/brand/
+const LOGO_FULL   = "/brand/logo-black.png";    // full horizontal logo, black — on green sidebar
+const LOGO_ICON   = "/brand/icon-white.png";     // lion icon only, white — collapsed sidebar
+const ICON_CASINO = "/brand/icon-dice-green.png"; // green dice — Casino nav
+const ICON_BOLT   = "/brand/icon-bolt-green.png"; // green bolt — Bonus nav
 
 // ── Sidebar footer with user info + sign out ─────────────────────────────────
 function SidebarFooter({ collapsed }: { collapsed: boolean }) {
@@ -57,7 +51,7 @@ function SidebarFooter({ collapsed }: { collapsed: boolean }) {
       <div className="flex items-center gap-2">
         <div
           className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold"
-          style={{ background: "oklch(0.72 0.14 85 / 20%)", color: "oklch(0.72 0.14 85)" }}
+          style={{ background: "rgba(122, 184, 0, 0.2)", color: "#7ab800" }}
         >
           {initials}
         </div>
@@ -105,7 +99,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Overview",
     items: [
-      { path: "/", label: "Dashboard", imgIcon: ICON_HOME_URL },
+      { path: "/", label: "Dashboard", icon: LayoutDashboard },
     ],
   },
   {
@@ -119,8 +113,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: "Products",
     items: [
-      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO_URL },
-      { path: "/bonus", label: "Bonus & Campaigns", icon: Gift },
+      { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO },
+      { path: "/bonus", label: "Bonus & Campaigns", imgIcon: ICON_BOLT },
     ],
   },
 ];
@@ -173,36 +167,28 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
         style={{
-          background: `linear-gradient(180deg, oklch(0.14 0.05 155) 0%, oklch(0.12 0.04 155) 100%)`,
-          borderRight: "1px solid oklch(1 0 0 / 6%)",
+          background: `linear-gradient(180deg, #7ab800 0%, #093508 100%)`,
+          borderRight: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        {/* Background texture */}
-        <div
-          className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none"
-          style={{ backgroundImage: `url(${SIDEBAR_BG})` }}
-        />
-
         {/* Logo area */}
-        <div className="relative flex items-center gap-2 px-3 py-4 border-b border-white/5">
+        <div className="relative flex items-center gap-2 px-3 py-4 border-b border-white/10">
           {collapsed ? (
-            // Collapsed: show just the lion icon from the logo
+            // Collapsed: lion icon only (white, visible on gradient)
             <div className="flex-1 flex items-center justify-center">
               <img
-                src={LOGO_URL}
+                src={LOGO_ICON}
                 alt="Playa Bets"
-                className="h-7 w-auto object-contain"
-                style={{ filter: "invert(1) brightness(1.1)" }}
+                className="h-8 w-auto object-contain"
               />
             </div>
           ) : (
-            // Expanded: show full logo — invert makes dark logo visible on dark sidebar
+            // Expanded: full black logo — legible on the Playa Green top of gradient
             <div className="flex-1 min-w-0 flex items-center">
               <img
-                src={LOGO_URL}
+                src={LOGO_FULL}
                 alt="Playa Bets"
                 className="h-9 w-auto object-contain max-w-[160px]"
-                style={{ filter: "invert(1) brightness(1.1)" }}
               />
             </div>
           )}
@@ -244,9 +230,8 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
                           alt={item.label}
                           className="flex-shrink-0 w-4 h-4 object-contain"
                           style={{
-                            opacity: isActive ? 1 : 0.45,
-                            filter: isActive ? "brightness(1.3) saturate(1.2)" : "brightness(0.8)",
-                            transition: "opacity 0.15s, filter 0.15s",
+                            opacity: isActive ? 1 : 0.5,
+                            transition: "opacity 0.15s",
                           }}
                         />
                       ) : Icon ? (
@@ -256,7 +241,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
                             "flex-shrink-0 transition-colors",
                             isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
                           )}
-                          style={isActive ? { color: "oklch(0.72 0.14 85)" } : {}}
+                          style={isActive ? { color: "#7ab800" } : {}}
                         />
                       ) : null}
                       {!collapsed && (
@@ -289,52 +274,47 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
         {/* Top bar */}
         <header
           className="flex items-center gap-4 px-6 py-3 border-b"
-          style={{ borderColor: "oklch(1 0 0 / 6%)", background: "oklch(0.16 0.04 155)" }}
+          style={{ borderColor: "#dde8dd", background: "#ffffff" }}
         >
           {/* Mobile menu button */}
           <button
-            className="lg:hidden text-white/50 hover:text-white/80"
+            className="lg:hidden text-gray-500 hover:text-gray-800"
             onClick={() => setMobileOpen(!mobileOpen)}
           >
-            {mobileOpen ? (
-              <X size={20} />
-            ) : (
-              <img src={ICON_MENU_URL} alt="Menu" className="w-5 h-5 object-contain" style={{ filter: "invert(1) opacity(0.6)" }} />
-            )}
+            {mobileOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
 
           {/* Page title */}
           <div className="flex-1 min-w-0">
             {title && (
               <h1
-                className="text-lg font-bold text-white leading-tight truncate"
-               
+                className="text-lg font-bold text-gray-900 leading-tight truncate"
               >
                 {title}
               </h1>
             )}
             {subtitle && (
-              <p className="text-xs text-white/40 truncate">{subtitle}</p>
+              <p className="text-xs text-gray-500 truncate">{subtitle}</p>
             )}
           </div>
 
           {/* Top bar right */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="hidden lg:flex items-center gap-1.5 text-xs text-white/40">
+            <div className="hidden lg:flex items-center gap-1.5 text-xs text-gray-400">
               <Calendar size={12} />
               <span>{today}</span>
             </div>
             {(lastUpdated || lastDataDate) && (
-              <div className="flex items-center gap-1.5 text-xs text-white/40">
-                <Activity size={11} style={{ color: "oklch(0.75 0.17 145)" }} />
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <Activity size={11} style={{ color: "#7ab800" }} />
                 <span>Last data: {lastUpdated ?? lastDataDate}</span>
               </div>
             )}
-            <button className="relative text-white/40 hover:text-white/70 transition-colors">
+            <button className="relative text-gray-400 hover:text-gray-700 transition-colors">
               <Bell size={18} />
               <span
                 className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full text-xs flex items-center justify-center"
-                style={{ background: "oklch(0.72 0.14 85)", color: "oklch(0.12 0.04 155)", fontSize: "9px" }}
+                style={{ background: "#7ab800", color: "#000000", fontSize: "9px" }}
               >
                 3
               </span>
