@@ -47,7 +47,6 @@ import {
   CHART_COLORS,
   FONT_MONO,
   FONT_SERIF,
-  HERO_BG,
   TT_STYLE,
   aggregateByGranularity,
   filterMonthRows,
@@ -318,25 +317,32 @@ export default function Home() {
       {/* ── HERO BANNER ─────────────────────────────────────────────────── */}
       <div
         className="relative rounded-xl overflow-hidden mb-6 p-6"
-        style={{ backgroundImage: `url(${HERO_BG})`, backgroundSize: "cover", backgroundPosition: "center 40%", minHeight: "130px" }}
+        style={{ background: "linear-gradient(135deg, #093508 0%, #1a4a10 50%, #7ab800 100%)", minHeight: "130px" }}
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
-        <div className="relative z-10">
-          <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: CHART_COLORS.gold }}>
-            Playa Bets Analytics
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-1" style={FONT_SERIF}>
-            Gaming Activity Dashboard
-          </h2>
-          <p className="text-sm text-white/60 max-w-lg">
-            Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo}
-          </p>
-          <div className="flex items-center gap-4 mt-3">
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.75 0.17 145)" }}>
-              <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-              Data Connected
+        <div className="absolute inset-0 opacity-10" style={{
+          backgroundImage: "repeating-linear-gradient(45deg, #ffffff 0, #ffffff 1px, transparent 0, transparent 50%)",
+          backgroundSize: "12px 12px",
+        }} />
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#ffb500" }}>
+              Playa Bets Analytics
             </div>
-            <div className="text-xs text-white/40">Last refresh: {getLastUpdated() ?? latestDataDate ?? "…"}</div>
+            <h2 className="text-2xl font-bold text-white mb-1">
+              Gaming Activity Dashboard
+            </h2>
+            <p className="text-sm" style={{ color: "rgba(255,255,255,0.70)" }}>
+              Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo}
+            </p>
+            <div className="flex items-center gap-4 mt-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#7ab800" }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                Data Connected
+              </div>
+              <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Last refresh: {getLastUpdated() ?? latestDataDate ?? "…"}</div>
+            </div>
+          </div>
+          <div className="flex-shrink-0 mt-1">
             <ReportButton data={reportData} />
           </div>
         </div>

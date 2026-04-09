@@ -43,30 +43,30 @@ interface TopFiltersBarProps {
 
 // ── Shared style constants ────────────────────────────────────────────────────
 const BAR_BG: React.CSSProperties = {
-  background: "oklch(0.155 0.045 155)",
-  borderBottom: "1px solid oklch(1 0 0 / 7%)",
+  background: "#ffffff",
+  borderBottom: "1px solid #e4ece4",
 };
 
 // Standard control width — all dropdowns and date inputs use this
 const CTRL_W = 140;
 
 const INPUT_STYLE: React.CSSProperties = {
-  background: "oklch(0.19 0.04 155)",
-  color: "oklch(0.85 0.005 65)",
-  border: "1px solid oklch(1 0 0 / 14%)",
-  colorScheme: "dark",
+  background: "#f4f6f4",
+  color: "#111111",
+  border: "1px solid #d0ddd0",
+  colorScheme: "light",
   width: `${CTRL_W}px`,
 };
 
 const SELECT_STYLE: React.CSSProperties = {
-  background: "oklch(0.19 0.04 155)",
-  color: "oklch(0.85 0.005 65)",
-  border: "1px solid oklch(1 0 0 / 14%)",
+  background: "#f4f6f4",
+  color: "#111111",
+  border: "1px solid #d0ddd0",
   width: `${CTRL_W}px`,
 };
 
 const LABEL_STYLE: React.CSSProperties = {
-  color: "oklch(0.50 0.06 155)",
+  color: "#7ab800",
   fontSize: "10px",
   fontWeight: 600,
   letterSpacing: "0.08em",
@@ -87,7 +87,7 @@ const Divider = () => (
     className="flex-shrink-0 self-stretch"
     style={{
       width: "1px",
-      background: "oklch(1 0 0 / 8%)",
+      background: "#e4ece4",
       margin: "0 4px",
     }}
   />
@@ -116,9 +116,9 @@ function GranularityToggle({
       key={v}
       onClick={() => onChange(v)}
       style={{
-        background: value === v ? "oklch(0.72 0.14 85)" : "oklch(0.19 0.04 155)",
-        color: value === v ? "oklch(0.12 0.04 155)" : "oklch(0.60 0.005 65)",
-        border: "1px solid oklch(1 0 0 / 14%)",
+        background: value === v ? "#7ab800" : "#f4f6f4",
+        color: value === v ? "#000000" : "#555555",
+        border: `1px solid ${value === v ? "#7ab800" : "#d0ddd0"}`,
         fontWeight: value === v ? 700 : 500,
         transition: "all 0.15s",
         cursor: "pointer",
@@ -159,7 +159,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
       {/* ── Vertical "Filters & Controls" label ───────────────────────────── */}
       <div
         className="flex items-center justify-center flex-shrink-0 px-3"
-        style={{ borderRight: "1px solid oklch(1 0 0 / 7%)", minWidth: "36px" }}
+        style={{ borderRight: "1px solid #e4ece4", minWidth: "36px" }}
       >
         <div
           style={{
@@ -172,7 +172,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
         >
           <SlidersHorizontal
             size={12}
-            style={{ color: "oklch(0.72 0.14 85)", transform: "rotate(90deg)" }}
+            style={{ color: "#7ab800", transform: "rotate(90deg)" }}
           />
           <span
             style={{
@@ -180,7 +180,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               fontWeight: 700,
               letterSpacing: "0.12em",
               textTransform: "uppercase",
-              color: "oklch(0.55 0.08 85)",
+              color: "#7ab800",
               whiteSpace: "nowrap",
             }}
           >

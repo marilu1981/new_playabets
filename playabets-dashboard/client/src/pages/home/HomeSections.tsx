@@ -29,55 +29,53 @@ type TransactionSummaryLike = {
 };
 
 export function HomeHeroBanner({
-  heroBg,
   filters,
   granularityLabel,
   latestDataDate,
   dataMode,
   pendingDataItems,
   chartColors,
-  fontSerif,
 }: {
-  heroBg: string;
   filters: { dateFrom: string; dateTo: string };
   granularityLabel: string;
   latestDataDate: string | null;
   dataMode: DataMode;
   pendingDataItems: string[];
   chartColors: ChartColors;
-  fontSerif: CSSProperties;
 }) {
   return (
     <div
       className="relative rounded-xl overflow-hidden mb-6 p-6"
-      style={{ backgroundImage: `url(${heroBg})`, backgroundSize: "cover", backgroundPosition: "center 40%", minHeight: "130px" }}
+      style={{
+        background: "linear-gradient(135deg, #093508 0%, #1a4a10 50%, #7ab800 100%)",
+        minHeight: "130px",
+      }}
     >
-      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+      {/* subtle diagonal pattern overlay */}
+      <div className="absolute inset-0 opacity-10" style={{
+        backgroundImage: "repeating-linear-gradient(45deg, #ffffff 0, #ffffff 1px, transparent 0, transparent 50%)",
+        backgroundSize: "12px 12px",
+      }} />
       <div className="relative z-10">
-        <div className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: chartColors.gold }}>
+        <div className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#ffb500" }}>
           Playa Bets Analytics
         </div>
-        <h2 className="text-2xl font-bold text-white mb-1" style={fontSerif}>
+        <h2 className="text-2xl font-bold text-white mb-1">
           Gaming Activity Dashboard
         </h2>
-        <p className="text-sm text-white/60 max-w-lg">
+        <p className="text-sm mb-0" style={{ color: "rgba(255,255,255,0.70)" }}>
           Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo} · {granularityLabel} view
         </p>
         {latestDataDate && (
-          <p className="text-xs text-white/45 mt-1">Data available through {latestDataDate}</p>
+          <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.50)" }}>Data available through {latestDataDate}</p>
         )}
         <div className="flex items-center gap-4 mt-3">
-          <div className="flex items-center gap-1.5 text-xs" style={{ color: "oklch(0.75 0.17 145)" }}>
+          <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#7ab800" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-            DWH Connected ({dataMode === "live" ? "Live" : dataMode === "partial" ? "Partial Live" : "Mock"})
+            {dataMode === "live" ? "Data Connected" : dataMode === "partial" ? "Partial Live" : "Mock Data"}
           </div>
-          <div className="text-xs text-white/40">Last refresh: just now</div>
+          <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Last refresh: {latestDataDate ?? "…"}</div>
         </div>
-        {dataMode !== "mock" && (
-          <div className="text-xs text-white/45 mt-2">
-            Pending: {pendingDataItems.join(", ")}.
-          </div>
-        )}
       </div>
     </div>
   );
