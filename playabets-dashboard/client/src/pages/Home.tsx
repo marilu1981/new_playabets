@@ -34,7 +34,7 @@ import {
   transactionSummary as baseTransactionSummary,
   dailyTrendWithMA as baseDailyTrendWithMA,
 } from "@/lib/mockData";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatFull } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -371,11 +371,11 @@ export default function Home() {
           </div>
         );
 
-        const todayGGR     = liveTodayKpis ? formatCompact(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
-        const todayTurn    = liveTodayKpis ? formatCompact(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
-        const todayRegs    = liveTodayKpis ? formatCompact(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
-        const todaySports  = liveTodayKpis ? formatCompact(liveTodayKpis.activeSports)  : (isLoading ? "…" : "—");
-        const todayCasino  = liveTodayKpis ? formatCompact(liveTodayKpis.activeCasino)  : (isLoading ? "…" : "—");
+        const todayGGR     = liveTodayKpis ? formatFull(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
+        const todayTurn    = liveTodayKpis ? formatFull(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
+        const todayRegs    = liveTodayKpis ? formatFull(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
+        const todaySports  = liveTodayKpis ? formatFull(liveTodayKpis.activeSports)  : (isLoading ? "…" : "—");
+        const todayCasino  = liveTodayKpis ? formatFull(liveTodayKpis.activeCasino)  : (isLoading ? "…" : "—");
 
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -411,10 +411,10 @@ export default function Home() {
                 <div>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Revenue</div>
                   <div className="grid grid-cols-5 gap-2">
-                    {tile("GGR",          formatCompact(overviewKPIs.grossRevenue),                                                                                                   CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                    {tile("Turnover",     formatCompact(overviewKPIs.totalStake),                                                                                                      "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                    {tile("Deposits",     hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",                                                         CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
-                    {tile("Withdrawals",  hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",                                                       CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                    {tile("GGR",          formatFull(overviewKPIs.grossRevenue),                                                                                                   CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                    {tile("Turnover",     formatFull(overviewKPIs.totalStake),                                                                                                      "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                    {tile("Deposits",     hasTransactionsData ? formatFull(transactionSummary.totalDeposits)  : "Pending",                                                         CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
+                    {tile("Withdrawals",  hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                                                       CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
                     {tile("Net Cash %",   hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
                       : "Pending",                                                                                                                                                    CHART_COLORS.teal,      <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
@@ -424,11 +424,11 @@ export default function Home() {
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
                   <div className="grid grid-cols-5 gap-2">
-                    {tile("Registrations",  formatCompact(kpiRegistrations),                   "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                    {tile("FTDs",           formatCompact(kpiFtds),                            CHART_COLORS.gold,      <Users size={11} />)}
+                    {tile("Registrations",  formatFull(kpiRegistrations),                   "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                    {tile("FTDs",           formatFull(kpiFtds),                            CHART_COLORS.gold,      <Users size={11} />)}
                     {tile("Conv Rate",      `${periodConvRate}%`,                              CHART_COLORS.amber,     <Percent size={11} />)}
-                    {tile("Sports Actives", formatCompact(overviewKPIs.activesSports),         "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
-                    {tile("Casino Actives", formatCompact(overviewKPIs.activesCasino),         CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
+                    {tile("Sports Actives", formatFull(overviewKPIs.activesSports),         "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
+                    {tile("Casino Actives", formatFull(overviewKPIs.activesCasino),         CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
                   </div>
                 </div>
               </div>
