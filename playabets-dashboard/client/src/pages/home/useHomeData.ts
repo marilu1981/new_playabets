@@ -51,7 +51,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     registrations: number;
     activeSports: number;
     activeCasino: number;
+    ftds: number;
   } | null>(null);
+  const [livePlayerAcquisitionDaily, setLivePlayerAcquisitionDaily] = useState<Array<{ date: string; registrations: number; ftds: number }> | null>(null);
+  const [liveDailyConvRate, setLiveDailyConvRate] = useState<Array<{ date: string; rate: number }> | null>(null);
+  const [liveSportsCasinoGgr, setLiveSportsCasinoGgr] = useState<{ sports: number; casino: number } | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
@@ -346,6 +350,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             }))
           : null
       );
+
+      // Sports vs Casino GGR totals for the period
+      const totalSportsGgr = Array.from(sportsbookByDate.values()).reduce((s, r) => s + r.ggr, 0);
+      const totalCasinoGgr = Array.from(casinoByDate.values()).reduce((s, r) => s + r.ggr, 0);
+      setLiveSportsCasinoGgr({ sports: totalSportsGgr, casino: totalCasinoGgr });
 
       setLiveRevenueTrend(
         metrics.length > 0
