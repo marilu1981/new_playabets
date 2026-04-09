@@ -29,18 +29,52 @@ SERVING = SERVING_ROOT
 def main() -> None:
     SERVING.mkdir(parents=True, exist_ok=True)
 
-    # Transactions are temporarily paused while the source export is unavailable.
+    # Transactions — two possible sources:
+    # 1. Pre-aggregated files (transactions_daily_agg_*.parquet) written by
+    #    incremental_transactions_simple.py — used when raw row export is not
+    #    feasible (view_transactions has ~4M rows/day, no usable index).
+    # 2. Raw row increments (transactions_increment_*.parquet) written by
+    #    incremental_transactions.py — used if a row-level export ever works.
     if ENABLE_TRANSACTIONS:
         tx_dir = RAW / "transactions"
+        out = SERVING / "transactions_daily.parquet"
         if tx_dir.exists():
-            tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")
-            out = SERVING / "transactions_daily.parquet"
-            if tx_raw.empty:
-                print("[domain_kpis] Transactions raw is empty - keeping existing serving file")
-            else:
-                tx_daily = compute_transactions_daily(tx_raw)
+            # Pre-aggregated files take priority — merge all daily agg files.
+            agg_files = sorted(tx_dir.glob("transactions_daily_agg_*.parquet"))
+            if agg_files:
+                tx_daily = pd.concat(
+                    (pd.read_parquet(f) for f in agg_files), ignore_index=True
+                )
+                # Deduplicate: keep latest file's data for each date.
+                tx_daily["date"] = pd.to_datetime(tx_daily["date"]).dt.date
+                tx_daily = tx_daily.sort_values("date").drop_duplicates(
+                    subset=["date"], keep="last"
+                )
+                # Ensure all expected columns exist (fill with 0 if absent).
+                for col in [
+                    "deposits", "withdrawals", "net_deposits",
+                    "unique_depositors", "deposit_count", "withdrawal_count",
+                    "tx_count_accepted", "tx_count_pending",
+                    "tx_count_system", "tx_count_other_status",
+                ]:
+                    if col not in tx_daily.columns:
+                        tx_daily[col] = 0
+                if "tx_count" not in tx_daily.columns:
+                    tx_daily["tx_count"] = (
+                        tx_daily.get("deposit_count", 0)
+                        + tx_daily.get("withdrawal_count", 0)
+                    )
                 tx_daily.to_parquet(out, index=False)
-                print(f"[domain_kpis] Transactions daily: {len(tx_daily)} rows -> {out}")
+                print(f"[domain_kpis] Transactions daily (pre-agg): {len(tx_daily)} rows -> {out}")
+            else:
+                # Fall back to raw row-level increments.
+                tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")
+                if tx_raw.empty:
+                    print("[domain_kpis] Transactions raw is empty - keeping existing serving file")
+                else:
+                    tx_daily = compute_transactions_daily(tx_raw)
+                    tx_daily.to_parquet(out, index=False)
+                    print(f"[domain_kpis] Transactions daily (raw rows): {len(tx_daily)} rows -> {out}")
         else:
             print("[domain_kpis] No transactions raw dir - skipping")
     else:
@@ -52,11 +86,13 @@ def main() -> None:
         bonus_raw = read_all_parquets(bonus_dir, "bonuses_increment_*.parquet")
         campaigns_latest = bonus_dir / "campaigns_latest.parquet"
         campaigns_raw = pd.read_parquet(campaigns_latest) if campaigns_latest.exists() else pd.DataFrame()
+        freebets_latest = bonus_dir / "freebets_latest.parquet"
+        freebets_raw = pd.read_parquet(freebets_latest) if freebets_latest.exists() else pd.DataFrame()
         out = SERVING / "bonus_daily.parquet"
         if bonus_raw.empty:
             print("[domain_kpis] Bonus raw is empty - keeping existing serving file")
         else:
-            bonus_daily = compute_bonus_daily(bonus_raw, campaigns=campaigns_raw)
+            bonus_daily = compute_bonus_daily(bonus_raw, campaigns=campaigns_raw, freebets=freebets_raw)
             bonus_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
     else:

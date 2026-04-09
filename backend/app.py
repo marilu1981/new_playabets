@@ -732,7 +732,10 @@ def kpis(
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings
     ggr = sportsbook_ggr + casino_ggr
-    bonus_spent = _s(bonus, "bonus_credited")
+    # bonus_total = credited bonuses + used freebets (real bonus exposure)
+    # Falls back to bonus_credited if bonus_total not yet in serving file.
+    bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
+    freebet_spend = _s(bonus, "freebet_spend")
     ngr = ggr - bonus_spent
 
     filtered_registrations = _filtered_registration_total(start, end, territory, country, customer_status, current_segment) if allowed_ids is not None else None
@@ -747,6 +750,8 @@ def kpis(
         "winnings": winnings,
         "ggr": ggr,
         "ngr": ngr,
+        "bonus_spent": bonus_spent,
+        "freebet_spend": freebet_spend,
         "sportsbook_turnover": sportsbook_turnover,
         "sportsbook_winnings": sportsbook_winnings,
         "sportsbook_ggr": sportsbook_ggr,
@@ -1098,7 +1103,8 @@ def _summary_period(start: date, end: date) -> dict:
     casino_rtp = round(100.0 - casino_margin, 1)
 
     total_ggr = sports_ggr + casino_ggr
-    bonus_spent = _s(bonus, "bonus_credited")
+    bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
+    freebet_spend = _s(bonus, "freebet_spend")
     ngr = total_ggr - bonus_spent
     total_turnover = sports_turnover + casino_stake
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
@@ -1109,7 +1115,7 @@ def _summary_period(start: date, end: date) -> dict:
         "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
         "actives_sports": actives_sports, "actives_casino": actives_casino,
         "turnover": round(total_turnover, 2), "ggr": round(total_ggr, 2),
-        "ngr": round(ngr, 2), "hold_pct": hold_pct, "bonus_spent": round(bonus_spent, 2),
+        "ngr": round(ngr, 2), "hold_pct": hold_pct, "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,

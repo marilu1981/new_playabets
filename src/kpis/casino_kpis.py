@@ -156,8 +156,18 @@ def compute_casino_provider_daily(casino: pd.DataFrame) -> pd.DataFrame:
         casino["_ord"] = pd.to_datetime(casino[order_col], errors="coerce")
         casino = casino.sort_values("_ord").drop_duplicates(subset=[casino_id_col], keep="last")
 
-    casino["provider_name"] = (casino[provider_col].astype(str).str.replace(r"^Intelligent", "", regex=True).str.strip())
-    casino["casino_type"] = casino[type_col].astype(str) if type_col else "Casino"
+    # Normalise provider name: strip "Intelligent" prefix from IGT/Betmakers products.
+    raw_provider = casino[provider_col].astype(str)
+    casino["provider_name"] = raw_provider.str.replace(r"^Intelligent", "", regex=True).str.strip()
+
+    # Classify Horse Racing (IntelligentGamingBetmakers / Betmakers) vs Casino.
+    # All other providers fall through to the casino_type column value.
+    _is_horse_racing = raw_provider.str.contains("Betmakers", case=False, na=False)
+    if type_col:
+        _type_from_col = casino[type_col].astype(str)
+        casino["casino_type"] = _type_from_col.where(~_is_horse_racing, other="Horse Racing")
+    else:
+        casino["casino_type"] = _is_horse_racing.map({True: "Horse Racing", False: "Casino"})
     casino["stake_num"] = to_num(casino[stake], default=0.0)
     casino["winnings_num"] = to_num(casino[winnings], default=0.0)
     casino["casino_date"] = to_date(casino[date_c])

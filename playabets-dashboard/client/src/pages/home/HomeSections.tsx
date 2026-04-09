@@ -3,7 +3,7 @@ import { Activity, ArrowUpRight, BarChart2, DollarSign, Download, Percent, Trend
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import KpiCard from "@/components/KpiCard";
 import MockOverlay from "@/components/MockOverlay";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatFull } from "@/lib/formatters";
 import { fmtMetric, isPctChangeReliable, pctChange, type DataMode, type MetricRow } from "./homeUtils";
 
 type ChartColors = Record<string, string>;
@@ -116,13 +116,13 @@ export function HomePrimaryKpis({
         </h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-5 gap-3 mb-3">
-        <KpiCard title="Registrations" value={formatCompact(kpiRegistrations)} subtitle="Selected range" icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="FTDs" value={formatCompact(kpiFtds)} subtitle="First-time depositors" icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Sports Actives" value={formatCompact(overviewKpis.activesSports)} subtitle="Unique sports users" icon={<Activity size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Casino Actives" value={formatCompact(overviewKpis.activesCasino)} subtitle="Unique casino users" icon={<Activity size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Registrations" value={formatFull(kpiRegistrations)} subtitle="Selected range" icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
+        <KpiCard title="FTDs" value={formatFull(kpiFtds)} subtitle="First-time depositors" icon={<Users size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Sports Actives" value={formatFull(overviewKpis.activesSports)} subtitle="Unique sports users" icon={<Activity size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Casino Actives" value={formatFull(overviewKpis.activesCasino)} subtitle="Unique casino users" icon={<Activity size={18} />} accent="gold" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
-          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalDeposits)}` : "Pending"}
+          value={hasTransactionsData ? formatFull(transactionSummary.totalDeposits) : "Pending"}
           subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
           icon={<DollarSign size={18} />}
           accent="amber"
@@ -132,14 +132,14 @@ export function HomePrimaryKpis({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
         <KpiCard
           title="Total Withdrawals"
-          value={hasTransactionsData ? `${formatCompact(transactionSummary.totalWithdrawals)}` : "Pending"}
+          value={hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending"}
           subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
           icon={<ArrowUpRight size={18} />}
           accent="red"
           loading={isLoading}
         />
-        <KpiCard title="Total Turnover" value={`${formatCompact(overviewKpis.totalStake)}`} subtitle="Sports + Casino" icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="GGR" value={`${formatCompact(overviewKpis.grossRevenue)}`} subtitle={`Sports + Casino · ${margin}% margin`} icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Total Turnover" value={formatFull(overviewKpis.totalStake)} subtitle="Sports + Casino" icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
+        <KpiCard title="GGR" value={formatFull(overviewKpis.grossRevenue)} subtitle={`Sports + Casino · ${margin}% margin`} icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} icon={<Percent size={18} />} accent="green" loading={isLoading} />

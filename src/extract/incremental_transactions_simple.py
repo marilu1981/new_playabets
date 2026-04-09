@@ -1,201 +1,198 @@
 """
 incremental_transactions_simple.py
 ----------------------------------
-Runs the DWH team's recommended transaction query style:
-1) find min/max TransactionID for a date window
-2) use TransactionID BETWEEN bounds for the main query
+Pulls daily transaction aggregates from Dwh_en.view_transactions and writes
+pre-aggregated Parquet files to data/raw/transactions/.
+
+Why pre-aggregate in SQL (not pull raw rows):
+  view_transactions has ~4M rows/day. Pulling raw rows would never complete.
+  Instead we run two fast inlined-date queries (~83s deposits, ~41s withdrawals)
+  and write the daily summary directly.
+
+Timezone handling — SAST (UTC+2):
+  The DWH stores timestamps in UTC.  Dashboard dates are SAST calendar days.
+  SAST midnight for date D = UTC 22:00 on D-1.
+  So for SAST date "2026-04-08" the SQL window is:
+      Date >= '2026-04-07 22:00:00' AND Date < '2026-04-08 22:00:00'
+  START_DATE / END_DATE are SAST calendar dates; UTC conversion is done internally.
+
+Output file pattern:
+  data/raw/transactions/transactions_daily_agg_{SAST_date}.parquet
+  Columns: date, deposits, withdrawals, net_deposits, unique_depositors,
+           deposit_count, withdrawal_count, tx_count
+
+build_domain_kpis.py detects these _agg_ files and uses them directly,
+bypassing transactions_kpi.py (which expects raw row-level data).
+
+DWH team guidance:
+  - Inline dates as string literals in WHERE — parameterised placeholders timeout.
+  - Run after :20 past the hour so DWH ETL has finished loading.
 
 Run from the project root:
     python -m src.extract.incremental_transactions_simple
+
+Optional env overrides:
+    START_DATE   SAST date e.g. "2026-04-08"  (default: yesterday SAST)
+    END_DATE     SAST date e.g. "2026-04-09"  (default: today SAST, gives full yesterday)
+    WAIT_FOR_20  set to "0" to skip the :20 guard (default: "1")
 """
 from __future__ import annotations
 
-from pathlib import Path
+import os
+import time
 from time import perf_counter
-
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC, timedelta, date
 
 import pandas as pd
 from pandas.errors import DatabaseError
 from sqlalchemy import text
 
 from src.extract.db_utils import build_engine
+from src.app_config import RAW_ROOT
 
 VIEW_NAME = "Dwh_en.view_transactions"
-START_DATE = "2026-03-15 00:00:00"
-END_DATE = "2026-03-15 06:00:00"
-RUN_DAY_BY_DAY = False
-WINDOW_HOURS = 1
 
+_yesterday = (date.today() - timedelta(days=1)).isoformat()
+_today     = date.today().isoformat()
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OUT_DIR = PROJECT_ROOT / "data" / "raw" / "transactions"
+START_DATE  = os.environ.get("START_DATE", _yesterday)   # inclusive
+END_DATE    = os.environ.get("END_DATE",   _today)        # exclusive upper bound
+WAIT_FOR_20 = os.environ.get("WAIT_FOR_20", "1") == "1"
 
-def _parse_date(value: str) -> datetime:
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
-        try:
-            return datetime.strptime(value, fmt)
-        except ValueError:
-            continue
-    raise ValueError(f"Unsupported date format: {value}")
-
-
-def _windows() -> list[tuple[str, str | None]]:
-    if not END_DATE:
-        return [(START_DATE, None)]
-    if WINDOW_HOURS and WINDOW_HOURS > 0:
-        start = _parse_date(START_DATE)
-        end = _parse_date(END_DATE)
-        windows: list[tuple[str, str | None]] = []
-        current = start
-        while current < end:
-            nxt = min(current + timedelta(hours=WINDOW_HOURS), end)
-            windows.append(
-                (
-                    current.strftime("%Y-%m-%d %H:%M:%S"),
-                    nxt.strftime("%Y-%m-%d %H:%M:%S"),
-                )
-            )
-            current = nxt
-        return windows
-    if not RUN_DAY_BY_DAY:
-        return [(START_DATE, END_DATE)]
-
-    start = _parse_date(START_DATE)
-    end = _parse_date(END_DATE)
-    windows: list[tuple[str, str | None]] = []
-    current = start
-    while current < end:
-        nxt = current + timedelta(days=1)
-        windows.append((current.strftime("%Y-%m-%d"), nxt.strftime("%Y-%m-%d")))
-        current = nxt
-    return windows
-
+OUT_DIR = RAW_ROOT / "transactions"
 
 
 def _log(msg: str) -> None:
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[transactions_simple] {ts} UTC | {msg}")
+    print(f"[transactions] {ts} UTC | {msg}")
 
 
-def _describe_db_error(step: str, exc: Exception) -> None:
-    msg = str(exc).lower()
-    if "timeout" in msg or "hyt00" in msg:
-        _log(f"{step} timed out. Try a narrower date window or increase DWH_QUERY_TIMEOUT_SECONDS.")
-    elif "08s01" in msg or "communication link failure" in msg or "10053" in msg:
-        _log(f"{step} lost the SQL connection. Try again later or reduce the date window.")
-    else:
-        _log(f"{step} failed with a database error.")
+def _wait_until_20_past() -> None:
+    """Block until :20 past the hour. DWH ETL loads on the hour."""
+    now = datetime.now(UTC)
+    if now.minute >= 20:
+        return
+    target = now.replace(minute=20, second=0, microsecond=0)
+    wait_s = (target - now).total_seconds()
+    _log(f"Waiting {wait_s:.0f}s until :20 past the hour (DWH ETL guard)...")
+    time.sleep(wait_s)
+    _log("Resuming.")
 
 
-def _fetch_id_range(conn, window_start: str, window_end: str | None) -> tuple[int | None, int | None]:
-    if window_end:
-        id_range_query = text(f"""
-            SELECT
-                MIN(TransactionID) AS min_id,
-                MAX(TransactionID) AS max_id
-            FROM {VIEW_NAME}
-            WHERE Date >= :start_date
-              AND Date < :end_date
-        """)
-        params = {"start_date": window_start, "end_date": window_end}
-    else:
-        id_range_query = text(f"""
-            SELECT
-                MIN(TransactionID) AS min_id,
-                MAX(TransactionID) AS max_id
-            FROM {VIEW_NAME}
-            WHERE Date >= :start_date
-        """)
-        params = {"start_date": window_start}
-
-    t0 = perf_counter()
-    _log("Running TransactionID MIN/MAX lookup...")
-    row = conn.execute(id_range_query, params).fetchone()
-    elapsed = perf_counter() - t0
-
-    min_id = row[0] if row else None
-    max_id = row[1] if row else None
-    _log(f"TransactionID MIN/MAX lookup complete in {elapsed:.1f}s | min_id={min_id} | max_id={max_id}")
-    return min_id, max_id
+def _safe_date(val: str) -> str:
+    """Ensure only safe characters before inlining into SQL."""
+    if not all(c in "0123456789-: " for c in val):
+        raise ValueError(f"Unsafe date value: {val!r}")
+    return val
 
 
-def _run_aggregate_query(conn, min_id: int, max_id: int) -> pd.DataFrame:
-    aggregate_query = text(f"""
+def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
+    """
+    Convert a SAST calendar date string to UTC query boundaries.
+    SAST midnight = UTC 22:00 the previous day.
+
+    e.g. "2026-04-08"  →  ("2026-04-07 22:00:00", "2026-04-08 22:00:00")
+    """
+    from datetime import date as _date
+    d = _date.fromisoformat(sast_date)
+    utc_start = str(d - timedelta(days=1)) + " 22:00:00"
+    utc_end   = str(d) + " 22:00:00"
+    return _safe_date(utc_start), _safe_date(utc_end)
+
+
+def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
+    s, e = _sast_day_utc_window(sast_date)
+    q = text(f"""
         SELECT
-            CAST(Date AS DATE) AS tx_date,
-            SUM(CASE WHEN TransactionAmountTypeID = 1 THEN ABS(Amount) ELSE 0 END) AS total_deposits,
-            SUM(CASE WHEN TransactionAmountTypeID = 2 THEN ABS(Amount) ELSE 0 END) AS total_withdrawals,
-            COUNT(DISTINCT UserID) AS unique_depositors
+            SUM(ABS(Amount))        AS deposits,
+            COUNT(DISTINCT UserID)  AS unique_depositors,
+            COUNT(*)                AS deposit_count
         FROM {VIEW_NAME}
-        WHERE TransactionID BETWEEN :min_id AND :max_id
-        GROUP BY CAST(Date AS DATE)
-        ORDER BY tx_date DESC
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND TransactionAmountTypeID = 1
     """)
-
     t0 = perf_counter()
-    _log("Running aggregate query for resolved TransactionID range...")
-    df = pd.read_sql(aggregate_query, conn, params={"min_id": min_id, "max_id": max_id})
-    _log(f"Aggregate query complete in {perf_counter() - t0:.1f}s | rows: {len(df)}")
+    _log(f"Querying deposits: {s} → {e}  (SAST {sast_date})")
+    df = pd.read_sql(q, conn)
+    _log(f"Deposits done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
+    return df
+
+
+def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
+    s, e = _sast_day_utc_window(sast_date)
+    q = text(f"""
+        SELECT
+            SUM(ABS(Amount))    AS withdrawals,
+            COUNT(*)            AS withdrawal_count
+        FROM {VIEW_NAME}
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND TransactionAmountTypeID = 2
+    """)
+    t0 = perf_counter()
+    _log(f"Querying withdrawals: {s} → {e}  (SAST {sast_date})")
+    df = pd.read_sql(q, conn)
+    _log(f"Withdrawals done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
+    return df
+
+
+def _merge(sast_date: str, deposits: pd.DataFrame, withdrawals: pd.DataFrame) -> pd.DataFrame:
+    dep = float(deposits["deposits"].iloc[0])          if not deposits.empty else 0.0
+    uniq = int(deposits["unique_depositors"].iloc[0])  if not deposits.empty else 0
+    dep_cnt = int(deposits["deposit_count"].iloc[0])   if not deposits.empty else 0
+    wd  = float(withdrawals["withdrawals"].iloc[0])    if not withdrawals.empty else 0.0
+    wd_cnt = int(withdrawals["withdrawal_count"].iloc[0]) if not withdrawals.empty else 0
+
+    from datetime import date as _date
+    df = pd.DataFrame([{
+        "date":               _date.fromisoformat(sast_date),
+        "deposits":           dep,
+        "unique_depositors":  uniq,
+        "deposit_count":      dep_cnt,
+        "withdrawals":        wd,
+        "withdrawal_count":   wd_cnt,
+        "net_deposits":       dep - wd,
+        "tx_count":           dep_cnt + wd_cnt,
+    }])
     return df
 
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _log(f"Start date: {START_DATE}")
-    if END_DATE:
-        _log(f"End date: {END_DATE}")
-    if WINDOW_HOURS and END_DATE:
-        _log(f"Hour window mode: {WINDOW_HOURS}h")
-    if RUN_DAY_BY_DAY and END_DATE:
-        _log("Day-by-day mode: enabled")
+    utc_s, utc_e = _sast_day_utc_window(START_DATE)
+    _log(f"SAST date: {START_DATE}  →  UTC window: {utc_s} to {utc_e}")
+
+    if WAIT_FOR_20:
+        _wait_until_20_past()
 
     engine = build_engine()
-    frames: list[pd.DataFrame] = []
     try:
         with engine.connect() as conn:
-            t0 = perf_counter()
-
-            for idx, (window_start, window_end) in enumerate(_windows(), start=1):
-                if window_end:
-                    _log(f"Window {idx}: {window_start} -> {window_end}")
-                else:
-                    _log(f"Window {idx}: {window_start}+")
-                min_id, max_id = _fetch_id_range(conn, window_start, window_end)
-                if min_id is None or max_id is None:
-                    _log(f"Window {idx} has no matching TransactionID range. Skipping.")
-                    continue
-                window_df = _run_aggregate_query(conn, min_id, max_id)
-                _log(f"Window {idx} complete | rows: {len(window_df)}")
-                if not window_df.empty:
-                    frames.append(window_df)
-
+            deposits    = _query_deposits(conn, START_DATE)
+            withdrawals = _query_withdrawals(conn, START_DATE)
     except DatabaseError as exc:
-        _describe_db_error("Transaction simple extract", exc)
+        msg = str(exc).lower()
+        if "timeout" in msg or "hyt00" in msg:
+            _log("Query timed out. Try increasing DWH_QUERY_TIMEOUT_SECONDS.")
+        else:
+            _log(f"Database error: {exc}")
         raise
 
-    if not frames:
-        _log("No data in this date window.")
+    dep_val = float(deposits["deposits"].iloc[0]) if not deposits.empty else 0.0
+    wd_val  = float(withdrawals["withdrawals"].iloc[0]) if not withdrawals.empty else 0.0
+    if dep_val == 0 and wd_val == 0:
+        _log("No data returned for this date window.")
         return
 
-    df = pd.concat(frames, ignore_index=True)
-    df = (
-        df.groupby("tx_date", as_index=False)
-        .agg(
-            total_deposits=("total_deposits", "sum"),
-            total_withdrawals=("total_withdrawals", "sum"),
-            unique_depositors=("unique_depositors", "max"),
-        )
-        .sort_values("tx_date", ascending=False)
-    )
+    df = _merge(START_DATE, deposits, withdrawals)
+    _log(f"Rows: {len(df)}")
+    _log("\n" + df.to_string(index=False))
 
-    _log(f"Rows pulled: {len(df)}")
-
-    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-
-    out_file = OUT_DIR / f"transactions_simple_daily_{ts}.parquet"
+    # Named by SAST date for easy deduplication by build_domain_kpis.py
+    out_file = OUT_DIR / f"transactions_daily_agg_{START_DATE}.parquet"
     df.to_parquet(out_file, index=False)
-    _log(f"Saved to {out_file}")
+    _log(f"Saved → {out_file}")
 
 
 if __name__ == "__main__":

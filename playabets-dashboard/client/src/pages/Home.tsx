@@ -335,9 +335,9 @@ export default function Home() {
               Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo}
             </p>
             <div className="flex items-center gap-4 mt-3">
-              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: "#7ab800" }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-                Data Connected
+              <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: dataMode === "live" ? "#7ab800" : dataMode === "partial" ? "#ffb500" : "rgba(255,255,255,0.4)" }}>
+                <span className={`w-1.5 h-1.5 rounded-full bg-current ${dataMode === "live" ? "animate-pulse" : ""}`} />
+                {dataMode === "live" ? "Data Connected" : dataMode === "partial" ? "Partial Live" : "Mock Data"}
               </div>
               <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Last refresh: {getLastUpdated() ?? latestDataDate ?? "…"}</div>
             </div>
@@ -410,11 +410,14 @@ export default function Home() {
                 {/* Revenue group */}
                 <div>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Revenue</div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {tile("GGR",         formatCompact(overviewKPIs.grossRevenue),                                              CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                    {tile("Turnover",    formatCompact(overviewKPIs.totalStake),                                                 "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                    {tile("Deposits",    hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",    CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
-                    {tile("Withdrawals", hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",  CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                  <div className="grid grid-cols-5 gap-2">
+                    {tile("GGR",          formatCompact(overviewKPIs.grossRevenue),                                                                                                   CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                    {tile("Turnover",     formatCompact(overviewKPIs.totalStake),                                                                                                      "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                    {tile("Deposits",     hasTransactionsData ? formatCompact(transactionSummary.totalDeposits)  : "Pending",                                                         CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
+                    {tile("Withdrawals",  hasTransactionsData ? formatCompact(transactionSummary.totalWithdrawals) : "Pending",                                                       CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                    {tile("Net Cash %",   hasTransactionsData && transactionSummary.totalDeposits > 0
+                      ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
+                      : "Pending",                                                                                                                                                    CHART_COLORS.teal,      <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
                   </div>
                 </div>
                 {/* Players group */}

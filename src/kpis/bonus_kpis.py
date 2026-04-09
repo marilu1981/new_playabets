@@ -39,8 +39,49 @@ def _first_deposit_campaign_ids(campaigns: pd.DataFrame) -> set[int]:
     return set(ids.tolist())
 
 
-def compute_bonus_daily(bonuses: pd.DataFrame, campaigns: pd.DataFrame | None = None) -> pd.DataFrame:
-    """Daily bonus crediting metrics from view_BonusBonuses (+ first-deposit proxy from BonusType)."""
+def _compute_freebets_daily(freebets: pd.DataFrame) -> pd.DataFrame:
+    """
+    Daily free-bet spend from view_BonusFreebets.
+    FreeBetStatusId=2 = Used/Settled (the freebet was actually played).
+    Returns: date, freebet_spend, freebet_count
+    """
+    if freebets.empty:
+        return pd.DataFrame(columns=["date", "freebet_spend", "freebet_count"])
+
+    fb, fcol = normalize_cols(freebets)
+    if "freebetstatusid" not in fcol or "insertdate" not in fcol or "amount" not in fcol:
+        return pd.DataFrame(columns=["date", "freebet_spend", "freebet_count"])
+
+    # Status 2 = Used — freebet was actually played (not expired/cancelled)
+    fb = fb[pd.to_numeric(fb[fcol["freebetstatusid"]], errors="coerce") == 2].copy()
+    if fb.empty:
+        return pd.DataFrame(columns=["date", "freebet_spend", "freebet_count"])
+
+    fb["freebet_date"] = to_date(fb[fcol["insertdate"]])
+    fb["amount_num"] = to_num(fb[fcol["amount"]], default=0.0)
+
+    out = (
+        fb.dropna(subset=["freebet_date"])
+        .groupby("freebet_date")
+        .agg(freebet_spend=("amount_num", "sum"), freebet_count=(fcol["freebetstatusid"], "count"))
+        .reset_index()
+        .rename(columns={"freebet_date": "date"})
+    )
+    return out
+
+
+def compute_bonus_daily(
+    bonuses: pd.DataFrame,
+    campaigns: pd.DataFrame | None = None,
+    freebets: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """
+    Daily bonus crediting metrics from view_BonusBonuses.
+    Includes free-bet spend (FreeBetStatusId=2) when freebets DataFrame is provided.
+    bonus_credited = BonusStatusID in [2,5] amounts (To Be Credited + Credited)
+    freebet_spend  = FreeBetStatusId=2 amounts (used freebets)
+    bonus_total    = bonus_credited + freebet_spend  (total bonus exposure)
+    """
     if bonuses.empty:
         return pd.DataFrame(
             columns=[
@@ -48,6 +89,9 @@ def compute_bonus_daily(bonuses: pd.DataFrame, campaigns: pd.DataFrame | None = 
                 "bonus_credited",
                 "bonus_count",
                 "unique_bonus_users",
+                "freebet_spend",
+                "freebet_count",
+                "bonus_total",
                 "first_deposit_bonus_count",
                 "first_deposit_bonus_users",
                 "first_deposit_bonus_amount",
@@ -119,9 +163,17 @@ def compute_bonus_daily(bonuses: pd.DataFrame, campaigns: pd.DataFrame | None = 
                 )
 
     out = out.merge(first_dep, on="date", how="left").fillna(0)
+
+    # Merge free-bet spend
+    fb_daily = _compute_freebets_daily(freebets) if freebets is not None and not freebets.empty else pd.DataFrame(columns=["date", "freebet_spend", "freebet_count"])
+    out = out.merge(fb_daily, on="date", how="left").fillna(0)
+
     out["bonus_credited"] = out["bonus_credited"].astype(float)
     out["bonus_count"]    = out["bonus_count"].astype(int)
     out["unique_bonus_users"] = out["unique_bonus_users"].astype(int)
+    out["freebet_spend"]  = out["freebet_spend"].astype(float)
+    out["freebet_count"]  = out["freebet_count"].astype(int)
+    out["bonus_total"]    = out["bonus_credited"] + out["freebet_spend"]
     out["first_deposit_bonus_count"] = out["first_deposit_bonus_count"].astype(int)
     out["first_deposit_bonus_users"] = out["first_deposit_bonus_users"].astype(int)
     out["first_deposit_bonus_amount"] = out["first_deposit_bonus_amount"].astype(float)
