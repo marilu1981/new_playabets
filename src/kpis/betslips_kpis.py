@@ -89,12 +89,11 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     betslips["stake_num"] = to_num(betslips[stake], default=0.0)
     betslips["winnings_num"] = to_num(betslips[winnings], default=0.0)
 
-    # Real-money bets only: CreditType=1 excludes bonus bets.
-    # This ensures Actives, GGR, and stake totals reflect cash play only.
+    # Real-money bets only: exclude bonus bets.
+    # DWH view_betslips stores CreditType as a string: "User Account" = real money, "Bonus" = bonus.
     credit_col = bcol.get("credittype")
     if credit_col:
-        credit_num = pd.to_numeric(betslips[credit_col], errors="coerce")
-        betslips = betslips[credit_num == 1].copy()
+        betslips = betslips[betslips[credit_col].astype(str) == "User Account"].copy()
 
     # --- Placement-date daily (activity / volume / exposure)
     betslips["place_date"] = to_date(betslips[placement])

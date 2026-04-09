@@ -67,7 +67,7 @@ def main() -> None:
     SERVING_DIR.mkdir(parents=True, exist_ok=True)
 
     users = read_all_parquets(USERS_DIR, "users_increment_*.parquet")
-    betslips = read_all_parquets(BETSLIPS_DIR, "betslips_increment_*.parquet")
+    betslips = read_all_parquets(BETSLIPS_DIR, "betslips*.parquet")
     sessions = read_all_parquets(SESSIONS_DIR, "sessions_increment_*.parquet") if SESSIONS_DIR.exists() else pd.DataFrame()
     casino = read_all_parquets(CASINO_DIR, "casino_increment_*.parquet") if CASINO_DIR.exists() else pd.DataFrame()
     first_deposits = read_all_parquets(FTD_DIR, "first_deposits_increment_*.parquet") if FTD_DIR.exists() else pd.DataFrame()
