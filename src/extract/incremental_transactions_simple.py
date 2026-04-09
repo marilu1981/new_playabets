@@ -104,13 +104,16 @@ def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
     q = text(f"""
         SELECT
-            SUM(ABS(Amount))        AS deposits,
-            COUNT(DISTINCT UserID)  AS unique_depositors,
-            COUNT(*)                AS deposit_count
-        FROM {VIEW_NAME}
-        WHERE Date >= '{s}'
-          AND Date <  '{e}'
-          AND TransactionAmountTypeID = 1
+            SUM(ABS(T.Amount))        AS deposits,
+            COUNT(DISTINCT T.UserID)  AS unique_depositors,
+            COUNT(*)                  AS deposit_count
+        FROM {VIEW_NAME} T
+        JOIN Dwh_en.view_Reasons R ON T.ReasonID = R.ReasonID
+        WHERE T.Date >= '{s}'
+          AND T.Date <  '{e}'
+          AND T.TransactionAmountTypeID = 1
+          AND R.ReasonGroupID = 2
+          AND T.TransactionManagementStatusID = 3
     """)
     t0 = perf_counter()
     _log(f"Querying deposits: {s} → {e}  (SAST {sast_date})")
@@ -123,12 +126,15 @@ def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
     q = text(f"""
         SELECT
-            SUM(ABS(Amount))    AS withdrawals,
+            SUM(ABS(T.Amount))  AS withdrawals,
             COUNT(*)            AS withdrawal_count
-        FROM {VIEW_NAME}
-        WHERE Date >= '{s}'
-          AND Date <  '{e}'
-          AND TransactionAmountTypeID = 2
+        FROM {VIEW_NAME} T
+        JOIN Dwh_en.view_Reasons R ON T.ReasonID = R.ReasonID
+        WHERE T.Date >= '{s}'
+          AND T.Date <  '{e}'
+          AND T.TransactionAmountTypeID = 2
+          AND R.ReasonGroupID = 2
+          AND T.TransactionManagementStatusID = 3
     """)
     t0 = perf_counter()
     _log(f"Querying withdrawals: {s} → {e}  (SAST {sast_date})")
