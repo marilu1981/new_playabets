@@ -63,7 +63,7 @@ EXTRACT_MODULES = [
     "src.extract.incremental_casino",
 ]
 if ENABLE_TRANSACTIONS:
-    EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions")
+    EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions_simple")
 
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",   # builds daily_kpis.parquet + rfm_users.parquet
@@ -82,7 +82,7 @@ TRANSFORM_DEPENDENCIES = {
     },
 }
 if ENABLE_TRANSACTIONS:
-    TRANSFORM_DEPENDENCIES["src.kpis.build_domain_kpis"].add("src.extract.incremental_transactions")
+    TRANSFORM_DEPENDENCIES["src.kpis.build_domain_kpis"].add("src.extract.incremental_transactions_simple")
 
 
 def _run_module(module: str) -> bool:
