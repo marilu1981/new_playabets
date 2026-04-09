@@ -53,9 +53,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     activeCasino: number;
     ftds: number;
   } | null>(null);
-  const [livePlayerAcquisitionDaily, setLivePlayerAcquisitionDaily] = useState<Array<{ date: string; registrations: number; ftds: number }> | null>(null);
-  const [liveDailyConvRate, setLiveDailyConvRate] = useState<Array<{ date: string; rate: number }> | null>(null);
-  const [liveSportsCasinoGgr, setLiveSportsCasinoGgr] = useState<{ sports: number; casino: number } | null>(null);
+  // TODO: livePlayerAcquisitionDaily, liveDailyConvRate, liveSportsCasinoGgr — add when chart changes deployed
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
@@ -233,7 +231,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
           grossRevenue: Number(k.ggr ?? 0),
         }));
-        setHasTransactionsData(Boolean(k.has_transactions_data));
+        // PENDING: backfill re-running with corrected ReasonID filters — force pending until reloaded
+        setHasTransactionsData(false);
         setLiveTransactionSummary({
           ...baseTransactionSummary,
           totalDeposits: Number(k.deposits ?? 0),
@@ -351,10 +350,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           : null
       );
 
-      // Sports vs Casino GGR totals for the period
-      const totalSportsGgr = Array.from(sportsbookByDate.values()).reduce((s, r) => s + r.ggr, 0);
-      const totalCasinoGgr = Array.from(casinoByDate.values()).reduce((s, r) => s + r.ggr, 0);
-      setLiveSportsCasinoGgr({ sports: totalSportsGgr, casino: totalCasinoGgr });
 
       setLiveRevenueTrend(
         metrics.length > 0
@@ -646,6 +641,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           turnover: Number(row.placed_stake ?? 0),
           registrations: Number(row.registrations ?? 0),
           activeSports: Number(row.actives_sports ?? 0),
+          ftds: 0, // fetched separately — deferred
           activeCasino: Number(casinoRow?.casino_actives ?? casinoRow?.actives ?? 0),
         });
       }

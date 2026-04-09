@@ -73,30 +73,34 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     s = _safe(str(day - timedelta(days=1)) + " 22:00:00")
     e = _safe(str(day) + " 22:00:00")
 
+    DEPOSIT_REASON_IDS = (
+        "248,249,250,830,835,839,843,851,853,855,857,859,"
+        "861,863,865,867,869,871,873,875,877,939"
+    )
+    WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
+
     dep_q = text(f"""
         SELECT
-            SUM(ABS(T.Amount))        AS deposits,
-            COUNT(DISTINCT T.UserID)  AS unique_depositors,
-            COUNT(*)                  AS deposit_count
-        FROM {VIEW_NAME} T
-        JOIN Dwh_en.view_Reasons R ON T.ReasonID = R.ReasonID
-        WHERE T.Date >= '{s}'
-          AND T.Date <  '{e}'
-          AND T.TransactionAmountTypeID = 1
-          AND R.ReasonGroupID = 2
-          AND T.TransactionManagementStatusID = 3
+            SUM(ABS(Amount))        AS deposits,
+            COUNT(DISTINCT UserID)  AS unique_depositors,
+            COUNT(*)                AS deposit_count
+        FROM {VIEW_NAME}
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND TransactionAmountTypeID = 1
+          AND TransactionManagementStatusID = 3
+          AND ReasonID IN ({DEPOSIT_REASON_IDS})
     """)
     wd_q = text(f"""
         SELECT
-            SUM(ABS(T.Amount))  AS withdrawals,
+            SUM(ABS(Amount))    AS withdrawals,
             COUNT(*)            AS withdrawal_count
-        FROM {VIEW_NAME} T
-        JOIN Dwh_en.view_Reasons R ON T.ReasonID = R.ReasonID
-        WHERE T.Date >= '{s}'
-          AND T.Date <  '{e}'
-          AND T.TransactionAmountTypeID = 2
-          AND R.ReasonGroupID = 2
-          AND T.TransactionManagementStatusID = 3
+        FROM {VIEW_NAME}
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND TransactionAmountTypeID = 2
+          AND TransactionManagementStatusID = 3
+          AND ReasonID IN ({WITHDRAWAL_REASON_IDS})
     """)
 
     t0 = perf_counter()
