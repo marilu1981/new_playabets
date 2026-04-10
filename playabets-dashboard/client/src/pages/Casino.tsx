@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { Gamepad2, DollarSign, TrendingUp } from "lucide-react";
 import { casinoProviders as baseCasinoProviders, casinoKPIs as baseCasinoKPIs } from "@/lib/mockData";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatFull } from "@/lib/formatters";
 import {
   getFilterMultiplier,
   scaleArrayNumericFields,
@@ -130,10 +130,12 @@ export default function CasinoPage() {
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <KpiCard title="Total Casino Stake" value={`${formatCompact(casinoKPIs.totalStake)}`} subtitle="All providers" change={18.4} changeLabel="vs last month" icon={<DollarSign size={18} />} accent="gold" />
-        <KpiCard title="Total Winnings" value={`${formatCompact(casinoKPIs.totalWinnings)}`} subtitle="Paid to players" change={16.2} changeLabel="vs last month" icon={<TrendingUp size={18} />} accent="amber" />
-        <KpiCard title="Gross Profit" value={`${formatCompact(casinoKPIs.grossProfit)}`} subtitle="Stake minus winnings" change={22.1} changeLabel="vs last month" icon={<Gamepad2 size={18} />} accent="green" />
+      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
+          <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
+          <KpiCard title="Gross Profit" value={formatFull(casinoKPIs.grossProfit)} subtitle="Stake minus winnings" icon={<Gamepad2 size={18} />} accent="green" />
+        </div>
       </div>
 
       {/* Charts */}
@@ -218,10 +220,10 @@ export default function CasinoPage() {
                 <tr key={p.provider} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
                   <td className="py-2.5 pr-4 text-white/80 font-medium">{p.provider}</td>
                   <td className="py-2.5 pr-4 text-white/50 text-xs">{p.casinoType}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatCompact(p.bets)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{ formatCompact(p.stake)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{ formatCompact(p.winnings)}</td>
-                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>{ formatCompact(p.profit)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.bets)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.stake)}</td>
+                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.winnings)}</td>
+                  <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>{formatFull(p.profit)}</td>
                   <td className="py-2.5 text-xs font-semibold" style={{ color: CHART_COLORS.green }}>
                     {(p.profit / p.stake * 100).toFixed(1)}%
                   </td>

@@ -22,7 +22,7 @@ import {
   betslipsByStatus as baseBetslipsByStatus,
   betslipsByType as baseBetslipsByType,
 } from "@/lib/mockData";
-import { formatCompact } from "@/lib/formatters";
+import { formatCompact, formatFull } from "@/lib/formatters";
 import {
   getFilterMultiplier,
   scaleArrayNumericFields,
@@ -217,12 +217,12 @@ export default function BettingPage() {
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="relative">
+      <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
         <MockOverlay active={!liveOverviewKPIs} badge label="Pending Data" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <KpiCard title="Total Betslips" value={formatCompact(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
-          <KpiCard title="Total Stake" value={`${formatCompact(overviewKPIs.totalStake)}`} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
-          <KpiCard title="Total Winnings" value={`${formatCompact(overviewKPIs.totalWinnings)}`} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard title="Total Betslips" value={formatFull(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Total Stake" value={formatFull(overviewKPIs.totalStake)} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
+          <KpiCard title="Total Winnings" value={formatFull(overviewKPIs.totalWinnings)} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
           <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
         </div>
       </div>
@@ -234,9 +234,9 @@ export default function BettingPage() {
           <p className="text-xs text-white/40">Settlement flow, cancellations, and current exposure</p>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title="Settled Betslips" value={formatCompact(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
-          <KpiCard title="Won Betslips" value={formatCompact(liveSettlementMetrics?.wonCount ?? 0)} subtitle="Selected range" icon={<Target size={18} />} accent="green" />
-          <KpiCard title="Cancelled Betslips" value={formatCompact(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range" icon={<Activity size={18} />} accent="amber" />
+          <KpiCard title="Settled Betslips" value={formatFull(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Won Betslips" value={formatFull(liveSettlementMetrics?.wonCount ?? 0)} subtitle="Selected range" icon={<Target size={18} />} accent="green" />
+          <KpiCard title="Cancelled Betslips" value={formatFull(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range" icon={<Activity size={18} />} accent="amber" />
           <KpiCard title="Cancel Rate" value={`${liveSettlementMetrics?.cancelRate ?? 0}%`} subtitle="Average across selected days" icon={<Zap size={18} />} accent="red" />
         </div>
       </div>

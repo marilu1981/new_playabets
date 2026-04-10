@@ -21,7 +21,7 @@ import {
   selfExclusionSummary as baseSelfExclusionSummary,
   selfExclusionTrend as baseSelfExclusionTrend,
 } from "@/lib/mockData";
-import { formatCompact, formatNumber } from "@/lib/formatters";
+import { formatCompact, formatFull, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -411,12 +411,14 @@ export default function UsersPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <KpiCard title="Registrations" value={formatCompact(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" change={8.4} changeLabel="vs last month" icon={<Users size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="Active Users" value={formatCompact(overviewKPIs.activeUsers)} subtitle="Status: Enabled" change={3.2} changeLabel="vs last month" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Frozen Accounts" value={formatCompact(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
-        <KpiCard title="Pending KYC" value={formatCompact(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Self-Exclusions" value={liveSelfExclusions ? formatCompact(selfExclusionSummary.total) : "Pending"} valueClassName={!liveSelfExclusions ? "text-white/30" : undefined} subtitle="Active self-exclusions" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <KpiCard title="Registrations" value={formatFull(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" icon={<Users size={18} />} accent="teal" loading={isLoading} />
+          <KpiCard title="Active Users" value={formatFull(overviewKPIs.activeUsers)} subtitle="Status: Enabled" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
+          <KpiCard title="Frozen Accounts" value={formatFull(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
+          <KpiCard title="Pending KYC" value={formatFull(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
+          <KpiCard title="Self-Exclusions" value={liveSelfExclusions ? formatFull(selfExclusionSummary.total) : "Pending"} valueClassName={!liveSelfExclusions ? "text-white/30" : undefined} subtitle="Active self-exclusions" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

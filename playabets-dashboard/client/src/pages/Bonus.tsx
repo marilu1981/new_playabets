@@ -12,7 +12,7 @@ import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 import { Gift, Users, Percent, Ticket } from "lucide-react";
 import { bonusCampaigns as baseBonusCampaigns, bonusKPIs as baseBonusKPIs } from "@/lib/mockData";
-import { formatCompact, formatNumber } from "@/lib/formatters";
+import { formatCompact, formatFull, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -176,12 +176,14 @@ export default function BonusPage() {
         Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
       </div>
       {/* KPI Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
-        <KpiCard title="Average Daily Unique Bonus Users" value={formatNumber(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
-        <KpiCard title="Total Bonuses Credited" value={`${formatCompact(bonusCards.totalBonusesCredited)}`} subtitle="Total credited in selected range" change={-4.2} changeLabel="vs last month" icon={<Percent size={18} />} accent="amber" />
-        <KpiCard title="Est. Total Bonuses per User" value={formatCompact(bonusCards.estTotalBonusesPerUser)} subtitle="Sum of daily bonus-per-user values" icon={<Ticket size={18} />} accent="teal" />
-        <KpiCard title="Average Daily Bonus per User" value={`${bonusCards.averageDailyBonusPerUser.toFixed(1)}`} subtitle="Mean of daily credited/user" change={2.1} changeLabel="vs last month" icon={<Users size={18} />} accent="green" />
-        <KpiCard title="Bonuses Paid - Total Count" value={formatCompact(bonusCards.bonusesPaidTotalCount)} subtitle="Total bonus count in selected range" icon={<Gift size={18} />} accent="gold" />
+      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+          <KpiCard title="Average Daily Unique Bonus Users" value={formatFull(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
+          <KpiCard title="Total Bonuses Credited" value={formatFull(bonusCards.totalBonusesCredited)} subtitle="Total credited in selected range" icon={<Percent size={18} />} accent="amber" />
+          <KpiCard title="Est. Total Bonuses per User" value={formatFull(bonusCards.estTotalBonusesPerUser)} subtitle="Sum of daily bonus-per-user values" icon={<Ticket size={18} />} accent="teal" />
+          <KpiCard title="Average Daily Bonus per User" value={`${bonusCards.averageDailyBonusPerUser.toFixed(1)}`} subtitle="Mean of daily credited/user" icon={<Users size={18} />} accent="green" />
+          <KpiCard title="Bonuses Paid - Total Count" value={formatFull(bonusCards.bonusesPaidTotalCount)} subtitle="Total bonus count in selected range" icon={<Gift size={18} />} accent="gold" />
+        </div>
       </div>
 
       {/* Freebet funnel */}

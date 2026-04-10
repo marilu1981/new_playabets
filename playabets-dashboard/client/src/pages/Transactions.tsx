@@ -18,7 +18,7 @@ import {
   transactionsByReason as baseTransactionsByReason,
   transactionTrend as baseTransactionTrend,
 } from "@/lib/mockData";
-import { formatCompact, formatNumber } from "@/lib/formatters";
+import { formatFull, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
@@ -70,11 +70,13 @@ export default function TransactionsPage() {
         Data mode: Mock / Pending
       </div>
       {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <KpiCard title="Total Deposits" value={`${formatCompact(transactionSummary.totalDeposits)}`} subtitle="All time" change={11.2} changeLabel="vs last month" icon={<ArrowUpCircle size={18} />} accent="green" />
-        <KpiCard title="Total Withdrawals" value={`${formatCompact(transactionSummary.totalWithdrawals)}`} subtitle="All time" change={8.4} changeLabel="vs last month" icon={<ArrowDownCircle size={18} />} accent="amber" />
-        <KpiCard title="Pending" value={formatNumber(transactionSummary.pendingTransactions)} subtitle="Awaiting processing" icon={<Clock size={18} />} accent="red" />
-        <KpiCard title="Accepted Today" value={formatNumber(transactionSummary.acceptedToday)} subtitle={`${transactionSummary.refusedToday} refused`} change={3.1} changeLabel="vs yesterday" icon={<CheckCircle size={18} />} accent="teal" />
+      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard title="Total Deposits" value={formatFull(transactionSummary.totalDeposits)} subtitle="All time" icon={<ArrowUpCircle size={18} />} accent="green" />
+          <KpiCard title="Total Withdrawals" value={formatFull(transactionSummary.totalWithdrawals)} subtitle="All time" icon={<ArrowDownCircle size={18} />} accent="amber" />
+          <KpiCard title="Pending" value={formatNumber(transactionSummary.pendingTransactions)} subtitle="Awaiting processing" icon={<Clock size={18} />} accent="red" />
+          <KpiCard title="Accepted Today" value={formatNumber(transactionSummary.acceptedToday)} subtitle={`${transactionSummary.refusedToday} refused`} icon={<CheckCircle size={18} />} accent="teal" />
+        </div>
       </div>
 
       {/* Transaction trend */}
@@ -149,9 +151,9 @@ export default function TransactionsPage() {
                       {t.type}
                     </span>
                   </td>
-                  <td className="py-3 pr-6 text-white/50 font-mono text-xs">{formatCompact(t.count)}</td>
-                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>{ formatCompact(t.amount)}</td>
-                  <td className="py-3 text-white/50 font-mono text-xs">{ formatCompact(Math.round(t.amount / t.count))}</td>
+                  <td className="py-3 pr-6 text-white/50 font-mono text-xs">{formatFull(t.count)}</td>
+                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>{formatFull(t.amount)}</td>
+                  <td className="py-3 text-white/50 font-mono text-xs">{formatFull(Math.round(t.amount / t.count))}</td>
                 </tr>
               ))}
             </tbody>
