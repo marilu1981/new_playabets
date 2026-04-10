@@ -409,7 +409,6 @@ export default function Home() {
               <div className="p-3 space-y-3">
                 {/* Revenue group */}
                 <div>
-                  <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Revenue</div>
                   <div className="grid grid-cols-5 gap-2">
                     {tile("GGR",          formatFull(overviewKPIs.grossRevenue),                                                                                                   CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",     formatFull(overviewKPIs.totalStake),                                                                                                      "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
