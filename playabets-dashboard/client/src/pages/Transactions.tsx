@@ -18,7 +18,7 @@ import {
   transactionsByReason as baseTransactionsByReason,
   transactionTrend as baseTransactionTrend,
 } from "@/lib/mockData";
-import { formatFull, formatNumber } from "@/lib/formatters";
+import { formatCompact, formatFull, formatNumber } from "@/lib/formatters";
 import {
   filterByDateRange,
   getFilterMultiplier,
