@@ -231,8 +231,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           totalWinnings: Number(k.winnings ?? Number(k.turnover ?? 0) - Number(k.ggr ?? 0)),
           grossRevenue: Number(k.ggr ?? 0),
         }));
-        // PENDING: backfill re-running with corrected ReasonID filters — force pending until reloaded
-        setHasTransactionsData(false);
+        setHasTransactionsData(Boolean(k.has_transactions_data));
         setLiveTransactionSummary({
           ...baseTransactionSummary,
           totalDeposits: Number(k.deposits ?? 0),
