@@ -1,10 +1,14 @@
 """
 incremental_first_deposits.py
 -----------------------------
-Pulls rows from Stats.Transazioni_DepositiUtente incrementally using dataprimodeposito.
+Pulls per-user first deposit date from Stats.Transazioni_DepositiUtente.
 
-Source columns:
-  idutente, idcausale, dataprimodeposito, idprimodeposito, dataultimodeposito, idultimodeposito
+The source table has one row per (user, causale/payment-method). We take the
+MIN(dataprimodeposito) per user so that each user is counted only once,
+using their globally earliest deposit date across all payment methods.
+
+This is a FULL refresh (no watermark): the result set is small (one row per
+ever-depositing user) and the logic requires the historical minimum.
 
 Run from the project root:
     python -m src.extract.incremental_first_deposits
@@ -19,60 +23,44 @@ import pandas as pd
 from datetime import datetime, UTC
 from sqlalchemy import text
 
-from src.app_config import WATERMARK_DB_PATH, raw_dir
-from src.extract.db_utils import build_engine, get_watermark, set_watermark
+from src.app_config import raw_dir
+from src.extract.db_utils import build_engine
 
 VIEW_NAME = "Stats.Transazioni_DepositiUtente"
-CURSOR_COLUMN = "dataprimodeposito"
 
-COLUMNS = [
-    "idutente",
-    "idcausale",
-    "dataprimodeposito",
-    "idprimodeposito",
-    "dataultimodeposito",
-    "idultimodeposito",
-]
-
-WATERMARK_DB = WATERMARK_DB_PATH
 OUT_DIR = raw_dir("first_deposits")
 
 
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    last_value = get_watermark(WATERMARK_DB, VIEW_NAME)
-    print(f"[first_deposits] Current watermark: {last_value}")
 
-    cols_sql = ", ".join(COLUMNS)
+    # One row per user: their globally first deposit date across all causali.
     query = text(
         f"""
         SELECT
-            {CURSOR_COLUMN} AS __cursor__,
-            {cols_sql}
+            idutente,
+            MIN(dataprimodeposito) AS dataprimodeposito
         FROM {VIEW_NAME}
-        WHERE {CURSOR_COLUMN} > :last_value
-          AND {CURSOR_COLUMN} IS NOT NULL
-        ORDER BY {CURSOR_COLUMN}
+        WHERE dataprimodeposito IS NOT NULL
+        GROUP BY idutente
         """
     )
 
     engine = build_engine()
+    print(f"[first_deposits] Querying {VIEW_NAME} (full refresh, per-user MIN)…")
     with engine.connect() as conn:
-        df = pd.read_sql(query, conn, params={"last_value": last_value})
+        df = pd.read_sql(query, conn)
 
     print(f"[first_deposits] Rows pulled: {len(df)}")
     if df.empty:
-        print("[first_deposits] No new data.")
+        print("[first_deposits] No data.")
         return
 
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-    out_file = OUT_DIR / f"first_deposits_increment_{ts}.parquet"
+    # Use a fixed filename so the next run overwrites the previous full snapshot.
+    out_file = OUT_DIR / "first_deposits_full.parquet"
     df.to_parquet(out_file, index=False)
-    print(f"[first_deposits] Saved to {out_file}")
-
-    new_watermark = str(df["__cursor__"].max())
-    set_watermark(WATERMARK_DB, VIEW_NAME, new_watermark)
-    print(f"[first_deposits] Updated watermark to: {new_watermark}")
+    print(f"[first_deposits] Saved full snapshot → {out_file}")
 
 
 if __name__ == "__main__":

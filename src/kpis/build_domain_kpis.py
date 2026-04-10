@@ -99,9 +99,18 @@ def main() -> None:
         print("[domain_kpis] No bonus raw dir - skipping")
 
     # First Deposits (true FTD)
+    # The extract writes a single first_deposits_full.parquet (one row per user,
+    # globally earliest deposit date across all causali). Fall back to any
+    # increment files if the full snapshot hasn't been generated yet.
     ftd_dir = RAW / "first_deposits"
     if ftd_dir.exists():
-        ftd_raw = read_all_parquets(ftd_dir, "first_deposits_increment_*.parquet")
+        full_snapshot = ftd_dir / "first_deposits_full.parquet"
+        if full_snapshot.exists():
+            ftd_raw = pd.read_parquet(full_snapshot)
+            print(f"[domain_kpis] FTD full snapshot: {len(ftd_raw)} rows")
+        else:
+            ftd_raw = read_all_parquets(ftd_dir, "first_deposits_increment_*.parquet")
+            print(f"[domain_kpis] FTD increments (legacy): {len(ftd_raw)} rows")
         out = SERVING / "ftd_daily.parquet"
         if ftd_raw.empty:
             print("[domain_kpis] FTD raw is empty - keeping existing serving file")
