@@ -46,58 +46,52 @@ export default function KpiCard({
 
   return (
     <div
-      className={cn("stat-card rounded-lg p-4 relative", className)}
+      className={cn("stat-card rounded-lg p-2.5 relative", className)}
       style={{
-        background: "#ffffff",
-        border: "1px solid #e4ece4",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)",
+        background: "#f5f9f5",
+        border: "1px solid #dde8dd",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
       {/* Top accent line — brand gradient */}
       <div
-        className="absolute top-0 left-0 right-0 h-0.5 rounded-t-lg"
-        style={{ background: `linear-gradient(90deg, #7ab800, #093508)`, opacity: 0.85 }}
+        className="absolute top-0 left-0 right-0 h-1 rounded-t-lg"
+        style={{ background: `linear-gradient(90deg, #7ab800, #093508)` }}
       />
 
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2 mt-1">
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 truncate">
+          <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 truncate">
             {title}
           </div>
           <div
-            className={cn("text-2xl font-bold text-gray-900 leading-none mb-1", valueClassName)}
+            className={cn("text-sm font-bold text-gray-900 leading-tight break-all", valueClassName)}
           >
             {loading ? (
-              <div className="h-7 w-24 rounded animate-pulse" style={{ background: "#e8ede8" }} />
+              <div className="h-4 w-16 rounded animate-pulse" style={{ background: "#dde8dd" }} />
             ) : value}
           </div>
           {subtitle && (
-            <div className="text-xs text-gray-400 mt-1">
-              {loading ? <div className="h-3 w-16 rounded animate-pulse" style={{ background: "#e8ede8" }} /> : subtitle}
+            <div className="text-[9px] text-gray-400 mt-1 truncate">
+              {loading ? <div className="h-2.5 w-12 rounded animate-pulse" style={{ background: "#dde8dd" }} /> : subtitle}
             </div>
           )}
           {change !== undefined && (
-            <div className={cn("flex items-center gap-1 mt-2 text-xs font-medium")}>
-              {isPositive && <TrendingUp size={12} style={{ color: "#3d8c2e" }} />}
-              {isNegative && <TrendingDown size={12} style={{ color: "#c03030" }} />}
-              {!isPositive && !isNegative && <Minus size={12} className="text-gray-400" />}
-              <span
-                style={{
-                  color: isPositive ? "#3d8c2e" : isNegative ? "#c03030" : "#999999",
-                }}
-              >
+            <div className={cn("flex items-center gap-1 mt-1 text-[9px] font-medium")}>
+              {isPositive && <TrendingUp size={10} style={{ color: "#3d8c2e" }} />}
+              {isNegative && <TrendingDown size={10} style={{ color: "#c03030" }} />}
+              {!isPositive && !isNegative && <Minus size={10} className="text-gray-400" />}
+              <span style={{ color: isPositive ? "#3d8c2e" : isNegative ? "#c03030" : "#999999" }}>
                 {change > 0 ? "+" : ""}{change?.toFixed(1)}%
               </span>
-              {changeLabel && (
-                <span className="text-gray-400">{changeLabel}</span>
-              )}
+              {changeLabel && <span className="text-gray-400">{changeLabel}</span>}
             </div>
           )}
         </div>
 
         {icon && (
           <div
-            className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
+            className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center"
             style={{ background: `${color}18`, color }}
           >
             {icon}

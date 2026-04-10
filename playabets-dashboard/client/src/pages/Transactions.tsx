@@ -70,7 +70,7 @@ export default function TransactionsPage() {
         Data mode: Mock / Pending
       </div>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard title="Total Deposits" value={formatFull(transactionSummary.totalDeposits)} subtitle="All time" icon={<ArrowUpCircle size={18} />} accent="green" />
           <KpiCard title="Total Withdrawals" value={formatFull(transactionSummary.totalWithdrawals)} subtitle="All time" icon={<ArrowDownCircle size={18} />} accent="amber" />
@@ -81,7 +81,7 @@ export default function TransactionsPage() {
 
       {/* Transaction trend */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits vs Withdrawals</h3>
           <p className="text-xs text-gray-400 mb-4">Last 30 days daily flow</p>
@@ -108,7 +108,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Net flow */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Net Cash Flow</h3>
           <p className="text-xs text-gray-400 mb-4">Daily net (Deposits - Withdrawals)</p>
@@ -125,7 +125,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* Transaction by reason */}
-      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Transactions by Reason</h3>
         <p className="text-xs text-gray-400 mb-4">view_Transactions — TransactionReasonId breakdown</p>

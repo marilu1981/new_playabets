@@ -130,7 +130,7 @@ export default function CasinoPage() {
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
           <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
@@ -141,7 +141,7 @@ export default function CasinoPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Provider bar chart */}
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue by Provider</h3>
           <p className="text-xs text-gray-400 mb-4">Gross profit per casino provider — top 10</p>
@@ -164,7 +164,7 @@ export default function CasinoPage() {
         </div>
 
         {/* Provider share bars */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake Share</h3>
           <p className="text-xs text-gray-400 mb-4">By provider — top 10</p>
@@ -202,7 +202,7 @@ export default function CasinoPage() {
       </div>
 
       {/* Provider table */}
-      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Provider Detail</h3>
         <p className="text-xs text-gray-400 mb-4">view_CasinoBets — all providers</p>

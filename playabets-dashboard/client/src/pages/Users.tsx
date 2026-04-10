@@ -411,7 +411,7 @@ export default function UsersPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
 
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <KpiCard title="Registrations" value={formatFull(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" icon={<Users size={18} />} accent="teal" loading={isLoading} />
           <KpiCard title="Active Users" value={formatFull(overviewKPIs.activeUsers)} subtitle="Status: Enabled" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
@@ -422,7 +422,7 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveRegistrationsDaily} description="Registrations trend loading..." />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Registrations Trend</h3>
           <p className="text-xs text-gray-400 mb-4">{granularityLabel} registrations over time</p>
@@ -437,7 +437,7 @@ export default function UsersPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveDailyActives} description="Daily actives pending live data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Daily Active Users</h3>
           <p className="text-xs text-gray-400 mb-4">{granularityLabel} active users (Sports + Casino)</p>
@@ -455,7 +455,7 @@ export default function UsersPage() {
 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveStatusBreakdown} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-2">User Status Breakdown</h3>
           <p className="text-xs text-gray-400 mb-4">Derived from the latest `userstatus` field export.</p>
@@ -483,7 +483,7 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveSelfExclusionTrend} badge label="PENDING DATA" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusions Over Time</h3>
           <p className="text-xs text-gray-400 mb-4">{granularityLabel} responsible-gaming trend</p>
@@ -500,7 +500,7 @@ export default function UsersPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveSelfExclusions} badge label="Pending Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusion Summary</h3>
           <p className="text-xs text-gray-400 mb-4">Responsible gaming overview{liveSelfExclusions ? " — live data" : " — mock data"}</p>

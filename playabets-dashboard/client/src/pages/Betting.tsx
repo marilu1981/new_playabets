@@ -227,7 +227,7 @@ export default function BettingPage() {
         </div>
       </div>
 
-      <div className="relative rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="relative rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active={!liveSettlementMetrics} badge label="Pending Data" />
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Bet Settlement Monitor</h3>
@@ -244,7 +244,7 @@ export default function BettingPage() {
       {/* Betslip breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* By Status */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Partial Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">By Status</h3>
           <p className="text-xs text-gray-400 mb-4">view_Betslips — BetslipStatusId</p>
@@ -267,7 +267,7 @@ export default function BettingPage() {
         </div>
 
         {/* By Type (Normal/Live/Mixed) */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Partial Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">By Betslip Type</h3>
           <p className="text-xs text-gray-400 mb-4">Normal / Live / Mixed</p>

@@ -176,7 +176,7 @@ export default function BonusPage() {
         Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
       </div>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <KpiCard title="Average Daily Unique Bonus Users" value={formatFull(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
           <KpiCard title="Total Bonuses Credited" value={formatFull(bonusCards.totalBonusesCredited)} subtitle="Total credited in selected range" icon={<Percent size={18} />} accent="amber" />
@@ -188,7 +188,7 @@ export default function BonusPage() {
 
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveFreebets} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Freebet Funnel</h3>
           <p className="text-xs text-gray-400 mb-4">Issued → Used → Expired</p>
@@ -215,7 +215,7 @@ export default function BonusPage() {
         </div>
 
         {/* Campaign stats */}
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCampaigns} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Campaign Performance</h3>
           <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns — recent campaigns</p>
