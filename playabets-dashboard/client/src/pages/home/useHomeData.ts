@@ -172,7 +172,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           `/timeseries/registrations?${regsQuery}`
         ),
         conversionCohorts: fetchJson<{
-          rows: Array<{
+          points: Array<{
             date: string;
             registrations?: number;
             ftds_d7?: number;
@@ -424,7 +424,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       }
 
       if (conversionCohortsRes.status === "fulfilled") {
-        const rows = (conversionCohortsRes.value.rows ?? [])
+        const rows = (conversionCohortsRes.value.points ?? [])
           .map((row) => ({
             date: String(row.date ?? ""),
             rate7d: row.rate_d7 == null ? null : Number(row.rate_d7),
