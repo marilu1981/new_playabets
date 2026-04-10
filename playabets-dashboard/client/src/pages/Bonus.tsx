@@ -172,11 +172,11 @@ export default function BonusPage() {
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <div className="text-xs text-white/50 mb-3">
+      <div className="text-xs text-gray-400 mb-3">
         Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
       </div>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <KpiCard title="Average Daily Unique Bonus Users" value={formatFull(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
           <KpiCard title="Total Bonuses Credited" value={formatFull(bonusCards.totalBonusesCredited)} subtitle="Total credited in selected range" icon={<Percent size={18} />} accent="amber" />
@@ -188,10 +188,10 @@ export default function BonusPage() {
 
       {/* Freebet funnel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveFreebets} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Freebet Funnel</h3>
-          <p className="text-xs text-white/40 mb-4">Issued → Used → Expired</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Freebet Funnel</h3>
+          <p className="text-xs text-gray-400 mb-4">Issued → Used → Expired</p>
           <div className="space-y-4">
             {[
               { label: "Issued", value: freebetStats.issued, color: CHART_COLORS.gold, pct: 100 },
@@ -201,7 +201,7 @@ export default function BonusPage() {
             ].map((f) => (
               <div key={f.label}>
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-white/60">{f.label}</span>
+                  <span className="text-gray-500">{f.label}</span>
                   <span className="font-mono" style={{color: f.color }}>
                     {formatCompact(f.value)} ({f.pct.toFixed(1)}%)
                   </span>
@@ -215,31 +215,31 @@ export default function BonusPage() {
         </div>
 
         {/* Campaign stats */}
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCampaigns} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Campaign Performance</h3>
-          <p className="text-xs text-white/40 mb-4">view_BonusCampaigns — recent campaigns</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Campaign Performance</h3>
+          <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns — recent campaigns</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+                <tr style={{ borderBottom: "1px solid #e4ece4" }}>
                   {["ID", "Campaign", "Type", "Status", "Users", "Paid", "ROI"].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-4 whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 pb-2 pr-4 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {bonusCampaigns.map((c) => (
-                  <tr key={c.campaignId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                    <td className="py-2.5 pr-4 text-white/40 text-xs font-mono">#{c.campaignId}</td>
-                    <td className="py-2.5 pr-4 text-white/80 font-medium text-sm max-w-[180px] truncate">{c.name}</td>
-                    <td className="py-2.5 pr-4 text-white/50 text-xs">{c.bonusType}</td>
+                  <tr key={c.campaignId} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td className="py-2.5 pr-4 text-gray-400 text-xs font-mono">#{c.campaignId}</td>
+                    <td className="py-2.5 pr-4 text-gray-800 font-medium text-sm max-w-[180px] truncate">{c.name}</td>
+                    <td className="py-2.5 pr-4 text-gray-500 text-xs">{c.bonusType}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={c.status} dot /></td>
-                    <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{c.usersEnrolled == null ? "—" : formatCompact(c.usersEnrolled)}</td>
+                    <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{c.usersEnrolled == null ? "—" : formatCompact(c.usersEnrolled)}</td>
                     <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{c.totalPaid == null ? "—" : formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
                       {c.roi == null ? (
-                        <span className="text-xs font-mono text-white/35">—</span>
+                        <span className="text-xs font-mono text-gray-300">—</span>
                       ) : (
                         <span className="text-xs font-mono font-semibold" style={{
                           color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,

@@ -217,7 +217,7 @@ export default function BettingPage() {
     <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative mb-6">
         <MockOverlay active={!liveOverviewKPIs} badge label="Pending Data" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard title="Total Betslips" value={formatFull(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
@@ -227,11 +227,11 @@ export default function BettingPage() {
         </div>
       </div>
 
-      <div className="relative rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active={!liveSettlementMetrics} badge label="Pending Data" />
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-white mb-1">Bet Settlement Monitor</h3>
-          <p className="text-xs text-white/40">Settlement flow, cancellations, and current exposure</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Bet Settlement Monitor</h3>
+          <p className="text-xs text-gray-400">Settlement flow, cancellations, and current exposure</p>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard title="Settled Betslips" value={formatFull(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
@@ -244,10 +244,10 @@ export default function BettingPage() {
       {/* Betslip breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* By Status */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Partial Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">By Status</h3>
-          <p className="text-xs text-white/40 mb-4">view_Betslips — BetslipStatusId</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">By Status</h3>
+          <p className="text-xs text-gray-400 mb-4">view_Betslips — BetslipStatusId</p>
           <div className="space-y-2">
             {betslipsByStatus.map((s) => {
               const pct = (s.count / totalBetslipsSafe * 100).toFixed(1);
@@ -255,9 +255,9 @@ export default function BettingPage() {
                 <div key={s.status}>
                   <div className="flex justify-between text-xs mb-1">
                     <StatusBadge status={s.status} />
-                    <span className="text-white/60 font-mono">{formatCompact(s.count)}</span>
+                    <span className="text-gray-500 font-mono">{formatCompact(s.count)}</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CHART_COLORS.gold }} />
                   </div>
                 </div>
@@ -267,16 +267,16 @@ export default function BettingPage() {
         </div>
 
         {/* By Type (Normal/Live/Mixed) */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Partial Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">By Betslip Type</h3>
-          <p className="text-xs text-white/40 mb-4">Normal / Live / Mixed</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">By Betslip Type</h3>
+          <p className="text-xs text-gray-400 mb-4">Normal / Live / Mixed</p>
           <ResponsiveContainer width="100%" height={150}>
             <PieChart>
               <Pie data={betslipsByType} cx="50%" cy="50%" innerRadius={35} outerRadius={60} dataKey="count" nameKey="type" paddingAngle={3}>
                 {betslipsByType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
           <div className="space-y-1.5">
@@ -284,9 +284,9 @@ export default function BettingPage() {
               <div key={t.type} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i] }} />
-                  <span className="text-white/50">{t.type}</span>
+                  <span className="text-gray-500">{t.type}</span>
                 </div>
-                <span className="text-white/70 font-mono">{formatCompact(t.count)}</span>
+                <span className="text-gray-700 font-mono">{formatCompact(t.count)}</span>
               </div>
             ))}
           </div>

@@ -130,7 +130,7 @@ export default function CasinoPage() {
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
           <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
@@ -141,22 +141,22 @@ export default function CasinoPage() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Provider bar chart */}
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Revenue by Provider</h3>
-          <p className="text-xs text-white/40 mb-4">Gross profit per casino provider — top 10</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue by Provider</h3>
+          <p className="text-xs text-gray-400 mb-4">Gross profit per casino provider — top 10</p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={top10ByProfit} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
-              <XAxis type="number" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="provider" tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
-              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Profit"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+              <XAxis type="number" tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="provider" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} width={100} />
+              <Tooltip formatter={(v: number) => [`${formatCompact(v)}`, "Profit"]} contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
               <Bar dataKey="profit" fill={CHART_COLORS.gold} radius={[0, 4, 4, 0]} barSize={24}>
                 <LabelList
                   dataKey="profit"
                   position="right"
                   formatter={(value: number) => formatCompact(Number(value))}
-                  style={{ fill: "oklch(0.82 0.02 0)", fontSize: 11, fontWeight: 600 }}
+                  style={{ fill: "#374151", fontSize: 11, fontWeight: 600 }}
                 />
               </Bar>
             </BarChart>
@@ -164,17 +164,17 @@ export default function CasinoPage() {
         </div>
 
         {/* Provider share bars */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Stake Share</h3>
-          <p className="text-xs text-white/40 mb-4">By provider — top 10</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake Share</h3>
+          <p className="text-xs text-gray-400 mb-4">By provider — top 10</p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={top10ByStake} layout="vertical" margin={{ top: 0, right: 22, bottom: 0, left: 100 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" horizontal={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
               <XAxis
                 type="number"
                 domain={[0, 100]}
-                tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }}
+                tick={{ fill: "#9ca3af", fontSize: 10 }}
                 tickFormatter={(v) => `${v}%`}
                 axisLine={false}
                 tickLine={false}
@@ -182,18 +182,18 @@ export default function CasinoPage() {
               <YAxis
                 type="category"
                 dataKey="provider"
-                tick={{ fill: "oklch(0.65 0.02 0)", fontSize: 11 }}
+                tick={{ fill: "#6b7280", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={100}
               />
-              <Tooltip formatter={(v: number) => [`${v}%`, "Stake Share"]} contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => [`${v}%`, "Stake Share"]} contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
               <Bar dataKey="sharePct" fill={CHART_COLORS.teal} radius={[0, 4, 4, 0]} barSize={20}>
                 <LabelList
                   dataKey="sharePct"
                   position="right"
                   formatter={(value: number) => `${Number(value).toFixed(1)}%`}
-                  style={{ fill: "oklch(0.82 0.02 0)", fontSize: 11, fontWeight: 600 }}
+                  style={{ fill: "#374151", fontSize: 11, fontWeight: 600 }}
                 />
               </Bar>
             </BarChart>
@@ -202,27 +202,27 @@ export default function CasinoPage() {
       </div>
 
       {/* Provider table */}
-      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
-        <h3 className="text-sm font-semibold text-white mb-1">Provider Detail</h3>
-        <p className="text-xs text-white/40 mb-4">view_CasinoBets — all providers</p>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Provider Detail</h3>
+        <p className="text-xs text-gray-400 mb-4">view_CasinoBets — all providers</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+              <tr style={{ borderBottom: "1px solid #e4ece4" }}>
                 {["Provider", "Type", "Total Bets", "Stake", "Winnings", "Gross Profit", "Margin"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-4 whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 pb-2 pr-4 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {casinoProviders.map((p) => (
-                <tr key={p.provider} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-2.5 pr-4 text-white/80 font-medium">{p.provider}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs">{p.casinoType}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.bets)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.stake)}</td>
-                  <td className="py-2.5 pr-4 text-white/50 text-xs font-mono">{formatFull(p.winnings)}</td>
+                <tr key={p.provider} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td className="py-2.5 pr-4 text-gray-800 font-medium">{p.provider}</td>
+                  <td className="py-2.5 pr-4 text-gray-500 text-xs">{p.casinoType}</td>
+                  <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{formatFull(p.bets)}</td>
+                  <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{formatFull(p.stake)}</td>
+                  <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{formatFull(p.winnings)}</td>
                   <td className="py-2.5 pr-4 text-xs font-mono font-semibold" style={{color: CHART_COLORS.gold }}>{formatFull(p.profit)}</td>
                   <td className="py-2.5 text-xs font-semibold" style={{ color: CHART_COLORS.green }}>
                     {(p.profit / p.stake * 100).toFixed(1)}%

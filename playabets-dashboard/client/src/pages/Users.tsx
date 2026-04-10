@@ -411,7 +411,7 @@ export default function UsersPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={resetFilters} />}
     >
 
-      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <KpiCard title="Registrations" value={formatFull(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" icon={<Users size={18} />} accent="teal" loading={isLoading} />
           <KpiCard title="Active Users" value={formatFull(overviewKPIs.activeUsers)} subtitle="Status: Enabled" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
@@ -422,31 +422,31 @@ export default function UsersPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveRegistrationsDaily} description="Registrations trend loading..." />
-          <h3 className="text-sm font-semibold text-white mb-1">Registrations Trend</h3>
-          <p className="text-xs text-white/40 mb-4">{granularityLabel} registrations over time</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Registrations Trend</h3>
+          <p className="text-xs text-gray-400 mb-4">{granularityLabel} registrations over time</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={registrationsTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} axisLine={false} tickLine={false} interval={4} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} axisLine={false} tickLine={false} interval={4} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
               <Bar dataKey="value" name="Registrations" fill={CHART_COLORS.teal} radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveDailyActives} description="Daily actives pending live data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Daily Active Users</h3>
-          <p className="text-xs text-white/40 mb-4">{granularityLabel} active users (Sports + Casino)</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Daily Active Users</h3>
+          <p className="text-xs text-gray-400 mb-4">{granularityLabel} active users (Sports + Casino)</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={dailyActivesTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} axisLine={false} tickLine={false} interval={4} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} axisLine={false} tickLine={false} interval={4} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
               <Bar dataKey="actives" name="Daily Actives" fill={CHART_COLORS.green} radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -455,10 +455,10 @@ export default function UsersPage() {
 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveStatusBreakdown} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-2">User Status Breakdown</h3>
-          <p className="text-xs text-white/40 mb-4">Derived from the latest `userstatus` field export.</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-2">User Status Breakdown</h3>
+          <p className="text-xs text-gray-400 mb-4">Derived from the latest `userstatus` field export.</p>
           <div className="space-y-3">
             {usersByStatus.map((u) => {
               const pct = (u.count / totalUsersSafe * 100).toFixed(1);
@@ -474,7 +474,7 @@ export default function UsersPage() {
                       }}
                     />
                   </div>
-                  <span className="text-xs text-white/60 font-medium w-16 text-right">
+                  <span className="text-xs text-gray-600 font-medium w-16 text-right">
                     {formatNumber(u.count)}
                   </span>
                 </div>
@@ -483,16 +483,16 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveSelfExclusionTrend} badge label="PENDING DATA" />
-          <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusions Over Time</h3>
-          <p className="text-xs text-white/40 mb-4">{granularityLabel} responsible-gaming trend</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusions Over Time</h3>
+          <p className="text-xs text-gray-400 mb-4">{granularityLabel} responsible-gaming trend</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={selfExclusionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} axisLine={false} tickLine={false} interval={0} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} axisLine={false} tickLine={false} interval={0} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
               <Line type="monotone" dataKey="active" name="Active" stroke={CHART_COLORS.red} strokeWidth={2.25} dot={false} />
               <Line type="monotone" dataKey="started" name="Started" stroke={CHART_COLORS.gold} strokeWidth={1.75} dot={false} />
               <Line type="monotone" dataKey="completed" name="Completed" stroke={CHART_COLORS.green} strokeWidth={1.75} dot={false} />
@@ -500,10 +500,10 @@ export default function UsersPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveSelfExclusions} badge label="Pending Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Self-Exclusion Summary</h3>
-          <p className="text-xs text-white/40 mb-4">Responsible gaming overview{liveSelfExclusions ? " — live data" : " — mock data"}</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusion Summary</h3>
+          <p className="text-xs text-gray-400 mb-4">Responsible gaming overview{liveSelfExclusions ? " — live data" : " — mock data"}</p>
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
               { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },
@@ -512,19 +512,19 @@ export default function UsersPage() {
             ].map((s) => (
               <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.22 0.04 155)" }}>
                 <div className="text-xl font-bold mb-1" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs text-white/40">{s.label}</div>
+                <div className="text-xs text-gray-400">{s.label}</div>
               </div>
             ))}
           </div>
           <div className="space-y-2">
             {selfExclusionSummary.byPeriod.map((p) => (
               <div key={p.period} className="flex items-center justify-between text-xs">
-                <span className="text-white/50">{p.period}</span>
+                <span className="text-gray-500">{p.period}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionTotalSafe) * 100}%`, background: CHART_COLORS.red }} />
                   </div>
-                  <span className="text-white/60 w-6 text-right font-medium">{p.count}</span>
+                  <span className="text-gray-600 w-6 text-right font-medium">{p.count}</span>
                 </div>
               </div>
             ))}

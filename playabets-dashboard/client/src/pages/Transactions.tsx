@@ -66,11 +66,11 @@ export default function TransactionsPage() {
   return (
     <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <div className="text-xs text-white/50 mb-3">
+      <div className="text-xs text-gray-400 mb-3">
         Data mode: Mock / Pending
       </div>
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard title="Total Deposits" value={formatFull(transactionSummary.totalDeposits)} subtitle="All time" icon={<ArrowUpCircle size={18} />} accent="green" />
           <KpiCard title="Total Withdrawals" value={formatFull(transactionSummary.totalWithdrawals)} subtitle="All time" icon={<ArrowDownCircle size={18} />} accent="amber" />
@@ -81,10 +81,10 @@ export default function TransactionsPage() {
 
       {/* Transaction trend */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Deposits vs Withdrawals</h3>
-          <p className="text-xs text-white/40 mb-4">Last 30 days daily flow</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits vs Withdrawals</h3>
+          <p className="text-xs text-gray-400 mb-4">Last 30 days daily flow</p>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={transactionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <defs>
@@ -97,10 +97,10 @@ export default function TransactionsPage() {
                   <stop offset="95%" stopColor={CHART_COLORS.amber} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
               <Area type="monotone" dataKey="deposits" name="Deposits" stroke={CHART_COLORS.green} fill="url(#depGrad)" strokeWidth={2} dot={false} />
               <Area type="monotone" dataKey="withdrawals" name="Withdrawals" stroke={CHART_COLORS.amber} fill="url(#withGrad)" strokeWidth={2} dot={false} />
             </AreaChart>
@@ -108,16 +108,16 @@ export default function TransactionsPage() {
         </div>
 
         {/* Net flow */}
-        <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-white mb-1">Net Cash Flow</h3>
-          <p className="text-xs text-white/40 mb-4">Daily net (Deposits - Withdrawals)</p>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Net Cash Flow</h3>
+          <p className="text-xs text-gray-400 mb-4">Daily net (Deposits - Withdrawals)</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={transactionTrend.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(1 0 0 / 5%)" />
-              <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 9 }} tickFormatter={(v) => v.slice(8)} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.04 155)", border: "1px solid oklch(1 0 0 / 10%)", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} tickFormatter={(v) => v.slice(8)} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
               <Bar dataKey="net" name="Net Flow" fill={CHART_COLORS.teal} radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -125,23 +125,23 @@ export default function TransactionsPage() {
       </div>
 
       {/* Transaction by reason */}
-      <div className="relative rounded-xl p-5" style={{ background: "oklch(0.19 0.04 155)", border: "1px solid oklch(1 0 0 / 6%)" }}>
+      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active badge label="Mock Data" />
-        <h3 className="text-sm font-semibold text-white mb-1">Transactions by Reason</h3>
-        <p className="text-xs text-white/40 mb-4">view_Transactions — TransactionReasonId breakdown</p>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Transactions by Reason</h3>
+        <p className="text-xs text-gray-400 mb-4">view_Transactions — TransactionReasonId breakdown</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)" }}>
+              <tr style={{ borderBottom: "1px solid #e4ece4" }}>
                 {["Reason", "Type", "Count", "Total Amount", "Avg Amount"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-white/30 pb-2 pr-6 whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 pb-2 pr-6 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {transactionsByReason.map((t) => (
-                <tr key={t.reason} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid oklch(1 0 0 / 4%)" }}>
-                  <td className="py-3 pr-6 text-white/80 font-medium">{t.reason}</td>
+                <tr key={t.reason} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid #f3f4f6" }}>
+                  <td className="py-3 pr-6 text-gray-800 font-medium">{t.reason}</td>
                   <td className="py-3 pr-6">
                     <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{
                       background: t.type === "Positive" ? "oklch(0.62 0.17 145 / 15%)" : "oklch(0.55 0.22 25 / 15%)",
@@ -151,9 +151,9 @@ export default function TransactionsPage() {
                       {t.type}
                     </span>
                   </td>
-                  <td className="py-3 pr-6 text-white/50 font-mono text-xs">{formatFull(t.count)}</td>
+                  <td className="py-3 pr-6 text-gray-500 font-mono text-xs">{formatFull(t.count)}</td>
                   <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>{formatFull(t.amount)}</td>
-                  <td className="py-3 text-white/50 font-mono text-xs">{formatFull(Math.round(t.amount / t.count))}</td>
+                  <td className="py-3 text-gray-500 font-mono text-xs">{formatFull(Math.round(t.amount / t.count))}</td>
                 </tr>
               ))}
             </tbody>
