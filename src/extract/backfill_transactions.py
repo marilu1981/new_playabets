@@ -166,26 +166,33 @@ def main() -> None:
     success = 0
     failed  = []
 
-    with engine.connect() as conn:
-        for idx, day in enumerate(remaining, start=1):
-            _log(f"[{idx}/{len(remaining)}] Fetching {day}...")
-            t0 = perf_counter()
-            try:
+    for idx, day in enumerate(remaining, start=1):
+        _log(f"[{idx}/{len(remaining)}] Fetching {day}...")
+        t0 = perf_counter()
+        try:
+            with engine.connect() as conn:
                 df = _fetch_day(conn, day)
-                if df.empty:
-                    _log(f"  No data for {day} — skipping.")
-                    continue
+            if df.empty:
+                _log(f"  No data for {day} — skipping.")
+            else:
                 out = OUT_DIR / f"transactions_daily_agg_{day}.parquet"
                 df.to_parquet(out, index=False)
                 elapsed = perf_counter() - t0
                 _log(f"  Saved {day}: deposits={df['deposits'].sum():,.0f}  withdrawals={df['withdrawals'].sum():,.0f}  ({elapsed:.0f}s)")
                 success += 1
-            except Exception as exc:
-                _log(f"  FAILED {day}: {exc}")
-                failed.append((day, str(exc)))
+        except Exception as exc:
+            _log(f"  FAILED {day}: {exc}")
+            failed.append((day, str(exc)))
+            # TCP drop leaves the pool in a broken state — rebuild the engine so
+            # the next day starts with a clean connection.
+            try:
+                engine.dispose()
+            except Exception:
+                pass
+            engine = build_engine()
 
-            if idx < len(remaining) and DELAY_SECONDS > 0:
-                time.sleep(DELAY_SECONDS)
+        if idx < len(remaining) and DELAY_SECONDS > 0:
+            time.sleep(DELAY_SECONDS)
 
     _log(f"\nDone. {success} days saved, {len(failed)} failed.")
     if failed:
