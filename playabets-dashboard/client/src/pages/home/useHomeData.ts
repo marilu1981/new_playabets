@@ -630,17 +630,21 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(
         `/casino/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
-    ]).then(([dailyRes, casinoRes]) => {
+      fetchJson<Array<{ date: string; ftds?: number }>>(
+        `/ftd/daily?start=${latestDataDate}&end=${latestDataDate}`
+      ),
+    ]).then(([dailyRes, casinoRes, ftdRes]) => {
       if (cancelled) return;
       const row = dailyRes.status === "fulfilled" ? (dailyRes.value.rows?.[0] ?? null) : null;
       const casinoRow = casinoRes.status === "fulfilled" ? (casinoRes.value.points?.[0] ?? null) : null;
+      const ftdRow = ftdRes.status === "fulfilled" ? (Array.isArray(ftdRes.value) ? ftdRes.value[0] : null) : null;
       if (row) {
         setLiveTodayKpis({
           ggr: Number(row.ggr ?? 0),
           turnover: Number(row.placed_stake ?? 0),
           registrations: Number(row.registrations ?? 0),
           activeSports: Number(row.actives_sports ?? 0),
-          ftds: 0, // fetched separately — deferred
+          ftds: Number(ftdRow?.ftds ?? 0),
           activeCasino: Number(casinoRow?.casino_actives ?? casinoRow?.actives ?? 0),
         });
       }

@@ -392,7 +392,7 @@ export default function Home() {
                     {tile("GGR",            todayGGR,             CHART_COLORS.gold,          <BarChart2 size={11} />)}
                     {tile("Turnover",       todayTurn,            "oklch(0.75 0.13 220)",     <TrendingUp size={11} />)}
                     {tile("Registrations",  todayRegs,            "oklch(0.75 0.13 220)",     <UserPlus size={11} />)}
-                    {tile("Conv Rate",      `${periodConvRate}%`, CHART_COLORS.amber,         <Percent size={11} />)}
+                    {tile("Conv Rate",      liveTodayKpis && liveTodayKpis.registrations > 0 ? `${Number(((liveTodayKpis.ftds / liveTodayKpis.registrations) * 100).toFixed(1))}%` : `${periodConvRate}%`, CHART_COLORS.amber, <Percent size={11} />)}
                     {tile("Sports Actives", todaySports,          "oklch(0.82 0.10 160)",     <Activity size={11} />)}
                     {tile("Casino Actives", todayCasino,          CHART_COLORS.gold,          <Zap size={11} />)}
                   </div>
