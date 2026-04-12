@@ -39,12 +39,15 @@ def main() -> None:
         tx_dir = RAW / "transactions"
         out = SERVING / "transactions_daily.parquet"
         if tx_dir.exists():
-            # Pre-aggregated files take priority — merge all daily agg files.
+            # Pre-aggregated files: prefer compacted full file + any new daily increments.
+            full_file = tx_dir / "transactions_agg_full.parquet"
             agg_files = sorted(tx_dir.glob("transactions_daily_agg_*.parquet"))
-            if agg_files:
-                tx_daily = pd.concat(
-                    (pd.read_parquet(f) for f in agg_files), ignore_index=True
-                )
+            frames = []
+            if full_file.exists():
+                frames.append(pd.read_parquet(full_file))
+            frames.extend(pd.read_parquet(f) for f in agg_files)
+            if frames:
+                tx_daily = pd.concat(frames, ignore_index=True)
                 # Deduplicate: keep latest file's data for each date.
                 tx_daily["date"] = pd.to_datetime(tx_daily["date"]).dt.date
                 tx_daily = tx_daily.sort_values("date").drop_duplicates(
@@ -65,7 +68,8 @@ def main() -> None:
                         + tx_daily.get("withdrawal_count", 0)
                     )
                 tx_daily.to_parquet(out, index=False)
-                print(f"[domain_kpis] Transactions daily (pre-agg): {len(tx_daily)} rows -> {out}")
+                src_desc = f"full+{len(agg_files)} increments" if full_file.exists() else f"{len(agg_files)} increments"
+                print(f"[domain_kpis] Transactions daily ({src_desc}): {len(tx_daily)} rows -> {out}")
             else:
                 # Fall back to raw row-level increments.
                 tx_raw = read_all_parquets(tx_dir, "transactions_increment_*.parquet")

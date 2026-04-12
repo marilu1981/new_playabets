@@ -131,6 +131,58 @@ def compact_source(
     return len(inc_files)
 
 
+def compact_transactions(directory: Path) -> int:
+    """Compact daily transaction agg files into transactions_agg_full.parquet.
+
+    Transaction files are already one-row-per-day aggregates, so dedup is by
+    date (keeping the latest file's value for any given date).
+    """
+    if not directory.exists():
+        return 0
+
+    inc_files = sorted(directory.glob("transactions_daily_agg_*.parquet"))
+    if not inc_files:
+        log.info("[transactions] No increment files found — skipping")
+        return 0
+
+    full_path = directory / "transactions_agg_full.parquet"
+
+    frames = []
+    if full_path.exists():
+        try:
+            frames.append(pd.read_parquet(full_path))
+            log.info("[transactions] Loaded existing full file (%d rows)", len(frames[0]))
+        except Exception as exc:
+            log.warning("[transactions] Could not read existing full file: %s", exc)
+
+    for f in inc_files:
+        try:
+            frames.append(pd.read_parquet(f))
+        except Exception as exc:
+            log.warning("[transactions] Could not read %s: %s", f.name, exc)
+
+    if not frames:
+        return 0
+
+    combined = pd.concat(frames, ignore_index=True)
+    combined["date"] = pd.to_datetime(combined["date"]).dt.date
+    combined = combined.sort_values("date").drop_duplicates(subset=["date"], keep="last")
+
+    combined.to_parquet(full_path, index=False)
+    log.info(
+        "[transactions] Wrote transactions_agg_full.parquet (%d rows) from %d increment file(s)",
+        len(combined), len(inc_files),
+    )
+
+    for f in inc_files:
+        try:
+            f.unlink()
+        except Exception as exc:
+            log.warning("[transactions] Could not delete %s: %s", f.name, exc)
+
+    return len(inc_files)
+
+
 def main() -> None:
     total = 0
     for src in SOURCES:
@@ -142,6 +194,11 @@ def main() -> None:
             sort_col=src.get("sort_col"),
         )
         total += merged
+
+    # Transactions use pre-aggregated daily files — compact separately.
+    from src.app_config import raw_dir as _raw_dir
+    total += compact_transactions(_raw_dir("transactions"))
+
     log.info("Compaction complete — %d increment files merged and deleted", total)
 
 
