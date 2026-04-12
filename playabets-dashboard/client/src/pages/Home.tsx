@@ -374,31 +374,29 @@ export default function Home() {
           </div>
         );
 
-        const todayGGR     = liveTodayKpis ? formatFull(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
-        const todayTurn    = liveTodayKpis ? formatFull(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
-        const todayRegs    = liveTodayKpis ? formatFull(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
-        const todaySports  = liveTodayKpis ? formatFull(liveTodayKpis.activeSports)  : (isLoading ? "…" : "—");
-        const todayCasino  = liveTodayKpis ? formatFull(liveTodayKpis.activeCasino)  : (isLoading ? "…" : "—");
+        const todayGGR  = liveTodayKpis ? formatFull(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
+        const todayTurn = liveTodayKpis ? formatFull(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
+        const todayRegs = liveTodayKpis ? formatFull(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
+        const todayDep  = liveTodayKpis && liveTodayKpis.deposits > 0 ? formatFull(liveTodayKpis.deposits) : (isLoading ? "…" : "—");
+        const todayWd   = liveTodayKpis && liveTodayKpis.withdrawals > 0 ? formatFull(liveTodayKpis.withdrawals) : (isLoading ? "…" : "—");
 
         return (
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
 
             {/* ── TODAY panel ── */}
-            <div className="rounded-xl overflow-hidden lg:w-[36%]" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+            <div className="rounded-xl overflow-hidden lg:w-[24%]" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
               <div className="px-4 py-2.5 flex items-center justify-between" style={{ background: "linear-gradient(90deg, #7ab800, #093508)" }}>
                 <span className="text-xs font-bold uppercase tracking-widest text-white">Today</span>
                 <span className="text-xs text-white/80 font-mono">{latestDataDate ?? "…"}</span>
               </div>
               <div className="p-3">
-                <div className="pt-1">
-                  <div className="grid grid-cols-3 gap-2">
-                    {tile("GGR",            todayGGR,             CHART_COLORS.gold,          <BarChart2 size={11} />)}
-                    {tile("Turnover",       todayTurn,            "oklch(0.75 0.13 220)",     <TrendingUp size={11} />)}
-                    {tile("Registrations",  todayRegs,            "oklch(0.75 0.13 220)",     <UserPlus size={11} />)}
-                    {tile("Conv Rate",      liveTodayKpis && liveTodayKpis.registrations > 0 ? `${Number(((liveTodayKpis.ftds / liveTodayKpis.registrations) * 100).toFixed(1))}%` : `${periodConvRate}%`, CHART_COLORS.amber, <Percent size={11} />)}
-                    {tile("Sports Actives", todaySports,          "oklch(0.82 0.10 160)",     <Activity size={11} />)}
-                    {tile("Casino Actives", todayCasino,          CHART_COLORS.gold,          <Zap size={11} />)}
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {tile("GGR",           todayGGR,  CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                  {tile("Turnover",      todayTurn, "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                  {tile("Registrations", todayRegs, "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                  {tile("FTDs",          liveTodayKpis ? formatFull(liveTodayKpis.ftds) : (isLoading ? "…" : "—"), CHART_COLORS.gold, <Users size={11} />)}
+                  {tile("Deposits",      todayDep,  CHART_COLORS.amber,     <DollarSign size={11} />)}
+                  {tile("Withdrawals",   todayWd,   CHART_COLORS.red,       <ArrowUpRight size={11} />)}
                 </div>
               </div>
             </div>
@@ -410,31 +408,30 @@ export default function Home() {
                 <span className="text-xs text-white/80 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
               </div>
               <div className="p-3 space-y-3">
-                {/* Revenue group */}
+                {/* Revenue group — 6 tiles */}
                 <div>
-                  <div className="grid grid-cols-7 gap-2">
-                    {tile("GGR",          formatFull(overviewKPIs.grossRevenue),                                                                                                   CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                    {tile("Turnover",     formatFull(overviewKPIs.totalStake),                                                                                                      "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                    {tile("Margin",       overviewKPIs.totalStake > 0
-                      ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%`
-                      : "—",                                                                                                                                                          CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
-                    {tile("Deposits",     hasTransactionsData ? formatFull(transactionSummary.totalDeposits)  : "Pending",                                                         CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
-                    {tile("Withdrawals",  hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                                                       CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
-                    {tile("Net Cash",     hasTransactionsData ? formatFull(transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) : "Pending",                    CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd")}
-                    {tile("Net Cash %",   hasTransactionsData && transactionSummary.totalDeposits > 0
+                  <div className="grid grid-cols-6 gap-2">
+                    {tile("GGR",         formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                    {tile("Turnover",    formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                    {tile("Margin",      overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
+                                                                                                                                                          CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
+                    {tile("Deposits",    hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
+                    {tile("Withdrawals", hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                    {tile("Net Cash %",  hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
-                      : "Pending",                                                                                                                                                    CHART_COLORS.teal,      <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
+                      : "Pending",                                                                                                                         CHART_COLORS.teal,      <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
                   </div>
                 </div>
-                {/* Players group */}
+                {/* Players group — 6 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {tile("Registrations",  formatFull(kpiRegistrations),                   "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                    {tile("FTDs",           formatFull(kpiFtds),                            CHART_COLORS.gold,      <Users size={11} />)}
-                    {tile("Conv Rate",      `${periodConvRate}%`,                              CHART_COLORS.amber,     <Percent size={11} />)}
-                    {tile("Sports Actives", formatFull(overviewKPIs.activesSports),         "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
-                    {tile("Casino Actives", formatFull(overviewKPIs.activesCasino),         CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
+                  <div className="grid grid-cols-6 gap-2">
+                    {tile("Registrations",  formatFull(kpiRegistrations),               "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                    {tile("FTDs",           formatFull(kpiFtds),                        CHART_COLORS.gold,      <Users size={11} />)}
+                    {tile("Conv Rate",      `${periodConvRate}%`,                        CHART_COLORS.amber,     <Percent size={11} />)}
+                    {tile("NGR",            liveNgr != null ? formatFull(liveNgr) : "—", CHART_COLORS.green,    <TrendingUp size={11} />, liveNgr == null)}
+                    {tile("Sports Actives", formatFull(overviewKPIs.activesSports),     "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
+                    {tile("Casino Actives", formatFull(overviewKPIs.activesCasino),     CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
                   </div>
                 </div>
               </div>

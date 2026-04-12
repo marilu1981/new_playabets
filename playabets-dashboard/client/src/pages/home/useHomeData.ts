@@ -54,6 +54,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     activeSports: number;
     activeCasino: number;
     ftds: number;
+    deposits: number;
+    withdrawals: number;
   } | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
@@ -674,11 +676,15 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       fetchJson<Array<{ date: string; ftds?: number }>>(
         `/ftd/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
-    ]).then(([dailyRes, casinoRes, ftdRes]) => {
+      fetchJson<{ deposits?: number; withdrawals?: number }>(
+        `/kpis?start=${latestDataDate}&end=${latestDataDate}`
+      ),
+    ]).then(([dailyRes, casinoRes, ftdRes, kpisRes]) => {
       if (cancelled) return;
       const row = dailyRes.status === "fulfilled" ? (dailyRes.value.rows?.[0] ?? null) : null;
       const casinoRow = casinoRes.status === "fulfilled" ? (casinoRes.value.points?.[0] ?? null) : null;
       const ftdRow = ftdRes.status === "fulfilled" ? (Array.isArray(ftdRes.value) ? ftdRes.value[0] : null) : null;
+      const todayKpis = kpisRes.status === "fulfilled" ? kpisRes.value : null;
       if (row) {
         setLiveTodayKpis({
           ggr: Number(row.ggr ?? 0),
@@ -687,6 +693,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           activeSports: Number(row.actives_sports ?? 0),
           ftds: Number(ftdRow?.ftds ?? 0),
           activeCasino: Number(casinoRow?.casino_actives ?? casinoRow?.actives ?? 0),
+          deposits: Number(todayKpis?.deposits ?? 0),
+          withdrawals: Number(todayKpis?.withdrawals ?? 0),
         });
       }
     }).catch(() => {});
