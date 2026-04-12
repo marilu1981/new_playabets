@@ -30,6 +30,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveRevenueMetricsTrend, setLiveRevenueMetricsTrend] = useState<typeof baseRevenueMetricsTrend | null>(null);
   const [livePlayerAcquisition, setLivePlayerAcquisition] = useState<typeof basePlayerAcquisition | null>(null);
   const [liveConversionRateTrend, setLiveConversionRateTrend] = useState<Array<{ date: string; rate7d: number | null; rate30d: number | null }> | null>(null);
+  const [livePlayerAcquisitionDaily, setLivePlayerAcquisitionDaily] = useState<Array<{ date: string; registrations: number; ftds: number }> | null>(null);
+  const [liveSportsCasinoGgr, setLiveSportsCasinoGgr] = useState<Array<{ date: string; sports_ggr: number; casino_ggr: number }> | null>(null);
   const [liveTransactionSummary, setLiveTransactionSummary] = useState<typeof baseTransactionSummary | null>(null);
   const [liveRangeKpis, setLiveRangeKpis] = useState<{ registrations: number; ftds: number } | null>(null);
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
@@ -53,7 +55,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     activeCasino: number;
     ftds: number;
   } | null>(null);
-  // TODO: livePlayerAcquisitionDaily, liveDailyConvRate, liveSportsCasinoGgr — add when chart changes deployed
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
@@ -181,6 +182,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             rate_d30?: number | null;
           }>;
         }>(`/timeseries/conversion-cohorts?start=${filters.dateFrom}&end=${filters.dateTo}`),
+        ftdDaily: fetchJson<Array<{ date: string; ftds?: number }>>(
+          `/ftd/daily?start=${filters.dateFrom}&end=${filters.dateTo}`
+        ),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
         rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
@@ -195,13 +199,14 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }>(`/kpis/summary?start=${filters.dateFrom}&end=${filters.dateTo}`),
       };
 
-      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes] = await Promise.allSettled([
+      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes, ftdDailyRes] = await Promise.allSettled([
         requests.kpis,
         requests.daily,
         requests.casinoDaily,
         requests.bonusDaily,
         requests.registrations,
         requests.conversionCohorts,
+        requests.ftdDaily,
       ]);
 
       if (cancelled) {
@@ -245,6 +250,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
+      }
+
+      const ftdByDateFull = new Map<string, number>();
+      if (ftdDailyRes.status === "fulfilled") {
+        for (const row of (Array.isArray(ftdDailyRes.value) ? ftdDailyRes.value : [])) {
+          ftdByDateFull.set(row.date, Number(row.ftds ?? 0));
+        }
       }
 
       if (!hasDaily) {
@@ -349,6 +361,15 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           : null
       );
 
+      setLiveSportsCasinoGgr(
+        allDates.length > 0
+          ? allDates.map((date) => ({
+              date,
+              sports_ggr: sportsbookByDate.get(date)?.ggr ?? 0,
+              casino_ggr: casinoByDate.get(date)?.ggr ?? 0,
+            }))
+          : null
+      );
 
       setLiveRevenueTrend(
         metrics.length > 0
@@ -420,20 +441,40 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           }));
         setLivePlayerAcquisition(monthly.length > 0 ? monthly : null);
 
-      }
+        // Daily player acquisition: registrations per day + FTD counts from ftdByDateFull
+        const dailyAcq = Array.from(regByDate.entries())
+          .filter(([date]) => date >= filters.dateFrom && date <= filters.dateTo)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([date, registrations]) => ({
+            date,
+            registrations,
+            ftds: ftdByDateFull.get(date) ?? 0,
+          }));
+        setLivePlayerAcquisitionDaily(dailyAcq.length > 0 ? dailyAcq : null);
 
-      if (conversionCohortsRes.status === "fulfilled") {
-        const rows = (conversionCohortsRes.value.points ?? [])
-          .map((row) => ({
-            date: String(row.date ?? ""),
-            rate7d: row.rate_d7 == null ? null : Number(row.rate_d7),
-            rate30d: row.rate_d30 == null ? null : Number(row.rate_d30),
-          }))
-          .filter((row) => row.date);
-        setLiveConversionRateTrend(rows.length > 0 ? rows : null);
+        // Conv rate trend: daily FTDs ÷ registrations
+        const convDates = Array.from(
+          new Set([...Array.from(regByDate.keys()), ...Array.from(ftdByDateFull.keys())])
+        ).filter((d) => d >= filters.dateFrom && d <= filters.dateTo).sort();
+        const convRateRows = convDates
+          .map((date) => {
+            const regsCount = regByDate.get(date) ?? 0;
+            const ftdsCount = ftdByDateFull.get(date) ?? 0;
+            return {
+              date,
+              rate7d: regsCount > 0 ? Number(((ftdsCount / regsCount) * 100).toFixed(1)) : null,
+              rate30d: null as null,
+            };
+          })
+          .filter((row) => row.rate7d !== null);
+        setLiveConversionRateTrend(convRateRows.length > 0 ? convRateRows : null);
       } else {
+        setLivePlayerAcquisitionDaily(null);
         setLiveConversionRateTrend(null);
       }
+
+      // conversionCohortsRes is kept for potential future use but conv rate is now computed above
+      void conversionCohortsRes;
 
       const [betslipStatusRes, userStatusRes, rfmSegmentsRes, summaryRes] = await Promise.allSettled([
         requests.betslipStatus,
@@ -660,7 +701,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveRevenueTrend,
     liveRevenueMetricsTrend,
     livePlayerAcquisition,
+    livePlayerAcquisitionDaily,
     liveConversionRateTrend,
+    liveSportsCasinoGgr,
     liveTransactionSummary,
     liveRangeKpis,
     liveNgr,
