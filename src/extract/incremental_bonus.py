@@ -30,6 +30,7 @@ BONUSES_COLUMNS = [
     "CurrencyExchangeID", "BonusStatusID", "BonusStatus",
     "CalculationBaseAmount", "InsertDate", "Manual",
     "ExpiryDate", "MasterCampaignId", "DateVersion",
+    "CancellationBonusTransazionID",   # NULL = original; NOT NULL = reversal record
 ]
 CAMPAIGNS_COLUMNS = [
     "CampaignID", "BonusTypeID", "BonusType",

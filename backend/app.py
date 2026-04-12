@@ -732,10 +732,11 @@ def kpis(
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings
     ggr = sportsbook_ggr + casino_ggr
-    # bonus_total = credited bonuses + used freebets (real bonus exposure)
+    # bonus_total = net credited bonuses (reversals excluded) + all freebets issued
     # Falls back to bonus_credited if bonus_total not yet in serving file.
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
-    freebet_spend = _s(bonus, "freebet_spend")
+    freebet_issued = _s(bonus, "freebet_issued")
+    freebet_spend  = _s(bonus, "freebet_spend")   # used freebets — reference
     ngr = ggr - bonus_spent
 
     filtered_registrations = _filtered_registration_total(start, end, territory, country, customer_status, current_segment) if allowed_ids is not None else None
@@ -1104,7 +1105,8 @@ def _summary_period(start: date, end: date) -> dict:
 
     total_ggr = sports_ggr + casino_ggr
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
-    freebet_spend = _s(bonus, "freebet_spend")
+    freebet_issued = _s(bonus, "freebet_issued")
+    freebet_spend  = _s(bonus, "freebet_spend")
     ngr = total_ggr - bonus_spent
     total_turnover = sports_turnover + casino_stake
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
@@ -1518,6 +1520,9 @@ def bonus_daily(
             {
                 "date": str(r["date"]),
                 "bonus_credited": float(r.get("bonus_credited", 0) or 0),
+                "freebet_issued": float(r.get("freebet_issued", 0) or 0),
+                "freebet_spend": float(r.get("freebet_spend", 0) or 0),
+                "bonus_total": float(r.get("bonus_total", 0) or 0),
                 "first_deposit_bonus_count": int(r.get("first_deposit_bonus_count", 0) or 0),
                 "first_deposit_bonus_users": int(r.get("first_deposit_bonus_users", 0) or 0),
                 "first_deposit_bonus_amount": float(r.get("first_deposit_bonus_amount", 0) or 0),

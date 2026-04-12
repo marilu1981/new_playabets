@@ -304,7 +304,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       const bonusByDate = new Map<string, number>();
       if (bonusDailyRes.status === "fulfilled") {
         for (const p of bonusDailyRes.value.points ?? []) {
-          bonusByDate.set(p.date, Number(p.bonus_credited ?? 0));
+          // Prefer bonus_total (credited + freebets issued); fall back to bonus_credited
+          bonusByDate.set(p.date, Number((p as { bonus_total?: number; bonus_credited?: number }).bonus_total ?? p.bonus_credited ?? 0));
         }
       }
 
@@ -325,6 +326,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         totalDays,
       });
 
+      // Period-level NGR ratio from /kpis: distribute NGR across days proportional to GGR.
+      // This avoids date-alignment issues between bonus InsertDate and betslip settlement dates
+      // (bonus dates often don't match betslip dates, causing per-day deduction to miss).
+      const periodGgr = kpisRes.status === "fulfilled" ? Number(kpisRes.value.ggr ?? 0) : 0;
+      const periodNgr = kpisRes.status === "fulfilled" ? Number(kpisRes.value.ngr ?? null) : null;
+      const ngrRatio = periodGgr > 0 && periodNgr != null ? periodNgr / periodGgr : null;
+
       const metrics = allDates.map((date) => {
         const sportsbook = sportsbookByDate.get(date) ?? {
           turnover: 0,
@@ -338,7 +346,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         const turnover = sportsbook.settledStake + casino.stake;
         const winnings = sportsbook.settledWinnings + casino.winnings;
         const ggr = sportsbook.ggr + casino.ggr;
-        const ngr = ggr - Number(bonusByDate.get(date) ?? 0);
+        // Scale daily GGR by period NGR/GGR ratio → daily NGR sums to the correct period total
+        const ngr = ngrRatio != null
+          ? Number((ggr * ngrRatio).toFixed(2))
+          : ggr - Number(bonusByDate.get(date) ?? 0);
 
         return {
           date,
