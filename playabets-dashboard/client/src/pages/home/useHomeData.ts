@@ -57,6 +57,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     ftds: number;
     deposits: number;
     withdrawals: number;
+    bonusRedeemed: number;
+    hasTransactionsToday: boolean;
   } | null>(null);
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
@@ -691,15 +693,19 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       fetchJson<{ points: Array<{ date: string; ftds?: number }> }>(
         `/ftd/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
-      fetchJson<{ deposits?: number; withdrawals?: number }>(
-        `/kpis?start=${latestDataDate}&end=${latestDataDate}`
+      fetchJson<{ has_data?: boolean; deposits?: number; withdrawals?: number }>(
+        `/transactions/kpis?start=${latestDataDate}&end=${latestDataDate}`
       ),
-    ]).then(([dailyRes, casinoRes, ftdRes, kpisRes]) => {
+      fetchJson<{ points: Array<{ date: string; bonus_total?: number }> }>(
+        `/bonus/daily?start=${latestDataDate}&end=${latestDataDate}`
+      ),
+    ]).then(([dailyRes, casinoRes, ftdRes, txRes, bonusRes]) => {
       if (cancelled) return;
       const row = dailyRes.status === "fulfilled" ? (dailyRes.value.rows?.[0] ?? null) : null;
       const casinoRow = casinoRes.status === "fulfilled" ? (casinoRes.value.points?.[0] ?? null) : null;
       const ftdRow = ftdRes.status === "fulfilled" ? (ftdRes.value?.points?.[0] ?? null) : null;
-      const todayKpis = kpisRes.status === "fulfilled" ? kpisRes.value : null;
+      const txKpis = txRes.status === "fulfilled" ? txRes.value : null;
+      const bonusRow = bonusRes.status === "fulfilled" ? (bonusRes.value?.points?.[0] ?? null) : null;
       if (row) {
         setLiveTodayKpis({
           ggr: Number(row.ggr ?? 0),
@@ -708,8 +714,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           activeSports: Number(row.actives_sports ?? 0),
           ftds: Number(ftdRow?.ftds ?? 0),
           activeCasino: Number(casinoRow?.casino_actives ?? casinoRow?.actives ?? 0),
-          deposits: Number(todayKpis?.deposits ?? 0),
-          withdrawals: Number(todayKpis?.withdrawals ?? 0),
+          deposits: Number(txKpis?.deposits ?? 0),
+          withdrawals: Number(txKpis?.withdrawals ?? 0),
+          bonusRedeemed: Number(bonusRow?.bonus_total ?? 0),
+          hasTransactionsToday: txKpis?.has_data === true,
         });
       }
     }).catch(() => {});

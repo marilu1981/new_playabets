@@ -375,11 +375,18 @@ export default function Home() {
           </div>
         );
 
-        const todayGGR  = liveTodayKpis ? formatFull(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
-        const todayTurn = liveTodayKpis ? formatFull(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
-        const todayRegs = liveTodayKpis ? formatFull(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
-        const todayDep  = liveTodayKpis && liveTodayKpis.deposits > 0 ? formatFull(liveTodayKpis.deposits) : (isLoading ? "…" : "—");
-        const todayWd   = liveTodayKpis && liveTodayKpis.withdrawals > 0 ? formatFull(liveTodayKpis.withdrawals) : (isLoading ? "…" : "—");
+        const todayGGR    = liveTodayKpis ? formatFull(liveTodayKpis.ggr)          : (isLoading ? "…" : "—");
+        const todayTurn   = liveTodayKpis ? formatFull(liveTodayKpis.turnover)      : (isLoading ? "…" : "—");
+        const todayRegs   = liveTodayKpis ? formatFull(liveTodayKpis.registrations) : (isLoading ? "…" : "—");
+        const todayDep    = liveTodayKpis
+          ? (liveTodayKpis.hasTransactionsToday ? formatFull(liveTodayKpis.deposits) : "Pending")
+          : (isLoading ? "…" : "—");
+        const todayWd     = liveTodayKpis
+          ? (liveTodayKpis.hasTransactionsToday ? formatFull(liveTodayKpis.withdrawals) : "Pending")
+          : (isLoading ? "…" : "—");
+        const todayBonus  = liveTodayKpis && liveTodayKpis.bonusRedeemed > 0
+          ? formatFull(liveTodayKpis.bonusRedeemed)
+          : (isLoading ? "…" : "—");
 
         return (
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
@@ -392,12 +399,13 @@ export default function Home() {
               </div>
               <div className="p-3">
                 <div className="grid grid-cols-2 gap-2">
-                  {tile("GGR",           todayGGR,  CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                  {tile("Turnover",      todayTurn, "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                  {tile("Registrations", todayRegs, "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                  {tile("FTDs",          liveTodayKpis ? formatFull(liveTodayKpis.ftds) : (isLoading ? "…" : "—"), CHART_COLORS.gold, <Users size={11} />)}
-                  {tile("Deposits",      todayDep,  CHART_COLORS.amber,     <DollarSign size={11} />)}
-                  {tile("Withdrawals",   todayWd,   CHART_COLORS.red,       <ArrowUpRight size={11} />)}
+                  {tile("GGR",            todayGGR,   CHART_COLORS.gold,      <BarChart2 size={11} />)}
+                  {tile("Turnover",       todayTurn,  "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                  {tile("Registrations",  todayRegs,  "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                  {tile("FTDs",           liveTodayKpis ? formatFull(liveTodayKpis.ftds) : (isLoading ? "…" : "—"), CHART_COLORS.gold, <Users size={11} />)}
+                  {tile("Deposits",       todayDep,   CHART_COLORS.amber,     <DollarSign size={11} />, !liveTodayKpis?.hasTransactionsToday)}
+                  {tile("Withdrawals",    todayWd,    CHART_COLORS.red,       <ArrowUpRight size={11} />, !liveTodayKpis?.hasTransactionsToday)}
+                  {tile("Bonus Redeemed", todayBonus, CHART_COLORS.green,     <Zap size={11} />)}
                 </div>
               </div>
             </div>
