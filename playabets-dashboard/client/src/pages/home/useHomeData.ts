@@ -186,7 +186,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             rate_d30?: number | null;
           }>;
         }>(`/timeseries/conversion-cohorts?start=${filters.dateFrom}&end=${filters.dateTo}`),
-        ftdDaily: fetchJson<Array<{ date: string; ftds?: number }>>(
+        ftdDaily: fetchJson<{ points: Array<{ date: string; ftds?: number }> }>(
           `/ftd/daily?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
@@ -260,7 +260,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
 
       const ftdByDateFull = new Map<string, number>();
       if (ftdDailyRes.status === "fulfilled") {
-        for (const row of (Array.isArray(ftdDailyRes.value) ? ftdDailyRes.value : [])) {
+        for (const row of (ftdDailyRes.value?.points ?? [])) {
           ftdByDateFull.set(row.date, Number(row.ftds ?? 0));
         }
       }
@@ -688,7 +688,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(
         `/casino/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
-      fetchJson<Array<{ date: string; ftds?: number }>>(
+      fetchJson<{ points: Array<{ date: string; ftds?: number }> }>(
         `/ftd/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
       fetchJson<{ deposits?: number; withdrawals?: number }>(
@@ -698,7 +698,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       if (cancelled) return;
       const row = dailyRes.status === "fulfilled" ? (dailyRes.value.rows?.[0] ?? null) : null;
       const casinoRow = casinoRes.status === "fulfilled" ? (casinoRes.value.points?.[0] ?? null) : null;
-      const ftdRow = ftdRes.status === "fulfilled" ? (Array.isArray(ftdRes.value) ? ftdRes.value[0] : null) : null;
+      const ftdRow = ftdRes.status === "fulfilled" ? (ftdRes.value?.points?.[0] ?? null) : null;
       const todayKpis = kpisRes.status === "fulfilled" ? kpisRes.value : null;
       if (row) {
         setLiveTodayKpis({
