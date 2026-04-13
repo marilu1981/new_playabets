@@ -191,6 +191,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         ftdDaily: fetchJson<{ points: Array<{ date: string; ftds?: number }> }>(
           `/ftd/daily?start=${filters.dateFrom}&end=${filters.dateTo}`
         ),
+        ftdRegMonthDaily: fetchJson<{ points: Array<{ date: string; ftd_reg_month?: number }> }>(
+          `/ftd-reg-month/daily?start=${filters.dateFrom}&end=${filters.dateTo}`
+        ),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
         rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
@@ -205,7 +208,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }>(`/kpis/summary?start=${filters.dateFrom}&end=${filters.dateTo}`),
       };
 
-      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes, ftdDailyRes] = await Promise.allSettled([
+      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes, ftdDailyRes, ftdRegMonthDailyRes] = await Promise.allSettled([
         requests.kpis,
         requests.daily,
         requests.casinoDaily,
@@ -213,6 +216,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         requests.registrations,
         requests.conversionCohorts,
         requests.ftdDaily,
+        requests.ftdRegMonthDaily,
       ]);
 
       if (cancelled) {
@@ -264,6 +268,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       if (ftdDailyRes.status === "fulfilled") {
         for (const row of (ftdDailyRes.value?.points ?? [])) {
           ftdByDateFull.set(row.date, Number(row.ftds ?? 0));
+        }
+      }
+
+      const ftdRegMonthByDate = new Map<string, number>();
+      if (ftdRegMonthDailyRes.status === "fulfilled") {
+        for (const row of (ftdRegMonthDailyRes.value?.points ?? [])) {
+          ftdRegMonthByDate.set(row.date, Number(row.ftd_reg_month ?? 0));
         }
       }
 
@@ -471,17 +482,17 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           }));
         setLivePlayerAcquisitionDaily(dailyAcq.length > 0 ? dailyAcq : null);
 
-        // Conv rate trend: daily FTDs ÷ registrations
+        // Conv rate trend: daily FTD Reg Month ÷ registrations
         const convDates = Array.from(
-          new Set([...Array.from(regByDate.keys()), ...Array.from(ftdByDateFull.keys())])
+          new Set([...Array.from(regByDate.keys()), ...Array.from(ftdRegMonthByDate.keys())])
         ).filter((d) => d >= filters.dateFrom && d <= filters.dateTo).sort();
         const convRateRows = convDates
           .map((date) => {
             const regsCount = regByDate.get(date) ?? 0;
-            const ftdsCount = ftdByDateFull.get(date) ?? 0;
+            const ftdRegCount = ftdRegMonthByDate.get(date) ?? 0;
             return {
               date,
-              rate7d: regsCount > 0 ? Number(((ftdsCount / regsCount) * 100).toFixed(1)) : null,
+              rate7d: regsCount > 0 ? Number(((ftdRegCount / regsCount) * 100).toFixed(1)) : null,
               rate30d: null as null,
             };
           })

@@ -1109,11 +1109,13 @@ def _summary_period(start: date, end: date) -> dict:
 
     regs = _i(df, "registrations")
     ftds = _i(ftd, "ftds")
-    conv_rate = round(ftds / regs * 100, 1) if regs > 0 else 0.0
 
     # FTD Reg Month: users who registered in the period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
     ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
+
+    # Conv rate = FTD Reg Month ÷ Registrations (users who registered AND ever deposited).
+    conv_rate = round(ftd_reg_month / regs * 100, 1) if regs > 0 else 0.0
 
     sports_turnover = _s(df, "placed_stake")
     sports_winnings = _s(df, "settled_winnings")
@@ -1255,6 +1257,23 @@ def ftd_daily(
         "points": [
             {"date": str(r["date"]), "ftds": int(r.get("ftds", 0) or 0)}
             for r in ftd.to_dict("records")
+        ]
+    }
+
+
+@app.get("/ftd-reg-month/daily")
+def ftd_reg_month_daily(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
+    if df.empty:
+        return {"points": []}
+    df = df.sort_values("date")
+    return {
+        "points": [
+            {"date": str(r["date"]), "ftd_reg_month": int(r.get("ftd_reg_month", 0) or 0)}
+            for r in df.to_dict("records")
         ]
     }
 
