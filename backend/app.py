@@ -1184,6 +1184,26 @@ def kpis_summary(
 
 
 # ---------------------------------------------------------------------------
+# FTD daily
+# ---------------------------------------------------------------------------
+@app.get("/ftd/daily")
+def ftd_daily(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
+    if ftd.empty:
+        return {"points": []}
+    ftd = ftd.sort_values("date")
+    return {
+        "points": [
+            {"date": str(r["date"]), "ftds": int(r.get("ftds", 0) or 0)}
+            for r in ftd.to_dict("records")
+        ]
+    }
+
+
+# ---------------------------------------------------------------------------
 # RFM
 # ---------------------------------------------------------------------------
 @app.get("/rfm/segments")
