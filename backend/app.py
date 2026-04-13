@@ -97,9 +97,11 @@ RFM_ROLLING_PATH        = _SERVING / "rfm_rolling_daily.parquet"
 RFM_MONTHLY_PATH        = _SERVING / "rfm_monthly_snapshots.parquet"
 
 # Domain-specific serving files (written by build_daily_kpis or domain scripts)
-TX_DAILY_PATH          = _SERVING / "transactions_daily.parquet"
-BONUS_DAILY_PATH       = _SERVING / "bonus_daily.parquet"
-FTD_DAILY_PATH         = _SERVING / "ftd_daily.parquet"
+TX_DAILY_PATH               = _SERVING / "transactions_daily.parquet"
+BONUS_DAILY_PATH            = _SERVING / "bonus_daily.parquet"
+FTD_DAILY_PATH              = _SERVING / "ftd_daily.parquet"
+FTD_REG_MONTH_DAILY_PATH    = _SERVING / "ftd_reg_month_daily.parquet"
+ACTIVES_MONTHLY_PATH        = _SERVING / "actives_monthly.parquet"
 CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
@@ -687,6 +689,8 @@ def health():
         "tx_daily": TX_DAILY_PATH.exists(),
         "bonus_daily": BONUS_DAILY_PATH.exists(),
         "ftd_daily": FTD_DAILY_PATH.exists(),
+        "ftd_reg_month_daily": FTD_REG_MONTH_DAILY_PATH.exists(),
+        "actives_monthly": ACTIVES_MONTHLY_PATH.exists(),
         "casino_daily": CASINO_DAILY_PATH.exists(),
     }
 
@@ -724,10 +728,27 @@ def kpis(
         sportsbook_ggr = _s(df, "ggr")
         sportsbook_actives = _mean_i(df, "actives_sports")
 
+    # Horse racing (Betmakers) is separated from casino — add to sports totals.
+    horse_racing_ggr   = _s(casino, "horse_racing_ggr")
+    horse_racing_stake = _s(casino, "horse_racing_stake")
+    sportsbook_ggr     += horse_racing_ggr
+    sportsbook_turnover += horse_racing_stake
+
     casino_turnover = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
     casino_ggr = _s(casino, "casino_ggr")
-    casino_actives = _mean_i(casino, "casino_actives")
+
+    # Period-unique actives from actives_monthly.parquet (falls back to daily avg).
+    actives_monthly = load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
+    if not actives_monthly.empty and "month" in actives_monthly.columns:
+        start_month = start.strftime("%Y-%m")
+        end_month = end.strftime("%Y-%m")
+        mask = (actives_monthly["month"] >= start_month) & (actives_monthly["month"] <= end_month)
+        am = actives_monthly[mask]
+        sportsbook_actives = int(am["sports_actives_unique"].sum()) if "sports_actives_unique" in am.columns and not am.empty else sportsbook_actives
+        casino_actives = int(am["casino_actives_unique"].sum()) if "casino_actives_unique" in am.columns and not am.empty else _mean_i(casino, "casino_actives")
+    else:
+        casino_actives = _mean_i(casino, "casino_actives")
 
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings
@@ -738,6 +759,10 @@ def kpis(
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")   # used freebets — reference
     ngr = ggr - bonus_spent
+
+    # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
+    ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
+    ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
 
     filtered_registrations = _filtered_registration_total(start, end, territory, country, customer_status, current_segment) if allowed_ids is not None else None
 
@@ -760,6 +785,7 @@ def kpis(
         "casino_winnings": casino_winnings,
         "casino_ggr": casino_ggr,
         "ftds": _i(ftd, "ftds"),
+        "ftd_reg_month": ftd_reg_month,
         "deposits": _s(tx, "deposits"),
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),
@@ -1085,21 +1111,31 @@ def _summary_period(start: date, end: date) -> dict:
     ftds = _i(ftd, "ftds")
     conv_rate = round(ftds / regs * 100, 1) if regs > 0 else 0.0
 
+    # FTD Reg Month: users who registered in the period AND have ever deposited (lifetime).
+    ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
+    ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
+
     sports_turnover = _s(df, "placed_stake")
     sports_winnings = _s(df, "settled_winnings")
     sports_ggr = _s(df, "ggr")
     sports_bets = _i(df, "betslips_count")
     sports_settled = _i(df, "betslips_settled_count")
     avg_stake = round(sports_turnover / sports_bets, 2) if sports_bets > 0 else 0.0
-    sports_hold = round(sports_ggr / sports_turnover * 100, 1) if sports_turnover > 0 else 0.0
     win_rate = round(_s(df, "win_rate"), 1) if "win_rate" in df.columns and len(df) > 0 else 0.0
     cancel_rate = round(_s(df, "cancel_rate"), 1) if "cancel_rate" in df.columns and len(df) > 0 else 0.0
+
+    # Horse racing (Betmakers) is separated from casino in casino_daily.parquet.
+    # Add it to sports totals so casino figures reflect pure casino only.
+    horse_racing_ggr     = _s(casino, "horse_racing_ggr")
+    horse_racing_stake   = _s(casino, "horse_racing_stake")
+    sports_ggr          += horse_racing_ggr
+    sports_turnover     += horse_racing_stake
+    sports_hold = round(sports_ggr / sports_turnover * 100, 1) if sports_turnover > 0 else 0.0
 
     casino_stake = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
     casino_ggr = _s(casino, "casino_ggr")
     casino_bets = _i(casino, "casino_bets")
-    casino_actives = _i(casino, "casino_actives")
     casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
 
@@ -1110,11 +1146,31 @@ def _summary_period(start: date, end: date) -> dict:
     ngr = total_ggr - bonus_spent
     total_turnover = sports_turnover + casino_stake
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
-    actives_sports = _mean_i(df, "actives_sports")
-    actives_casino = _mean_i(casino, "casino_actives")
+
+    # Actives: period-total unique users from actives_monthly.parquet.
+    # Approximation: sum monthly uniques for months overlapping the date range.
+    # (Slight overcount for multi-month periods where users are active in multiple months.)
+    actives_monthly = load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
+    actives_sports = 0
+    actives_casino = 0
+    if not actives_monthly.empty and "month" in actives_monthly.columns:
+        start_month = start.strftime("%Y-%m")
+        end_month = end.strftime("%Y-%m")
+        mask = (actives_monthly["month"] >= start_month) & (actives_monthly["month"] <= end_month)
+        filtered = actives_monthly[mask]
+        if "sports_actives_unique" in filtered.columns:
+            actives_sports = int(filtered["sports_actives_unique"].sum())
+        if "casino_actives_unique" in filtered.columns:
+            actives_casino = int(filtered["casino_actives_unique"].sum())
+    # Fall back to daily average if monthly unique not yet available
+    if actives_sports == 0:
+        actives_sports = _mean_i(df, "actives_sports")
+    if actives_casino == 0:
+        actives_casino = _mean_i(casino, "casino_actives")
 
     return {
         "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
+        "ftd_reg_month": ftd_reg_month,
         "actives_sports": actives_sports, "actives_casino": actives_casino,
         "turnover": round(total_turnover, 2), "ggr": round(total_ggr, 2),
         "ngr": round(ngr, 2), "hold_pct": hold_pct, "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
@@ -1124,7 +1180,7 @@ def _summary_period(start: date, end: date) -> dict:
         "win_rate": win_rate, "cancel_rate": cancel_rate, "avg_stake": avg_stake,
         "casino_bets": casino_bets, "casino_stake": round(casino_stake, 2),
         "casino_winnings": round(casino_winnings, 2), "casino_ggr": round(casino_ggr, 2),
-        "casino_margin": casino_margin, "casino_rtp": casino_rtp, "casino_actives": casino_actives,
+        "casino_margin": casino_margin, "casino_rtp": casino_rtp, "casino_actives": actives_casino,
     }
 
 

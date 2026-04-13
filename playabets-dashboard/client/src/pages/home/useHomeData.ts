@@ -35,6 +35,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveTransactionSummary, setLiveTransactionSummary] = useState<typeof baseTransactionSummary | null>(null);
   const [liveRangeKpis, setLiveRangeKpis] = useState<{ registrations: number; ftds: number } | null>(null);
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
+  const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
   const [liveUsersByStatus, setLiveUsersByStatus] = useState<Array<{ status: string; count: number }> | null>(null);
@@ -154,6 +155,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           withdrawals?: number;
           bonus_spent?: number;
           ftds?: number;
+          ftd_reg_month?: number;
           has_transactions_data?: boolean;
           tx_count_pending?: number;
           tx_count_accepted?: number;
@@ -229,6 +231,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           ftds: Number(k.ftds ?? 0),
         });
         setLiveNgr(Number(k.ngr ?? 0));
+        setLiveFtdRegMonth(k.ftd_reg_month != null ? Number(k.ftd_reg_month) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
@@ -249,6 +252,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         });
       } else {
         setLiveNgr(null);
+        setLiveFtdRegMonth(null);
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
@@ -726,6 +730,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveTransactionSummary,
     liveRangeKpis,
     liveNgr,
+    liveFtdRegMonth,
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,

@@ -4,7 +4,9 @@ casino_kpis.py
 Transforms casino Parquet increments into daily KPI summaries.
 
 compute_casino_daily()  → date, casino_stake, casino_winnings, casino_ggr,
-                          casino_bets, casino_actives
+                          casino_bets, casino_actives,
+                          horse_racing_stake, horse_racing_winnings, horse_racing_ggr,
+                          horse_racing_bets, horse_racing_actives
 compute_casino_by_provider() → provider_name, stake, winnings, ggr, bets
 compute_casino_by_type()     → casino_type, stake, winnings, ggr
 """
@@ -14,12 +16,20 @@ from .io_utils import normalize_cols, ensure_cols, to_date, to_num
 
 
 def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
-    """Daily casino KPIs from view_Casino."""
+    """Daily casino KPIs from view_Casino.
+
+    Horse Racing (IntelligentGamingBetmakers / Betmakers provider) is separated
+    into dedicated columns (horse_racing_*) so the backend can add those figures
+    to sports totals.  Casino columns exclude horse racing.
+    """
+    empty_cols = [
+        "date", "casino_stake", "casino_winnings", "casino_ggr",
+        "casino_bets", "casino_actives",
+        "horse_racing_stake", "horse_racing_winnings", "horse_racing_ggr",
+        "horse_racing_bets", "horse_racing_actives",
+    ]
     if casino.empty:
-        return pd.DataFrame(columns=[
-            "date", "casino_stake", "casino_winnings", "casino_ggr",
-            "casino_bets", "casino_actives",
-        ])
+        return pd.DataFrame(columns=empty_cols)
 
     casino, ccol = normalize_cols(casino)
     cols = ensure_cols(
@@ -33,6 +43,7 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     stake = cols["stake"]
     winnings = cols["winnings"]
     bets_col = ccol.get("betsnumber")
+    provider_col = ccol.get("providername") or ccol.get("bookmakerprovider_name") or ccol.get("providerid")
 
     # Increments may overlap between runs; keep latest row per CasinoID.
     casino_id_col = ccol.get("casinoid")
@@ -44,28 +55,54 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     casino["stake_num"]    = to_num(casino[stake], default=0.0)
     casino["winnings_num"] = to_num(casino[winnings], default=0.0)
     casino["casino_date"]  = to_date(casino[date_c])
-
-    agg: dict = {
-        "casino_stake":    ("stake_num", "sum"),
-        "casino_winnings": ("winnings_num", "sum"),
-        "casino_actives":  (user_id, "nunique"),
-    }
     if bets_col:
         casino["bets_num"] = to_num(casino[bets_col], default=0.0)
-        agg["casino_bets"] = ("bets_num", "sum")
 
-    out = (
-        casino.dropna(subset=["casino_date"])
-        .groupby("casino_date")
-        .agg(**agg)
-        .reset_index()
-        .rename(columns={"casino_date": "date"})
+    # Identify horse racing rows (Betmakers provider).
+    if provider_col:
+        _is_hr = casino[provider_col].astype(str).str.contains("Betmakers", case=False, na=False)
+    else:
+        _is_hr = pd.Series(False, index=casino.index)
+
+    casino_only = casino[~_is_hr]
+    horse_racing = casino[_is_hr]
+
+    def _agg_daily(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
+        if df.empty:
+            return pd.DataFrame(columns=["date"])
+        agg: dict = {
+            f"{prefix}stake":    ("stake_num", "sum"),
+            f"{prefix}winnings": ("winnings_num", "sum"),
+            f"{prefix}actives":  (user_id, "nunique"),
+        }
+        if bets_col:
+            agg[f"{prefix}bets"] = ("bets_num", "sum")
+        result = (
+            df.dropna(subset=["casino_date"])
+            .groupby("casino_date")
+            .agg(**agg)
+            .reset_index()
+            .rename(columns={"casino_date": "date"})
+        )
+        result[f"{prefix}ggr"] = result[f"{prefix}stake"] - result[f"{prefix}winnings"]
+        if f"{prefix}bets" not in result.columns:
+            result[f"{prefix}bets"] = 0
+        result[f"{prefix}bets"]    = result[f"{prefix}bets"].astype(int)
+        result[f"{prefix}actives"] = result[f"{prefix}actives"].astype(int)
+        return result
+
+    c_out  = _agg_daily(casino_only, "casino_")
+    hr_out = _agg_daily(horse_racing, "horse_racing_")
+
+    all_dates = pd.DataFrame(
+        {"date": pd.concat([c_out["date"], hr_out["date"]]).drop_duplicates()}
     )
-    out["casino_ggr"] = out["casino_stake"] - out["casino_winnings"]
-    if "casino_bets" not in out.columns:
-        out["casino_bets"] = 0
-    out["casino_bets"]    = out["casino_bets"].astype(int)
-    out["casino_actives"] = out["casino_actives"].astype(int)
+    out = all_dates.merge(c_out, on="date", how="left").merge(hr_out, on="date", how="left").fillna(0)
+
+    for col in ["casino_bets", "casino_actives", "horse_racing_bets", "horse_racing_actives"]:
+        if col in out.columns:
+            out[col] = out[col].astype(int)
+
     return out.sort_values("date")
 
 

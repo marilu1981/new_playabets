@@ -5,7 +5,9 @@ Builds serving-domain parquet files:
   - transactions_daily.parquet
   - bonus_daily.parquet
   - ftd_daily.parquet
+  - ftd_reg_month_daily.parquet
   - casino_daily.parquet
+  - actives_monthly.parquet
 
 Run from project root:
     python -m src.kpis.build_domain_kpis
@@ -135,8 +137,9 @@ def main() -> None:
     else:
         print("[domain_kpis] No first_deposits raw dir - skipping")
 
-    # Casino
+    # Casino (horse racing split into separate columns via compute_casino_daily)
     casino_dir = RAW / "casino"
+    casino_raw = pd.DataFrame()
     if casino_dir.exists():
         casino_raw = read_all_parquets(casino_dir, "casino_increment_*.parquet")
         if casino_raw.empty:
@@ -153,6 +156,111 @@ def main() -> None:
             print(f"[domain_kpis] Casino providers daily: {len(casino_providers_daily)} rows -> {providers_out}")
     else:
         print("[domain_kpis] No casino raw dir - skipping")
+
+    # FTD Reg Month — users who registered in a period AND have ever deposited (lifetime).
+    # Uses users_raw (registration dates) + ftd_raw (ever-deposited user IDs).
+    # Output: one row per registration date with ftd_reg_month count.
+    if ftd_dir.exists() and (ftd_dir / "first_deposits_full.parquet").exists():
+        ftd_for_reg = pd.read_parquet(ftd_dir / "first_deposits_full.parquet")
+        users_dir = RAW / "users"
+        users_for_reg = read_all_parquets(users_dir, "users_increment_*.parquet") if users_dir.exists() else pd.DataFrame()
+        if not ftd_for_reg.empty and not users_for_reg.empty:
+            from .io_utils import normalize_cols
+            u, ucol = normalize_cols(users_for_reg)
+            f, fcol = normalize_cols(ftd_for_reg)
+            uid_col = ucol.get("userid")
+            creation_col = ucol.get("creationdate")
+            ftd_uid_col = fcol.get("idutente")
+            if uid_col and creation_col and ftd_uid_col:
+                u["_uid"] = pd.to_numeric(u[uid_col], errors="coerce")
+                u["_date"] = pd.to_datetime(u[creation_col], errors="coerce").dt.date
+                u = u.dropna(subset=["_uid", "_date"])
+                # Remove test users
+                test_col = ucol.get("testuser")
+                if test_col:
+                    u = u[pd.to_numeric(u[test_col], errors="coerce").fillna(0).astype(int) == 0]
+                u = u.drop_duplicates(subset=["_uid"], keep="first")
+                f["_uid"] = pd.to_numeric(f[ftd_uid_col], errors="coerce")
+                ever_deposited = set(f["_uid"].dropna().astype(int).tolist())
+                u["has_ftd"] = u["_uid"].astype(int).isin(ever_deposited)
+                reg_month = (
+                    u[u["has_ftd"]]
+                    .groupby("_date")["_uid"]
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={"_date": "date", "_uid": "ftd_reg_month"})
+                )
+                reg_month["ftd_reg_month"] = reg_month["ftd_reg_month"].astype(int)
+                out_reg = SERVING / "ftd_reg_month_daily.parquet"
+                reg_month.to_parquet(out_reg, index=False)
+                print(f"[domain_kpis] FTD Reg Month daily: {len(reg_month)} rows -> {out_reg}")
+            else:
+                print("[domain_kpis] FTD Reg Month: missing required columns - skipping")
+        else:
+            print("[domain_kpis] FTD Reg Month: users or FTD data empty - skipping")
+    else:
+        print("[domain_kpis] FTD Reg Month: no FTD full snapshot - skipping")
+
+    # Actives Monthly Unique — period-total unique users who placed real-money bets.
+    # Sports: from raw betslips (CreditType == "User Account").
+    # Casino: from raw casino (no credit type filter — all casino bets counted).
+    actives_rows = []
+    betslips_dir = RAW / "betslips"
+    if betslips_dir.exists():
+        from .io_utils import normalize_cols as _nc
+        bs_raw = read_all_parquets(betslips_dir, "betslips*.parquet")
+        if not bs_raw.empty:
+            bs, bscol = _nc(bs_raw)
+            uid_c = bscol.get("userid")
+            date_c = bscol.get("placementdate")
+            credit_c = bscol.get("credittype")
+            if uid_c and date_c:
+                if credit_c:
+                    bs = bs[bs[credit_c].astype(str) == "User Account"]
+                bs["_dt"] = pd.to_datetime(bs[date_c], errors="coerce")
+                bs["_month"] = bs["_dt"].dt.to_period("M")
+                sports_monthly = (
+                    bs.dropna(subset=["_dt"])
+                    .groupby("_month")[uid_c]
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={uid_c: "sports_actives_unique"})
+                )
+                sports_monthly["month"] = sports_monthly["_month"].astype(str)
+                sports_monthly = sports_monthly[["month", "sports_actives_unique"]]
+                actives_rows.append(sports_monthly)
+    if not casino_raw.empty:
+        from .io_utils import normalize_cols as _nc2
+        ca, cacol = _nc2(casino_raw)
+        uid_c = cacol.get("userid")
+        date_c = cacol.get("placementdate")
+        if uid_c and date_c:
+            ca["_dt"] = pd.to_datetime(ca[date_c], errors="coerce")
+            ca["_month"] = ca["_dt"].dt.to_period("M")
+            casino_monthly = (
+                ca.dropna(subset=["_dt"])
+                .groupby("_month")[uid_c]
+                .nunique()
+                .reset_index()
+                .rename(columns={uid_c: "casino_actives_unique"})
+            )
+            casino_monthly["month"] = casino_monthly["_month"].astype(str)
+            casino_monthly = casino_monthly[["month", "casino_actives_unique"]]
+            actives_rows.append(casino_monthly)
+
+    if actives_rows:
+        all_months: pd.DataFrame = actives_rows[0]
+        for extra in actives_rows[1:]:
+            all_months = all_months.merge(extra, on="month", how="outer")
+        all_months = all_months.fillna(0)
+        for col in ["sports_actives_unique", "casino_actives_unique"]:
+            if col in all_months.columns:
+                all_months[col] = all_months[col].astype(int)
+        out_act = SERVING / "actives_monthly.parquet"
+        all_months.to_parquet(out_act, index=False)
+        print(f"[domain_kpis] Actives monthly unique: {len(all_months)} rows -> {out_act}")
+    else:
+        print("[domain_kpis] Actives monthly: no data - skipping")
 
     print("[domain_kpis] Done.")
 

@@ -87,6 +87,7 @@ export default function Home() {
     liveTodayKpis,
     liveSummaryMetrics,
     liveNgr,
+    liveFtdRegMonth,
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
@@ -410,28 +411,31 @@ export default function Home() {
               <div className="p-3 space-y-3">
                 {/* Revenue group — 6 tiles */}
                 <div>
-                  <div className="grid grid-cols-6 gap-2">
+                  <div className="grid grid-cols-7 gap-2">
                     {tile("GGR",         formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",    formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
                     {tile("Margin",      overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
                                                                                                                                                           CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
                     {tile("Deposits",    hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
                     {tile("Withdrawals", hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                    {tile("Net Cash",    hasTransactionsData ? formatFull(transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) : "Pending",
+                                                                                                                                                          CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd")}
                     {tile("Net Cash %",  hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
-                      : "Pending",                                                                                                                         CHART_COLORS.teal,      <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
+                      : "Pending",                                                                                                                         "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
                   </div>
                 </div>
-                {/* Players group — 6 tiles */}
+                {/* Players group — 7 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
-                  <div className="grid grid-cols-6 gap-2">
-                    {tile("Registrations",  formatFull(kpiRegistrations),               "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                    {tile("FTDs",           formatFull(kpiFtds),                        CHART_COLORS.gold,      <Users size={11} />)}
-                    {tile("Conv Rate",      `${periodConvRate}%`,                        CHART_COLORS.amber,     <Percent size={11} />)}
-                    {tile("NGR",            liveNgr != null ? formatFull(liveNgr) : "—", CHART_COLORS.green,    <TrendingUp size={11} />, liveNgr == null)}
-                    {tile("Sports Actives", formatFull(overviewKPIs.activesSports),     "oklch(0.82 0.10 160)", <Activity size={11} />, false, "avg daily unique")}
-                    {tile("Casino Actives", formatFull(overviewKPIs.activesCasino),     CHART_COLORS.gold,      <Zap size={11} />,      false, "avg daily unique")}
+                  <div className="grid grid-cols-7 gap-2">
+                    {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                    {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
+                    {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
+                    {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />)}
+                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                             CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
+                    {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
+                    {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
                   </div>
                 </div>
               </div>
