@@ -100,11 +100,19 @@ def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
     return _safe_date(utc_start), _safe_date(utc_end)
 
 
+# 873=FnbEWallet Deposit and 875=InstantMoney Deposit are excluded from deposits
+# as they are offset transactions that belong in the withdrawals bucket.
 DEPOSIT_REASON_IDS = (
     "248,249,250,830,835,839,843,851,853,855,857,859,"
-    "861,863,865,867,869,871,873,875,877,939"
+    "861,863,865,867,869,871,877,939"
 )
-WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
+
+# Actual withdrawals (positive amounts).
+WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
+
+# Cancel withdrawals are stored as positive values in the DB but represent
+# reversed/cancelled withdrawals — subtract them from the withdrawal total.
+CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
 
 def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
@@ -130,16 +138,20 @@ def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
 
 def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
+    # Net withdrawals = actual withdrawals - cancel withdrawals.
+    # Cancel withdrawal ReasonIDs are stored as positive in the DB so we subtract them.
     q = text(f"""
         SELECT
-            SUM(ABS(Amount))    AS withdrawals,
-            COUNT(*)            AS withdrawal_count
+            SUM(CASE
+                WHEN ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS}) THEN -ABS(Amount)
+                ELSE ABS(Amount)
+            END)            AS withdrawals,
+            COUNT(*)        AS withdrawal_count
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
-          AND TransactionAmountTypeID = 2
           AND TransactionManagementStatusID = 3
-          AND ReasonID IN ({WITHDRAWAL_REASON_IDS})
+          AND ReasonID IN ({WITHDRAWAL_REASON_IDS},{CANCEL_WITHDRAWAL_REASON_IDS})
     """)
     t0 = perf_counter()
     _log(f"Querying withdrawals: {s} → {e}  (SAST {sast_date})")
