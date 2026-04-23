@@ -102,7 +102,7 @@ def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
 # 873=FnbEWallet Deposit and 875=InstantMoney Deposit are excluded from deposits
 # as they are offset transactions that belong in the withdrawals bucket.
 DEPOSIT_REASON_IDS = (
-    "248,249,250,830,835,839,843,851,853,855,857,859,"
+    "249,250,830,835,839,843,851,853,855,857,859,"
     "861,863,865,867,869,871,877,939"
 )
 
