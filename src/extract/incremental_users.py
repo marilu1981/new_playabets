@@ -27,6 +27,8 @@ BALANCES_VIEW = "Dwh_en.view_balances"
 CURSOR_COLUMN = "DateVersion"
 
 # Keep stable, lowercase output column names for downstream transforms.
+ADDITIONAL_DATA_VIEW = "Dwh_en.view_UserAdditionalData"
+
 SELECT_COLUMNS = [
     "u.userid AS userid",
     "u.bookmakerid AS bookmakerid",
@@ -54,6 +56,8 @@ SELECT_COLUMNS = [
     "b.balance AS balance",
     "b.credit AS credit",
     "b.lasttransactiondate AS lasttransactiondate",
+    "aff.Value AS affiliate_tag",
+    "promo.Value AS promo_code",
 ]
 
 WATERMARK_DB = WATERMARK_DB_PATH
@@ -142,6 +146,10 @@ def main() -> None:
             FROM {VIEW_NAME} u
             LEFT JOIN {BALANCES_VIEW} b
                 ON b.UserID = u.UserID
+            LEFT JOIN {ADDITIONAL_DATA_VIEW} aff
+                ON aff.UserID = u.UserID AND aff.UserAdditionalDataTypeID = 170
+            LEFT JOIN {ADDITIONAL_DATA_VIEW} promo
+                ON promo.UserID = u.UserID AND promo.UserAdditionalDataTypeID = 173
             WHERE u.{CURSOR_COLUMN} >= :window_start
               AND u.{CURSOR_COLUMN} < :window_end
             """
@@ -156,6 +164,10 @@ def main() -> None:
             FROM {VIEW_NAME} u
             LEFT JOIN {BALANCES_VIEW} b
                 ON b.UserID = u.UserID
+            LEFT JOIN {ADDITIONAL_DATA_VIEW} aff
+                ON aff.UserID = u.UserID AND aff.UserAdditionalDataTypeID = 170
+            LEFT JOIN {ADDITIONAL_DATA_VIEW} promo
+                ON promo.UserID = u.UserID AND promo.UserAdditionalDataTypeID = 173
             WHERE u.{CURSOR_COLUMN} > :last_value
             """
         )
