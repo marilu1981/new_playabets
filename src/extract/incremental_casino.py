@@ -51,12 +51,14 @@ def main() -> None:
             f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
             f"FROM {VIEW_NAME} "
             f"WHERE {CURSOR_COLUMN} >= :last_value AND {CURSOR_COLUMN} < :end_value"
+            f" AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)"
         )
         params = {"last_value": last_value, "end_value": FORCE_END_DATE}
     else:
         query = text(
             f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
             f"FROM {VIEW_NAME} WHERE {CURSOR_COLUMN} > :last_value"
+            f" AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)"
         )
         params = {"last_value": last_value}
 

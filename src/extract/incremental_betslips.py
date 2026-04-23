@@ -118,6 +118,7 @@ def main() -> None:
             FROM {VIEW_NAME}
             WHERE {CURSOR_COLUMN} >= :window_start
               AND {CURSOR_COLUMN} < :window_end
+              AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)
         """)
         params = {"window_start": window_start, "window_end": window_end}
     else:
@@ -125,6 +126,7 @@ def main() -> None:
             SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql}
             FROM {VIEW_NAME}
             WHERE {CURSOR_COLUMN} > :last_value
+              AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)
         """)
         params = {"last_value": lower_bound}
 
