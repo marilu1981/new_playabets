@@ -113,6 +113,28 @@ WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
 # reversed/cancelled withdrawals — subtract them from the withdrawal total.
 CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
+# Bonus ReasonGroup 8: 54=redeemed, 64+143=issued, 65=reversed
+BONUS_REASON_IDS = "54,64,65,143"
+
+
+def _query_bonus(conn, sast_date: str) -> pd.DataFrame:
+    s, e = _sast_day_utc_window(sast_date)
+    q = text(f"""
+        SELECT
+            SUM(CASE WHEN ReasonID = 54       THEN ABS(Amount) ELSE 0 END) AS bonus_redeemed,
+            SUM(CASE WHEN ReasonID IN (64,143) THEN ABS(Amount) ELSE 0 END) AS bonus_issued,
+            SUM(CASE WHEN ReasonID = 65       THEN ABS(Amount) ELSE 0 END) AS bonus_reversed
+        FROM {VIEW_NAME}
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND ReasonID IN ({BONUS_REASON_IDS})
+    """)
+    t0 = perf_counter()
+    _log(f"Querying bonus: {s} → {e}  (SAST {sast_date})")
+    df = pd.read_sql(q, conn)
+    _log(f"Bonus done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
+    return df
+
 
 def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
@@ -159,12 +181,15 @@ def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
     return df
 
 
-def _merge(sast_date: str, deposits: pd.DataFrame, withdrawals: pd.DataFrame) -> pd.DataFrame:
+def _merge(sast_date: str, deposits: pd.DataFrame, withdrawals: pd.DataFrame, bonus: pd.DataFrame) -> pd.DataFrame:
     dep = float(deposits["deposits"].iloc[0])          if not deposits.empty else 0.0
     uniq = int(deposits["unique_depositors"].iloc[0])  if not deposits.empty else 0
     dep_cnt = int(deposits["deposit_count"].iloc[0])   if not deposits.empty else 0
     wd  = float(withdrawals["withdrawals"].iloc[0])    if not withdrawals.empty else 0.0
     wd_cnt = int(withdrawals["withdrawal_count"].iloc[0]) if not withdrawals.empty else 0
+    bon_redeemed = float(bonus["bonus_redeemed"].iloc[0]) if not bonus.empty else 0.0
+    bon_issued   = float(bonus["bonus_issued"].iloc[0])   if not bonus.empty else 0.0
+    bon_reversed = float(bonus["bonus_reversed"].iloc[0]) if not bonus.empty else 0.0
 
     from datetime import date as _date
     df = pd.DataFrame([{
@@ -176,6 +201,10 @@ def _merge(sast_date: str, deposits: pd.DataFrame, withdrawals: pd.DataFrame) ->
         "withdrawal_count":   wd_cnt,
         "net_deposits":       dep - wd,
         "tx_count":           dep_cnt + wd_cnt,
+        "bonus_redeemed":     bon_redeemed,
+        "bonus_issued":       bon_issued,
+        "bonus_reversed":     bon_reversed,
+        "bonus_net":          bon_issued - bon_reversed,
     }])
     return df
 
@@ -193,6 +222,7 @@ def main() -> None:
         with engine.connect() as conn:
             deposits    = _query_deposits(conn, START_DATE)
             withdrawals = _query_withdrawals(conn, START_DATE)
+            bonus       = _query_bonus(conn, START_DATE)
     except DatabaseError as exc:
         msg = str(exc).lower()
         if "timeout" in msg or "hyt00" in msg:
@@ -207,7 +237,7 @@ def main() -> None:
         _log("No data returned for this date window.")
         return
 
-    df = _merge(START_DATE, deposits, withdrawals)
+    df = _merge(START_DATE, deposits, withdrawals, bonus)
     _log(f"Rows: {len(df)}")
     _log("\n" + df.to_string(index=False))
 

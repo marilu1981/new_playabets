@@ -103,6 +103,19 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
           AND TransactionManagementStatusID = 3
           AND ReasonID IN ({WITHDRAWAL_REASON_IDS},{CANCEL_WITHDRAWAL_REASON_IDS})
     """)
+    # Bonus transactions from ReasonGroup 8 (Bonus):
+    # 54=Withdraw Bonus Promotion (redeemed), 64=Promotional Bonus (issued),
+    # 65=Reverse Bonus Promotion (subtract), 143=Casino Promotion Bonus (issued)
+    bonus_q = text(f"""
+        SELECT
+            SUM(CASE WHEN ReasonID = 54  THEN ABS(Amount) ELSE 0 END) AS bonus_redeemed,
+            SUM(CASE WHEN ReasonID IN (64,143) THEN ABS(Amount) ELSE 0 END) AS bonus_issued,
+            SUM(CASE WHEN ReasonID = 65  THEN ABS(Amount) ELSE 0 END) AS bonus_reversed
+        FROM {VIEW_NAME}
+        WHERE Date >= '{s}'
+          AND Date <  '{e}'
+          AND ReasonID IN (54,64,65,143)
+    """)
 
     t0 = perf_counter()
     dep = pd.read_sql(dep_q, conn)
@@ -112,12 +125,19 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     wd  = pd.read_sql(wd_q, conn)
     _log(f"  withdrawals done in {perf_counter()-t1:.1f}s")
 
+    t2 = perf_counter()
+    bon = pd.read_sql(bonus_q, conn)
+    _log(f"  bonus done in {perf_counter()-t2:.1f}s")
+
     # Each query returns a single aggregate row (no GROUP BY) for the day window.
-    deposits     = float(dep["deposits"].iloc[0])     if not dep.empty else 0.0
-    unique_dep   = int(dep["unique_depositors"].iloc[0]) if not dep.empty else 0
-    dep_count    = int(dep["deposit_count"].iloc[0])  if not dep.empty else 0
-    withdrawals  = float(wd["withdrawals"].iloc[0])   if not wd.empty else 0.0
-    wd_count     = int(wd["withdrawal_count"].iloc[0]) if not wd.empty else 0
+    deposits       = float(dep["deposits"].iloc[0])       if not dep.empty else 0.0
+    unique_dep     = int(dep["unique_depositors"].iloc[0]) if not dep.empty else 0
+    dep_count      = int(dep["deposit_count"].iloc[0])    if not dep.empty else 0
+    withdrawals    = float(wd["withdrawals"].iloc[0])     if not wd.empty else 0.0
+    wd_count       = int(wd["withdrawal_count"].iloc[0])  if not wd.empty else 0
+    bonus_redeemed = float(bon["bonus_redeemed"].iloc[0]) if not bon.empty else 0.0
+    bonus_issued   = float(bon["bonus_issued"].iloc[0])   if not bon.empty else 0.0
+    bonus_reversed = float(bon["bonus_reversed"].iloc[0]) if not bon.empty else 0.0
 
     if deposits == 0 and withdrawals == 0:
         return pd.DataFrame()
@@ -131,6 +151,10 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
         "withdrawal_count":   wd_count,
         "net_deposits":       deposits - withdrawals,
         "tx_count":           dep_count + wd_count,
+        "bonus_redeemed":     bonus_redeemed,
+        "bonus_issued":       bonus_issued,
+        "bonus_reversed":     bonus_reversed,
+        "bonus_net":          bonus_issued - bonus_reversed,
     }])
     return df
 
