@@ -138,31 +138,28 @@ def compute_bonus_daily(
     amount   = cols["amount"]
     date_c   = cols["insertdate"]
 
-    # Incremental bonus files can overlap between runs.
-    # Keep only the latest record per BonusID so credits/cancellations
-    # are not double-counted across files.
-    order_col = bcol.get("__cursor__") or bcol.get("insertdate")
-    bonuses["_ord"] = pd.to_datetime(bonuses[order_col], errors="coerce")
-    bonuses = bonuses.sort_values("_ord").drop_duplicates(subset=[bonus_id], keep="last")
-
     bonuses["amount_num"] = to_num(bonuses[amount], default=0.0)
     bonuses["bonus_date"] = to_date(bonuses[date_c])
 
-    # Exclude reversed bonuses: records where CancellationBonusTransazionID is not null
-    # are reversal transactions and must be subtracted from gross spend.
-    # This column is only present after the extract was updated to include it.
+    # Exclude reversal records first (CancellationBonusTransazionID IS NOT NULL = reversal).
     cancellation_col = bcol.get("cancellationbonustransazionid")
     if cancellation_col:
         bonuses = bonuses[bonuses[cancellation_col].isna()]
 
-    # Filter to only actual bonus spend: Credited (5) and To Be Credited (2).
-    # Cancelled (7) bonuses must be excluded — they were never paid out.
+    # Filter to only credited bonuses: status 2 (To Be Credited) or 5 (Credited).
+    # Do this BEFORE deduplication so cancelled (7) updates don't wipe out
+    # original credit records with the same BonusID.
     status_id_col = bcol.get("bonusstatusid")
     status_str_col = bcol.get("bonusstatus")
     if status_id_col:
         bonuses = bonuses[pd.to_numeric(bonuses[status_id_col], errors="coerce").isin([2, 5])]
     elif status_str_col:
         bonuses = bonuses[bonuses[status_str_col].str.lower().isin(["credited", "to be credited"])]
+
+    # Dedup after status filter: keep latest credited record per BonusID.
+    order_col = bcol.get("__cursor__") or bcol.get("insertdate")
+    bonuses["_ord"] = pd.to_datetime(bonuses[order_col], errors="coerce")
+    bonuses = bonuses.sort_values("_ord").drop_duplicates(subset=[bonus_id], keep="last")
 
     out = (
         bonuses.dropna(subset=["bonus_date"])
