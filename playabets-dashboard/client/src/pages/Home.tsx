@@ -255,6 +255,22 @@ export default function Home() {
 
   const granularityLabel = `${filters.granularity.charAt(0).toUpperCase()}${filters.granularity.slice(1)}`;
 
+  const playerAcquisitionDailyAgg = useMemo(() => {
+    if (!livePlayerAcquisitionDaily || livePlayerAcquisitionDaily.length === 0) return null;
+    return aggregateByGranularity(livePlayerAcquisitionDaily, filters.granularity, (row) => row.date, {
+      labelKey: "date",
+      fallbackYear,
+    });
+  }, [livePlayerAcquisitionDaily, filters.granularity, fallbackYear]);
+
+  const sportsCasinoGgrAgg = useMemo(() => {
+    if (!liveSportsCasinoGgr || liveSportsCasinoGgr.length === 0) return null;
+    return aggregateByGranularity(liveSportsCasinoGgr, filters.granularity, (row) => row.date, {
+      labelKey: "date",
+      fallbackYear,
+    });
+  }, [liveSportsCasinoGgr, filters.granularity, fallbackYear]);
+
   const acqSeries = playerAcquisition.length > 0 ? playerAcquisition : sourcePlayerAcquisition;
   const fallbackMonth = { month: "-", registrations: 0, ftds: 0, vftds: 0, topFtds: 0 };
   const lastMonth = acqSeries[acqSeries.length - 1] ?? fallbackMonth;
@@ -423,7 +439,7 @@ export default function Home() {
                   <div className="grid grid-cols-8 gap-2">
                     {tile("GGR",             formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",        formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                    {tile("Margin",          overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
+                    {tile("Hold %",           overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
                                                                                                                                                               CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
                     {tile("Bonus Redeemed",  liveBonusSpent != null ? formatFull(liveBonusSpent) : "—",                                                      CHART_COLORS.amber,     <Zap size={11} />, liveBonusSpent == null)}
                     {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
@@ -500,11 +516,11 @@ export default function Home() {
         <div className="rounded-xl p-5" style={CARD_BG}>
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Player Acquisition</h3>
-            <p className="text-xs text-gray-500">Daily registrations &amp; FTDs — selected period</p>
+            <p className="text-xs text-gray-500">{granularityLabel} registrations &amp; FTDs — selected period</p>
           </div>
-          {livePlayerAcquisitionDaily && livePlayerAcquisitionDaily.length > 0 ? (
+          {playerAcquisitionDailyAgg && playerAcquisitionDailyAgg.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
-              <ComposedChart data={livePlayerAcquisitionDaily} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
+              <ComposedChart data={playerAcquisitionDailyAgg} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
                 <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
@@ -558,14 +574,14 @@ export default function Home() {
       </div>
 
       {/* ── SPORTS vs CASINO GGR ─────────────────────────────────────────── */}
-      {liveSportsCasinoGgr && liveSportsCasinoGgr.length > 0 && (
+      {sportsCasinoGgrAgg && sportsCasinoGgrAgg.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Sports vs Casino GGR</h3>
             <p className="text-xs text-gray-500">{granularityLabel} GGR by vertical — selected period</p>
           </div>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={liveSportsCasinoGgr} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
+            <BarChart data={sportsCasinoGgrAgg} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "oklch(0.55 0.02 0)", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={55} />
