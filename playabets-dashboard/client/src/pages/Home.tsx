@@ -448,7 +448,7 @@ export default function Home() {
                                                                                                                                                               CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd")}
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
-                      : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData, "(Dep−Wd)/Dep")}
+                      : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
                   </div>
                 </div>
                 {/* Players group — 7 tiles */}
@@ -554,7 +554,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Conversion Rate Trend</h3>
-              <p className="text-xs text-gray-500">Daily FTDs ÷ Registrations — selected period</p>
+              <p className="text-xs text-gray-500">FTD Reg Month ÷ Registrations — selected period</p>
             </div>
             <span className="text-xs px-2 py-0.5 rounded" style={{ background: "rgba(122,184,0,0.10)", color: CHART_COLORS.gold }}>
               daily

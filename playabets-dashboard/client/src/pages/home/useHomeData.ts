@@ -708,7 +708,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         `/ftd/daily?start=${latestDataDate}&end=${latestDataDate}`
       ),
       fetchJson<{ has_data?: boolean; deposits?: number; withdrawals?: number }>(
-        `/transactions/kpis?start=${latestDataDate}&end=${latestDataDate}`
+        `/transactions/kpis?start=${new Date(new Date(latestDataDate).getTime() - 7 * 86400000).toISOString().slice(0, 10)}&end=${latestDataDate}`
       ),
       fetchJson<{ points: Array<{ date: string; bonus_total?: number }> }>(
         `/bonus/daily?start=${latestDataDate}&end=${latestDataDate}`
