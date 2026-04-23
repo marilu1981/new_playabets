@@ -35,14 +35,18 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # One row per user: their globally first deposit date across all causali.
+    # Exclude test users via join with view_users.
     query = text(
         f"""
         SELECT
-            idutente,
-            MIN(dataprimodeposito) AS dataprimodeposito
-        FROM {VIEW_NAME}
-        WHERE dataprimodeposito IS NOT NULL
-        GROUP BY idutente
+            t.idutente,
+            MIN(t.dataprimodeposito) AS dataprimodeposito
+        FROM {VIEW_NAME} t
+        WHERE t.dataprimodeposito IS NOT NULL
+          AND t.idutente NOT IN (
+              SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
+          )
+        GROUP BY t.idutente
         """
     )
 

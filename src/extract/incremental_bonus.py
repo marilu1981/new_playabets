@@ -89,6 +89,7 @@ def main() -> None:
             FROM {BONUSES_VIEW}
             WHERE {CURSOR_COLUMN} >= :window_start
               AND {CURSOR_COLUMN} < :window_end
+              AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)
             """
         )
         bonuses_params = {"window_start": window_start, "window_end": window_end}
@@ -101,6 +102,7 @@ def main() -> None:
         query = text(
             f"SELECT {CURSOR_COLUMN} AS __cursor__, {cols_sql} "
             f"FROM {BONUSES_VIEW} WHERE {CURSOR_COLUMN} > :last_value"
+            f" AND UserID NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)"
         )
         bonuses_params = {"last_value": last_value}
         bonuses_filename = f"bonuses_increment_{ts}.parquet"
