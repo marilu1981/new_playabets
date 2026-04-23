@@ -119,7 +119,7 @@ def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
     q = text(f"""
         SELECT
-            SUM(ABS(Amount))        AS deposits,
+            SUM(Amount)             AS deposits,
             COUNT(DISTINCT UserID)  AS unique_depositors,
             COUNT(*)                AS deposit_count
         FROM {VIEW_NAME}

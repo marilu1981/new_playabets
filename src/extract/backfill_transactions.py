@@ -82,7 +82,7 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
 
     dep_q = text(f"""
         SELECT
-            SUM(ABS(Amount))        AS deposits,
+            SUM(Amount)             AS deposits,
             COUNT(DISTINCT UserID)  AS unique_depositors,
             COUNT(*)                AS deposit_count
         FROM {VIEW_NAME}
