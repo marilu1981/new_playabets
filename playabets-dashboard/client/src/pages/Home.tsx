@@ -277,7 +277,9 @@ export default function Home() {
   const kpiRegistrations = liveRangeKpis?.registrations ?? lastMonth.registrations;
   const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
   const periodConvRate =
-    kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
+    kpiRegistrations > 0 && liveFtdRegMonth != null
+      ? Number(((liveFtdRegMonth / kpiRegistrations) * 100).toFixed(1))
+      : kpiRegistrations > 0 ? Number(((kpiFtds / kpiRegistrations) * 100).toFixed(1)) : 0;
 
 
 
