@@ -31,8 +31,8 @@ def ensure_cols(mapping: dict[str, str], required_lower: list[str], context: str
 
 
 def to_date(series: pd.Series) -> pd.Series:
-    # iSolutions stores all timestamps in UTC. Shift +2h to SAST before extracting date.
-    return (pd.to_datetime(series, errors="coerce") + pd.Timedelta(hours=2)).dt.date
+    # iSolutions stores all timestamps in UTC — use UTC date directly.
+    return pd.to_datetime(series, errors="coerce").dt.date
 
 
 def to_dt(series: pd.Series) -> pd.Series:
