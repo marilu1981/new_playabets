@@ -88,15 +88,14 @@ def _safe_date(val: str) -> str:
 
 def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
     """
-    Convert a SAST calendar date string to UTC query boundaries.
-    SAST midnight = UTC 22:00 the previous day.
+    Return UTC query boundaries for a calendar date (UTC, not SAST).
 
-    e.g. "2026-04-08"  →  ("2026-04-07 22:00:00", "2026-04-08 22:00:00")
+    e.g. "2026-04-08"  →  ("2026-04-08 00:00:00", "2026-04-09 00:00:00")
     """
     from datetime import date as _date
     d = _date.fromisoformat(sast_date)
-    utc_start = str(d - timedelta(days=1)) + " 22:00:00"
-    utc_end   = str(d) + " 22:00:00"
+    utc_start = str(d) + " 00:00:00"
+    utc_end   = str(d + timedelta(days=1)) + " 00:00:00"
     return _safe_date(utc_start), _safe_date(utc_end)
 
 

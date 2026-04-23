@@ -67,11 +67,9 @@ def _safe(val: str) -> str:
 
 
 def _fetch_day(conn, day: date) -> pd.DataFrame:
-    # SAST = UTC+2.  SAST midnight for calendar date `day` is 22:00 UTC the
-    # *previous* day, so the correct window is:
-    #   Date >= '{day-1} 22:00:00'  AND  Date < '{day} 22:00:00'
-    s = _safe(str(day - timedelta(days=1)) + " 22:00:00")
-    e = _safe(str(day) + " 22:00:00")
+    # UTC calendar date window: midnight to midnight UTC.
+    s = _safe(str(day) + " 00:00:00")
+    e = _safe(str(day + timedelta(days=1)) + " 00:00:00")
 
     DEPOSIT_REASON_IDS = (
         "248,249,250,830,835,839,843,851,853,855,857,859,"
