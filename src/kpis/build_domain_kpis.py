@@ -61,6 +61,7 @@ def main() -> None:
                     "unique_depositors", "deposit_count", "withdrawal_count",
                     "tx_count_accepted", "tx_count_pending",
                     "tx_count_system", "tx_count_other_status",
+                    "bonus_redeemed", "bonus_issued", "bonus_reversed", "bonus_net",
                 ]:
                     if col not in tx_daily.columns:
                         tx_daily[col] = 0

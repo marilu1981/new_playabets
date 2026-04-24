@@ -790,6 +790,10 @@ def kpis(
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),
         "bonus_spent": bonus_spent,
+        "bonus_redeemed": _s(tx, "bonus_redeemed"),
+        "bonus_issued_tx": _s(tx, "bonus_issued"),
+        "bonus_net": _s(tx, "bonus_net"),
+        "unique_depositors": _i(tx, "unique_depositors"),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
         "transactions_enabled": ENABLE_TRANSACTIONS,
         "filters_applied": {
