@@ -89,6 +89,7 @@ export default function Home() {
     liveNgr,
     liveBonusSpent,
     liveFtdRegMonth,
+    liveUniqueDepositors,
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
@@ -453,17 +454,20 @@ export default function Home() {
                       : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
                   </div>
                 </div>
-                {/* Players group — 7 tiles */}
+                {/* Players group — 10 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
-                  <div className="grid grid-cols-7 gap-2">
-                    {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                    {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
-                    {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
-                    {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />)}
-                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                             CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
-                    {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
-                    {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
+                  <div className="grid grid-cols-10 gap-2">
+                    {tile("Registrations",     formatFull(kpiRegistrations),                                                                                        "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
+                    {tile("FTDs",              formatFull(kpiFtds),                                                                                                 CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
+                    {tile("FTD Reg Month",     liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",                                                         CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
+                    {tile("Conv Rate",         `${periodConvRate}%`,                                                                                                 CHART_COLORS.teal,      <Percent size={11} />)}
+                    {tile("NGR",               liveNgr != null ? formatFull(liveNgr) : "—",                                                                         CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
+                    {tile("Sports Actives",    formatFull(overviewKPIs.activesSports),                                                                               "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
+                    {tile("Casino Actives",    formatFull(overviewKPIs.activesCasino),                                                                               CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
+                    {tile("Depositors",        liveUniqueDepositors != null && liveUniqueDepositors > 0 ? formatFull(liveUniqueDepositors) : "Pending",              CHART_COLORS.amber,     <DollarSign size={11} />, !liveUniqueDepositors)}
+                    {tile("Dep/Customer",      liveUniqueDepositors && transactionSummary.totalDeposits > 0 ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "Pending", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors)}
+                    {tile("ARPU",              liveNgr != null && (overviewKPIs.activesSports + overviewKPIs.activesCasino) > 0 ? formatFull(liveNgr / (overviewKPIs.activesSports + overviewKPIs.activesCasino)) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
                   </div>
                 </div>
               </div>

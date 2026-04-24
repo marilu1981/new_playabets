@@ -758,7 +758,8 @@ def kpis(
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")   # used freebets — reference
-    ngr = ggr - bonus_spent
+    bonus_converted = _s(tx, "bonus_redeemed")
+    ngr = ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
 
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
@@ -1149,7 +1150,10 @@ def _summary_period(start: date, end: date) -> dict:
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
-    ngr = total_ggr - bonus_spent
+    # NGR = Real Money GGR - Bonus Converted (ReasonID 54 from transactions).
+    # Falls back to bonus_spent from view_BonusBonuses if transactions bonus not yet available.
+    bonus_converted = _s(tx, "bonus_redeemed")
+    ngr = total_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_stake
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 

@@ -36,6 +36,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveRangeKpis, setLiveRangeKpis] = useState<{ registrations: number; ftds: number } | null>(null);
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
   const [liveBonusSpent, setLiveBonusSpent] = useState<number | null>(null);
+  const [liveUniqueDepositors, setLiveUniqueDepositors] = useState<number | null>(null);
   const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
@@ -163,6 +164,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           tx_count_pending?: number;
           tx_count_accepted?: number;
           tx_count_other_status?: number;
+          unique_depositors?: number;
+          bonus_redeemed?: number;
         }>(`/kpis?${query}`),
         daily: fetchJson<{
           rows: Array<{
@@ -240,6 +243,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveNgr(Number(k.ngr ?? 0));
         setLiveBonusSpent(k.bonus_spent != null ? Number(k.bonus_spent) : null);
         setLiveFtdRegMonth(k.ftd_reg_month != null ? Number(k.ftd_reg_month) : null);
+        setLiveUniqueDepositors(k.unique_depositors != null ? Number(k.unique_depositors) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
@@ -262,6 +266,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveNgr(null);
         setLiveBonusSpent(null);
         setLiveFtdRegMonth(null);
+        setLiveUniqueDepositors(null);
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
@@ -754,6 +759,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveNgr,
     liveBonusSpent,
     liveFtdRegMonth,
+    liveUniqueDepositors,
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
