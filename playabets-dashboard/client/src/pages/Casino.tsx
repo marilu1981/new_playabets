@@ -38,15 +38,20 @@ const CHART_COLORS = {
 
 export default function CasinoPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const [liveCasinoKPIs, setLiveCasinoKPIs] = useState<typeof baseCasinoKPIs & { depositors?: number; depositPerCustomer?: number } | null>(null);
+  const [liveCasinoKPIs, setLiveCasinoKPIs] = useState<typeof baseCasinoKPIs & { depositors?: number; depositPerCustomer?: number; bonusIssued?: number; bonusConverted?: number; bonusPct?: number } | null>(null);
   const [liveCasinoProviders, setLiveCasinoProviders] = useState<typeof baseCasinoProviders | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-    fetchJson<{ stake?: number; winnings?: number; ggr?: number; actives?: number; bets?: number; hold_pct?: number; depositors?: number; deposit_per_customer?: number }>(
-      `/casino/kpis?${query}`
-    )
-      .then((d) => {
+    Promise.all([
+      fetchJson<{ stake?: number; winnings?: number; ggr?: number; actives?: number; bets?: number; hold_pct?: number; depositors?: number; deposit_per_customer?: number }>(
+        `/casino/kpis?${query}`
+      ),
+      fetchJson<{ bonus_redeemed?: number; bonus_issued_tx?: number }>(
+        `/kpis?${query}`
+      ),
+    ])
+      .then(([d, kpis]) => {
         const stake    = Number(d.stake    ?? 0);
         const winnings = Number(d.winnings ?? 0);
         const ggr      = Number(d.ggr      ?? 0);
@@ -54,6 +59,8 @@ export default function CasinoPage() {
           setLiveCasinoKPIs(null);
           return;
         }
+        const bonusIssued    = Number(kpis.bonus_issued_tx ?? 0);
+        const bonusConverted = Number(kpis.bonus_redeemed  ?? 0);
         setLiveCasinoKPIs({
           ...baseCasinoKPIs,
           totalStake:         stake,
@@ -62,6 +69,9 @@ export default function CasinoPage() {
           margin:             stake > 0 ? Number(((ggr / stake) * 100).toFixed(1)) : 0,
           depositors:         Number(d.depositors ?? 0),
           depositPerCustomer: Number(d.deposit_per_customer ?? 0),
+          bonusIssued,
+          bonusConverted,
+          bonusPct:           bonusIssued > 0 ? Number(((bonusConverted / bonusIssued) * 100).toFixed(1)) : 0,
         });
       })
       .catch(() => setLiveCasinoKPIs(null));
@@ -133,12 +143,15 @@ export default function CasinoPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
           <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
           <KpiCard title="Casino GGR" value={formatFull(casinoKPIs.grossProfit)} subtitle="Stake minus winnings" icon={<Gamepad2 size={18} />} accent="green" />
           <KpiCard title="Depositors" value={liveCasinoKPIs?.depositors != null ? formatCompact(liveCasinoKPIs.depositors) : "—"} subtitle="Unique depositors" icon={<DollarSign size={18} />} accent="teal" />
           <KpiCard title="Deposit / Customer" value={liveCasinoKPIs?.depositPerCustomer != null && liveCasinoKPIs.depositPerCustomer > 0 ? formatFull(liveCasinoKPIs.depositPerCustomer) : "—"} subtitle="Avg per depositor" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Bonus Issued" value={liveCasinoKPIs?.bonusIssued != null && liveCasinoKPIs.bonusIssued > 0 ? formatFull(liveCasinoKPIs.bonusIssued) : "—"} subtitle="Bonuses granted" icon={<Gamepad2 size={18} />} accent="amber" />
+          <KpiCard title="Bonus Converted" value={liveCasinoKPIs?.bonusConverted != null && liveCasinoKPIs.bonusConverted > 0 ? formatFull(liveCasinoKPIs.bonusConverted) : "—"} subtitle="ReasonID 54" icon={<TrendingUp size={18} />} accent="green" />
+          <KpiCard title="Bonus %" value={liveCasinoKPIs?.bonusPct != null && liveCasinoKPIs.bonusPct > 0 ? `${liveCasinoKPIs.bonusPct}%` : "—"} subtitle="Converted / Issued" icon={<TrendingUp size={18} />} accent="teal" />
         </div>
       </div>
 
