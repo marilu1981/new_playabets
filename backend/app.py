@@ -1701,16 +1701,19 @@ def casino_kpis(
     stake    = _s(df, "casino_stake")
     winnings = _s(df, "casino_winnings")
     ggr      = _s(df, "casino_ggr")
+    tx = _load_transactions_df(start, end)
+    depositors = _i(tx, "unique_depositors")
+    deposits   = _s(tx, "deposits")
     return {
         "range": {"start": str(start), "end": str(end)},
-        # field names matched to what Casino.tsx expects
         "stake":    stake,
         "winnings": winnings,
         "ggr":      ggr,
         "bets":     _i(df, "casino_bets"),
         "actives":  _i(df, "casino_actives"),
         "hold_pct": round(ggr / stake * 100, 2) if stake else 0.0,
-        # also expose raw names for other consumers
+        "depositors": depositors,
+        "deposit_per_customer": round(deposits / depositors, 2) if depositors > 0 else 0.0,
         "casino_stake":    stake,
         "casino_winnings": winnings,
         "casino_ggr":      ggr,

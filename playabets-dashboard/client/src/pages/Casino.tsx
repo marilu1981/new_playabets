@@ -38,12 +38,12 @@ const CHART_COLORS = {
 
 export default function CasinoPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const [liveCasinoKPIs, setLiveCasinoKPIs] = useState<typeof baseCasinoKPIs | null>(null);
+  const [liveCasinoKPIs, setLiveCasinoKPIs] = useState<typeof baseCasinoKPIs & { depositors?: number; depositPerCustomer?: number } | null>(null);
   const [liveCasinoProviders, setLiveCasinoProviders] = useState<typeof baseCasinoProviders | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-    fetchJson<{ stake?: number; winnings?: number; ggr?: number; actives?: number; bets?: number; hold_pct?: number }>(
+    fetchJson<{ stake?: number; winnings?: number; ggr?: number; actives?: number; bets?: number; hold_pct?: number; depositors?: number; deposit_per_customer?: number }>(
       `/casino/kpis?${query}`
     )
       .then((d) => {
@@ -56,10 +56,12 @@ export default function CasinoPage() {
         }
         setLiveCasinoKPIs({
           ...baseCasinoKPIs,
-          totalStake:    stake,
-          totalWinnings: winnings,
-          grossProfit:   ggr,
-          margin:        stake > 0 ? Number(((ggr / stake) * 100).toFixed(1)) : 0,
+          totalStake:         stake,
+          totalWinnings:      winnings,
+          grossProfit:        ggr,
+          margin:             stake > 0 ? Number(((ggr / stake) * 100).toFixed(1)) : 0,
+          depositors:         Number(d.depositors ?? 0),
+          depositPerCustomer: Number(d.deposit_per_customer ?? 0),
         });
       })
       .catch(() => setLiveCasinoKPIs(null));
@@ -131,10 +133,12 @@ export default function CasinoPage() {
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
           <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
-          <KpiCard title="Gross Profit" value={formatFull(casinoKPIs.grossProfit)} subtitle="Stake minus winnings" icon={<Gamepad2 size={18} />} accent="green" />
+          <KpiCard title="Casino GGR" value={formatFull(casinoKPIs.grossProfit)} subtitle="Stake minus winnings" icon={<Gamepad2 size={18} />} accent="green" />
+          <KpiCard title="Depositors" value={liveCasinoKPIs?.depositors != null ? formatCompact(liveCasinoKPIs.depositors) : "—"} subtitle="Unique depositors" icon={<DollarSign size={18} />} accent="teal" />
+          <KpiCard title="Deposit / Customer" value={liveCasinoKPIs?.depositPerCustomer != null && liveCasinoKPIs.depositPerCustomer > 0 ? formatFull(liveCasinoKPIs.depositPerCustomer) : "—"} subtitle="Avg per depositor" icon={<TrendingUp size={18} />} accent="gold" />
         </div>
       </div>
 
