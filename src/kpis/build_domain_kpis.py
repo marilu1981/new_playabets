@@ -114,7 +114,7 @@ def main() -> None:
             # Merge bonus transaction daily (Bonus Issued from view_BonusTransactions)
             if not bonus_tx_raw.empty:
                 bonus_tx_daily = compute_bonus_transactions_daily(bonus_tx_raw)
-                bonus_daily = bonus_daily.merge(bonus_tx_daily, on="date", how="left").fillna(0)
+                bonus_daily = bonus_daily.merge(bonus_tx_daily, on="date", how="outer").fillna(0)
                 print(f"[domain_kpis] Bonus transactions daily merged: {len(bonus_tx_daily)} rows")
             bonus_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
