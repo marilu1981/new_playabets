@@ -235,7 +235,7 @@ def compute_bonus_transactions_daily(bonus_tx: pd.DataFrame) -> pd.DataFrame:
         return empty
 
     bonus_tx["_date"] = to_date(bonus_tx[date_col])
-    bonus_tx["_amount"] = to_num(bonus_tx[amount_col], default=0.0)
+    bonus_tx["_amount"] = to_num(bonus_tx[amount_col], default=0.0).abs()
     bonus_tx["_reason"] = pd.to_numeric(bonus_tx[reason_col], errors="coerce")
 
     issued   = bonus_tx[bonus_tx["_reason"] == 64].groupby("_date")["_amount"].sum().rename("bonus_tx_issued")
