@@ -118,6 +118,15 @@ def main() -> None:
                 print(f"[domain_kpis] Bonus transactions daily merged: {len(bonus_tx_daily)} rows")
             bonus_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
+
+            # Auto-compact: merge increments back into full file so folder stays clean
+            if bonus_increments and not bonus_raw.empty and "BonusID" in bonus_raw.columns:
+                bonus_raw.sort_values("InsertDate", errors="ignore").drop_duplicates(
+                    subset=["BonusID"], keep="last"
+                ).to_parquet(bonus_full, index=False)
+                for f in bonus_increments:
+                    f.unlink()
+                print(f"[domain_kpis] Bonus compacted: merged {len(bonus_increments)} increments → bonuses_full.parquet")
     else:
         print("[domain_kpis] No bonus raw dir - skipping")
 
