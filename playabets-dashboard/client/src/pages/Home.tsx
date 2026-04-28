@@ -475,8 +475,8 @@ export default function Home() {
                     {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
                   </div>
                   <div className="grid grid-cols-6 gap-2">
-                    {tile("Depositors",      liveUniqueDepositors != null && liveUniqueDepositors > 0 ? formatFull(liveUniqueDepositors) : "Pending",              CHART_COLORS.amber,     <DollarSign size={11} />, !liveUniqueDepositors)}
-                    {tile("Dep/Customer",    liveUniqueDepositors && transactionSummary.totalDeposits > 0 ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "Pending", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors)}
+                    {tile("Depositors",      "—",                                                                                                                        CHART_COLORS.amber,     <DollarSign size={11} />, true, "period unique TBD")}
+                    {tile("Dep/Customer",   "—",                                                                                                                        CHART_COLORS.teal,      <DollarSign size={11} />, true, "TBD")}
                     {tile("ARPU",            liveNgr != null && (overviewKPIs.activesSports + overviewKPIs.activesCasino) > 0 ? formatFull(liveNgr / (overviewKPIs.activesSports + overviewKPIs.activesCasino)) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
                     {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,       <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
                   </div>
