@@ -724,9 +724,9 @@ def kpis(
         sportsbook_ggr = bs["ggr"]
         sportsbook_actives = 0  # cannot derive actives from betslip filter alone
     else:
-        sportsbook_turnover = _s(df, "settled_stake") or _s(df, "placed_stake")
+        sportsbook_turnover = _s(df, "placed_stake")       # total incl. bonus bets
         sportsbook_winnings = _s(df, "settled_winnings")
-        sportsbook_ggr = _s(df, "ggr")
+        sportsbook_ggr = _s(df, "ggr_total") or _s(df, "ggr")  # total GGR
         sportsbook_actives = _mean_i(df, "actives_sports")
 
     # Horse racing (Betmakers) is separated from casino — add to sports totals.
@@ -753,14 +753,13 @@ def kpis(
 
     turnover = sportsbook_turnover + casino_turnover
     winnings = sportsbook_winnings + casino_winnings
-    ggr = sportsbook_ggr + casino_ggr
-    # bonus_total = net credited bonuses (reversals excluded) + all freebets issued
-    # Falls back to bonus_credited if bonus_total not yet in serving file.
+    ggr = sportsbook_ggr + casino_ggr                    # total GGR (display)
+    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr  # real money GGR (for NGR)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
-    freebet_spend  = _s(bonus, "freebet_spend")   # used freebets — reference
+    freebet_spend  = _s(bonus, "freebet_spend")
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = ggr_real - (bonus_converted if bonus_converted > 0 else bonus_spent)
 
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
@@ -1128,9 +1127,10 @@ def _summary_period(start: date, end: date) -> dict:
     # Conv rate = FTD Reg Month ÷ Registrations (users who registered AND ever deposited).
     conv_rate = round(ftd_reg_month / regs * 100, 1) if regs > 0 else 0.0
 
-    sports_turnover = _s(df, "placed_stake")
+    sports_turnover = _s(df, "placed_stake")       # total incl. bonus bets
     sports_winnings = _s(df, "settled_winnings")
-    sports_ggr = _s(df, "ggr")
+    sports_ggr_real = _s(df, "ggr")               # real money GGR (for NGR)
+    sports_ggr_total = _s(df, "ggr_total") or sports_ggr_real  # total GGR incl. bonus bets
     sports_bets = _i(df, "betslips_count")
     sports_settled = _i(df, "betslips_settled_count")
     avg_stake = round(sports_turnover / sports_bets, 2) if sports_bets > 0 else 0.0
@@ -1141,8 +1141,10 @@ def _summary_period(start: date, end: date) -> dict:
     # Add it to sports totals so casino figures reflect pure casino only.
     horse_racing_ggr     = _s(casino, "horse_racing_ggr")
     horse_racing_stake   = _s(casino, "horse_racing_stake")
-    sports_ggr          += horse_racing_ggr
+    sports_ggr_real     += horse_racing_ggr
+    sports_ggr_total    += horse_racing_ggr
     sports_turnover     += horse_racing_stake
+    sports_ggr = sports_ggr_total  # alias for hold% calc
     sports_hold = round(sports_ggr / sports_turnover * 100, 1) if sports_turnover > 0 else 0.0
 
     casino_stake = _s(casino, "casino_stake")
@@ -1152,14 +1154,15 @@ def _summary_period(start: date, end: date) -> dict:
     casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
 
-    total_ggr = sports_ggr + casino_ggr
+    total_ggr = sports_ggr_total + casino_ggr       # display GGR (total)
+    real_money_ggr = sports_ggr_real + casino_ggr   # real money GGR (for NGR)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
-    # NGR = Real Money GGR - Bonus Converted (ReasonID 54 from transactions).
+    # NGR = Real Money GGR - Bonus Converted (ReasonID 54).
     # Falls back to bonus_spent from view_BonusBonuses if transactions bonus not yet available.
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = total_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = real_money_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_stake
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 
