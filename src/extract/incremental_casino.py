@@ -26,7 +26,7 @@ COLUMNS = [
     "CasinoID", "ProviderID", "ProviderName", "BookmakerProviderName",
     "CasinoTypeID", "CasinoType", "UserID", "PlacementDate",
     "BetsNumber", "Stake", "Winnings", "Tips", "Tournament",
-    "Bonus", "Jackpot", "InsertDate", "CurrencyID",
+    "Bonus", "BonusStake", "BonusWinnings", "Jackpot", "InsertDate", "CurrencyID",
     "ThirdpartiesStake", "ThirdpartiesWinnings",
     "JackpotContribution", "ThirdpartiesJackpotContribution",
 ]

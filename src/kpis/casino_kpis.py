@@ -24,6 +24,7 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     """
     empty_cols = [
         "date", "casino_stake", "casino_winnings", "casino_ggr",
+        "casino_real_ggr", "casino_bonus_stake", "casino_bonus_winnings",
         "casino_bets", "casino_actives",
         "horse_racing_stake", "horse_racing_winnings", "horse_racing_ggr",
         "horse_racing_bets", "horse_racing_actives",
@@ -57,6 +58,13 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     casino["casino_date"]  = to_date(casino[date_c])
     if bets_col:
         casino["bets_num"] = to_num(casino[bets_col], default=0.0)
+    # Bonus stake/winnings for real money GGR split
+    bonus_stake_col   = ccol.get("bonusstake")
+    bonus_winnings_col = ccol.get("bonuswinnings")
+    if bonus_stake_col:
+        casino["bonus_stake_num"]    = to_num(casino[bonus_stake_col], default=0.0)
+    if bonus_winnings_col:
+        casino["bonus_winnings_num"] = to_num(casino[bonus_winnings_col], default=0.0)
 
     # Identify horse racing rows (Betmakers provider).
     if provider_col:
@@ -93,6 +101,26 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
 
     c_out  = _agg_daily(casino_only, "casino_")
     hr_out = _agg_daily(horse_racing, "horse_racing_")
+
+    # Casino bonus stake/winnings daily aggregation for real money GGR
+    if bonus_stake_col and "bonus_stake_num" in casino_only.columns:
+        bonus_agg = (
+            casino_only.dropna(subset=["casino_date"])
+            .groupby("casino_date")
+            .agg(
+                casino_bonus_stake=("bonus_stake_num", "sum"),
+                casino_bonus_winnings=("bonus_winnings_num" if bonus_winnings_col and "bonus_winnings_num" in casino_only.columns else "bonus_stake_num", "sum"),
+            )
+            .reset_index()
+            .rename(columns={"casino_date": "date"})
+        )
+        c_out = c_out.merge(bonus_agg, on="date", how="left").fillna(0)
+        c_out["casino_real_ggr"] = (c_out["casino_stake"] - c_out["casino_bonus_stake"]) - \
+                                   (c_out["casino_winnings"] - c_out["casino_bonus_winnings"])
+    else:
+        c_out["casino_bonus_stake"]    = 0.0
+        c_out["casino_bonus_winnings"] = 0.0
+        c_out["casino_real_ggr"]       = c_out["casino_ggr"]
 
     all_dates = pd.DataFrame(
         {"date": pd.concat([c_out["date"], hr_out["date"]]).drop_duplicates()}

@@ -1150,12 +1150,13 @@ def _summary_period(start: date, end: date) -> dict:
     casino_stake = _s(casino, "casino_stake")
     casino_winnings = _s(casino, "casino_winnings")
     casino_ggr = _s(casino, "casino_ggr")
+    casino_real_ggr = _s(casino, "casino_real_ggr") or casino_ggr
     casino_bets = _i(casino, "casino_bets")
     casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
 
-    total_ggr = sports_ggr_total + casino_ggr       # display GGR (total)
-    real_money_ggr = sports_ggr_real + casino_ggr   # real money GGR (for NGR)
+    total_ggr = sports_ggr_total + casino_ggr        # display GGR (total)
+    real_money_ggr = sports_ggr_real + casino_real_ggr  # real money GGR (for NGR)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
