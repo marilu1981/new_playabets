@@ -121,7 +121,8 @@ def main() -> None:
 
             # Auto-compact: merge increments back into full file so folder stays clean
             if bonus_increments and not bonus_raw.empty and "BonusID" in bonus_raw.columns:
-                bonus_raw.sort_values("InsertDate", errors="ignore").drop_duplicates(
+                sort_col = "InsertDate" if "InsertDate" in bonus_raw.columns else bonus_raw.columns[0]
+                bonus_raw.sort_values(sort_col).drop_duplicates(
                     subset=["BonusID"], keep="last"
                 ).to_parquet(bonus_full, index=False)
                 for f in bonus_increments:
