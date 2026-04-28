@@ -441,13 +441,18 @@ export default function Home() {
                 <span className="text-xs text-white/80 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
               </div>
               <div className="p-3 space-y-3">
-                {/* Revenue group — row 1: 8 tiles, row 2: bonus tiles */}
+                {/* Revenue group — row 1: 6 tiles, row 2: 5 tiles */}
                 <div>
-                  <div className="grid grid-cols-8 gap-2 mb-2">
+                  <div className="grid grid-cols-6 gap-2 mb-2">
                     {tile("GGR",             formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",        formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
                     {tile("Hold %",          overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
                                                                                                                                                               CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
+                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                                                                    CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
+                    {tile("Bonus Issued",    liveBonusTxIssued != null && liveBonusTxIssued > 0 ? formatFull(liveBonusTxIssued) : "—",                       CHART_COLORS.amber,     <Zap size={11} />, !liveBonusTxIssued)}
+                    {tile("Bonus Converted", liveBonusConverted != null && liveBonusConverted > 0 ? formatFull(liveBonusConverted) : "—",                     CHART_COLORS.teal,      <Zap size={11} />, !liveBonusConverted, "ReasonID 54")}
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
                     {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
                     {tile("Withdrawals",     hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
                     {tile("Net Cash",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) : "Pending",
@@ -455,12 +460,7 @@ export default function Home() {
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
                       : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
-                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                                                                    CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
-                  </div>
-                  <div className="grid grid-cols-8 gap-2">
-                    {tile("Bonus Issued",    liveBonusTxIssued != null && liveBonusTxIssued > 0 ? formatFull(liveBonusTxIssued) : "—",                       CHART_COLORS.amber,     <Zap size={11} />, !liveBonusTxIssued)}
-                    {tile("Bonus Converted", liveBonusConverted != null && liveBonusConverted > 0 ? formatFull(liveBonusConverted) : "—",                     CHART_COLORS.green,     <Zap size={11} />, !liveBonusConverted, "ReasonID 54")}
-                    {tile("Bonus %",         liveBonusPct != null ? `${liveBonusPct}%` : "—",                                                                 CHART_COLORS.teal,      <Percent size={11} />, liveBonusPct == null, "Conv/Issued")}
+                    {tile("Bonus %",         liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Conv/Issued")}
                   </div>
                 </div>
                 {/* Players group — row 1: 6 tiles, row 2: 6 tiles */}

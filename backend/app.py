@@ -798,6 +798,7 @@ def kpis(
         "bonus_tx_issued": _s(bonus, "bonus_tx_issued"),
         "bonus_tx_reversed": _s(bonus, "bonus_tx_reversed"),
         "bonus_tx_net": _s(bonus, "bonus_tx_net"),
+        "bonus_pct": round(_s(tx, "bonus_redeemed") / _s(bonus, "bonus_tx_net") * 100, 1) if _s(bonus, "bonus_tx_net") > 0 else 0.0,
         "unique_depositors": _i(tx, "unique_depositors"),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
         "transactions_enabled": ENABLE_TRANSACTIONS,
