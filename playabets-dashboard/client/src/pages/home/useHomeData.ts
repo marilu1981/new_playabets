@@ -252,7 +252,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusSpent(k.bonus_spent != null ? Number(k.bonus_spent) : null);
         setLiveFtdRegMonth(k.ftd_reg_month != null ? Number(k.ftd_reg_month) : null);
         setLiveUniqueDepositors(k.unique_depositors != null ? Number(k.unique_depositors) : null);
-        setLiveBonusTxIssued(k.bonus_tx_issued != null ? Number(k.bonus_tx_issued) : null);
+        setLiveBonusTxIssued(k.bonus_tx_net != null && Number(k.bonus_tx_net) > 0 ? Number(k.bonus_tx_net) : null);
         setLiveBonusConverted(k.bonus_redeemed != null && Number(k.bonus_redeemed) > 0 ? Number(k.bonus_redeemed) : null);
         setLiveBonusPct(k.bonus_pct != null ? Number(k.bonus_pct) : null);
         setLiveChurnPct(k.churn_pct != null ? Number(k.churn_pct) : null);
