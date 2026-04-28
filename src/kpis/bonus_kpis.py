@@ -218,6 +218,37 @@ def compute_bonus_daily(
     return out.sort_values("date")
 
 
+def compute_bonus_transactions_daily(bonus_tx: pd.DataFrame) -> pd.DataFrame:
+    """Daily bonus issued/reversed from view_BonusTransactions (ReasonID 64=issued, 65=reversed).
+    This matches the client's Grafana SQL which uses BonusTransazioni with IDCausale IN (64, 65).
+    """
+    empty = pd.DataFrame(columns=["date", "bonus_tx_issued", "bonus_tx_reversed", "bonus_tx_net"])
+    if bonus_tx.empty:
+        return empty
+
+    bonus_tx, bcol = normalize_cols(bonus_tx)
+    date_col = bcol.get("date")
+    reason_col = bcol.get("reasonid")
+    amount_col = bcol.get("amount")
+
+    if not date_col or not reason_col or not amount_col:
+        return empty
+
+    bonus_tx["_date"] = to_date(bonus_tx[date_col])
+    bonus_tx["_amount"] = to_num(bonus_tx[amount_col], default=0.0)
+    bonus_tx["_reason"] = pd.to_numeric(bonus_tx[reason_col], errors="coerce")
+
+    issued   = bonus_tx[bonus_tx["_reason"] == 64].groupby("_date")["_amount"].sum().rename("bonus_tx_issued")
+    reversed_ = bonus_tx[bonus_tx["_reason"] == 65].groupby("_date")["_amount"].sum().rename("bonus_tx_reversed")
+
+    out = pd.DataFrame({"date": bonus_tx["_date"].dropna().unique()})
+    out = out.merge(issued.reset_index().rename(columns={"_date": "date"}), on="date", how="left")
+    out = out.merge(reversed_.reset_index().rename(columns={"_date": "date"}), on="date", how="left")
+    out = out.fillna(0)
+    out["bonus_tx_net"] = out["bonus_tx_issued"] - out["bonus_tx_reversed"]
+    return out.sort_values("date")
+
+
 def compute_bonus_summary(
     campaigns: pd.DataFrame,
     freebets: pd.DataFrame,

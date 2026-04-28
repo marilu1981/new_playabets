@@ -19,7 +19,7 @@ import pandas as pd
 from src.app_config import ENABLE_TRANSACTIONS, RAW_ROOT, SERVING_ROOT
 from .io_utils import read_all_parquets
 from .transactions_kpi import compute_transactions_daily
-from .bonus_kpis import compute_bonus_daily
+from .bonus_kpis import compute_bonus_daily, compute_bonus_transactions_daily
 from .ftd_kpis import compute_ftd_daily
 from .casino_kpis import compute_casino_daily, compute_casino_provider_daily
 from .conversion_cohorts_kpi import compute_conversion_cohorts_daily
@@ -104,10 +104,18 @@ def main() -> None:
         freebets_latest = bonus_dir / "freebets_latest.parquet"
         freebets_raw = pd.read_parquet(freebets_latest) if freebets_latest.exists() else pd.DataFrame()
         out = SERVING / "bonus_daily.parquet"
+        # BonusTransactions (ReasonID 64=issued, 65=reversed) — client's Bonus Issued source
+        bonus_tx_raw = read_all_parquets(bonus_dir, "bonus_transactions_increment_*.parquet")
+
         if bonus_raw.empty:
             print("[domain_kpis] Bonus raw is empty - keeping existing serving file")
         else:
             bonus_daily = compute_bonus_daily(bonus_raw, campaigns=campaigns_raw, freebets=freebets_raw)
+            # Merge bonus transaction daily (Bonus Issued from view_BonusTransactions)
+            if not bonus_tx_raw.empty:
+                bonus_tx_daily = compute_bonus_transactions_daily(bonus_tx_raw)
+                bonus_daily = bonus_daily.merge(bonus_tx_daily, on="date", how="left").fillna(0)
+                print(f"[domain_kpis] Bonus transactions daily merged: {len(bonus_tx_daily)} rows")
             bonus_daily.to_parquet(out, index=False)
             print(f"[domain_kpis] Bonus daily: {len(bonus_daily)} rows -> {out}")
     else:

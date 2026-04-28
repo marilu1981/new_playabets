@@ -19,11 +19,17 @@ from sqlalchemy import text
 from src.app_config import WATERMARK_DB_PATH, raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-BONUSES_VIEW   = "Dwh_en.view_bonusbonuses"
-CAMPAIGNS_VIEW = "Dwh_en.view_bonuscampaigns"
-FREEBETS_VIEW  = "Dwh_en.view_bonusfreebets"
-CURSOR_COLUMN  = "DateVersion"
+BONUSES_VIEW        = "Dwh_en.view_bonusbonuses"
+CAMPAIGNS_VIEW      = "Dwh_en.view_bonuscampaigns"
+FREEBETS_VIEW       = "Dwh_en.view_bonusfreebets"
+BONUS_TX_VIEW       = "Dwh_en.view_bonustransactions"  # IDCausale/ReasonID based — for Bonus Issued
+CURSOR_COLUMN       = "DateVersion"
 FREEBETS_START_DATE = "2025-11-01 00:00:00"
+
+BONUS_TX_COLUMNS = [
+    "BonusTransactionID", "UserID", "CampaignID", "ReasonID",
+    "Amount", "Date",
+]
 
 BONUSES_COLUMNS = [
     "BonusID", "UserID", "CampaignID", "Amount", "CurrencyID",
@@ -146,6 +152,39 @@ def main() -> None:
         df_freebets = pd.read_sql(freebets_query, conn, params={"start_date": args.freebets_start})
     print(f"[bonus] BonusFreebets rows: {len(df_freebets)}")
     df_freebets.to_parquet(OUT_DIR / "freebets_latest.parquet", index=False)
+
+    # ── 4. BonusTransactions (incremental by Date) — ReasonID 64=issued, 65=reversed
+    # Client uses this view (not view_BonusBonuses) for Bonus Issued calculation.
+    print("[bonus] Pulling BonusTransactions (ReasonID 64+65)...")
+    bonus_tx_cols_sql = ", ".join(BONUS_TX_COLUMNS)
+    bonus_tx_watermark_key = f"{BONUS_TX_VIEW}_date"
+    last_bonus_tx = get_watermark(WATERMARK_DB, bonus_tx_watermark_key)
+    if window_start and window_end:
+        bonus_tx_query = text(
+            f"SELECT {bonus_tx_cols_sql} FROM {BONUS_TX_VIEW} "
+            f"WHERE \"Date\" >= :window_start AND \"Date\" < :window_end "
+            f"AND \"ReasonID\" IN (64, 65) "
+            f"AND \"UserID\" NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)"
+        )
+        bonus_tx_params = {"window_start": window_start, "window_end": window_end}
+    else:
+        bonus_tx_query = text(
+            f"SELECT {bonus_tx_cols_sql} FROM {BONUS_TX_VIEW} "
+            f"WHERE \"Date\" > :last_value "
+            f"AND \"ReasonID\" IN (64, 65) "
+            f"AND \"UserID\" NOT IN (SELECT userid FROM Dwh_en.view_users WHERE testuser = 1)"
+        )
+        bonus_tx_params = {"last_value": last_bonus_tx}
+    with engine.connect() as conn:
+        df_bonus_tx = pd.read_sql(bonus_tx_query, conn, params=bonus_tx_params)
+    print(f"[bonus] BonusTransactions rows: {len(df_bonus_tx)}")
+    if not df_bonus_tx.empty:
+        bonus_tx_filename = f"bonus_transactions_increment_{ts}.parquet"
+        df_bonus_tx.to_parquet(OUT_DIR / bonus_tx_filename, index=False)
+        print(f"[bonus] Saved to {OUT_DIR / bonus_tx_filename}")
+        if not (window_start and window_end) or args.update_watermark:
+            set_watermark(WATERMARK_DB, bonus_tx_watermark_key, str(df_bonus_tx["Date"].max()))
+            print(f"[bonus] BonusTransactions watermark updated to: {df_bonus_tx['Date'].max()}")
 
     print(f"[bonus] Done. Files written to {OUT_DIR}")
 
