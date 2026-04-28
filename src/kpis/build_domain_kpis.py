@@ -87,10 +87,18 @@ def main() -> None:
     else:
         print("[domain_kpis] Transactions disabled - skipping transactions_daily build")
 
-    # Bonus
+    # Bonus — read full compacted file + any new increments (same pattern as transactions)
     bonus_dir = RAW / "bonus"
     if bonus_dir.exists():
-        bonus_raw = read_all_parquets(bonus_dir, "bonuses_increment_*.parquet")
+        bonus_full = bonus_dir / "bonuses_full.parquet"
+        bonus_increments = sorted(bonus_dir.glob("bonuses_increment_*.parquet"))
+        bonus_frames = []
+        if bonus_full.exists():
+            bonus_frames.append(pd.read_parquet(bonus_full))
+        bonus_frames.extend(pd.read_parquet(f) for f in bonus_increments)
+        bonus_raw = pd.concat(bonus_frames, ignore_index=True) if bonus_frames else pd.DataFrame()
+        src_desc = f"full+{len(bonus_increments)} increments" if bonus_full.exists() else f"{len(bonus_increments)} increments"
+        print(f"[domain_kpis] Bonus raw ({src_desc}): {len(bonus_raw)} rows")
         campaigns_latest = bonus_dir / "campaigns_latest.parquet"
         campaigns_raw = pd.read_parquet(campaigns_latest) if campaigns_latest.exists() else pd.DataFrame()
         freebets_latest = bonus_dir / "freebets_latest.parquet"
