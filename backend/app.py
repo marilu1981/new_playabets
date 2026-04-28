@@ -102,6 +102,7 @@ BONUS_DAILY_PATH            = _SERVING / "bonus_daily.parquet"
 FTD_DAILY_PATH              = _SERVING / "ftd_daily.parquet"
 FTD_REG_MONTH_DAILY_PATH    = _SERVING / "ftd_reg_month_daily.parquet"
 ACTIVES_MONTHLY_PATH        = _SERVING / "actives_monthly.parquet"
+CHURN_MONTHLY_PATH          = _SERVING / "churn_monthly.parquet"
 CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
@@ -1114,6 +1115,7 @@ def _summary_period(start: date, end: date) -> dict:
     casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
+    tx = _load_transactions_df(start, end)
 
     regs = _i(df, "registrations")
     ftds = _i(ftd, "ftds")
@@ -1181,12 +1183,39 @@ def _summary_period(start: date, end: date) -> dict:
     if actives_casino == 0:
         actives_casino = _mean_i(casino, "casino_actives")
 
+    # Churn: % of prev-month actives who didn't bet this month
+    churn_monthly = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
+    churn_pct = 0.0
+    if not churn_monthly.empty and "month" in churn_monthly.columns:
+        end_month = end.strftime("%Y-%m")
+        churn_row = churn_monthly[churn_monthly["month"] == end_month]
+        if not churn_row.empty:
+            churn_pct = float(churn_row["churn_pct"].iloc[0])
+
+    # Bonus from BonusTransactions (ReasonID 64=issued, 65=reversed)
+    bonus_tx_issued   = _s(bonus, "bonus_tx_issued")
+    bonus_tx_reversed = _s(bonus, "bonus_tx_reversed")
+    bonus_tx_net      = _s(bonus, "bonus_tx_net")
+    bonus_converted   = _s(tx, "bonus_redeemed")
+    unique_depositors = _i(tx, "unique_depositors")
+    deposits          = _s(tx, "deposits")
+    bonus_pct = round(bonus_converted / bonus_tx_net * 100, 1) if bonus_tx_net > 0 else 0.0
+
     return {
         "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
         "ftd_reg_month": ftd_reg_month,
         "actives_sports": actives_sports, "actives_casino": actives_casino,
         "turnover": round(total_turnover, 2), "ggr": round(total_ggr, 2),
-        "ngr": round(ngr, 2), "hold_pct": hold_pct, "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
+        "ngr": round(ngr, 2), "hold_pct": hold_pct,
+        "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
+        "bonus_tx_issued": round(bonus_tx_issued, 2),
+        "bonus_tx_reversed": round(bonus_tx_reversed, 2),
+        "bonus_tx_net": round(bonus_tx_net, 2),
+        "bonus_redeemed": round(bonus_converted, 2),
+        "bonus_pct": bonus_pct,
+        "unique_depositors": unique_depositors,
+        "deposits": round(deposits, 2),
+        "churn_pct": churn_pct,
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,

@@ -90,6 +90,10 @@ export default function Home() {
     liveBonusSpent,
     liveFtdRegMonth,
     liveUniqueDepositors,
+    liveBonusTxIssued,
+    liveBonusConverted,
+    liveBonusPct,
+    liveChurnPct,
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
@@ -437,14 +441,13 @@ export default function Home() {
                 <span className="text-xs text-white/80 font-mono">{filters.dateFrom} → {filters.dateTo}</span>
               </div>
               <div className="p-3 space-y-3">
-                {/* Revenue group — 8 tiles */}
+                {/* Revenue group — row 1: 8 tiles, row 2: bonus tiles */}
                 <div>
-                  <div className="grid grid-cols-8 gap-2">
+                  <div className="grid grid-cols-8 gap-2 mb-2">
                     {tile("GGR",             formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
                     {tile("Turnover",        formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
-                    {tile("Hold %",           overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
+                    {tile("Hold %",          overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
                                                                                                                                                               CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
-                    {tile("Bonus Redeemed",  liveBonusSpent != null ? formatFull(liveBonusSpent) : "—",                                                      CHART_COLORS.amber,     <Zap size={11} />, liveBonusSpent == null)}
                     {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
                     {tile("Withdrawals",     hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
                     {tile("Net Cash",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) : "Pending",
@@ -452,24 +455,30 @@ export default function Home() {
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
                       : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
+                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                                                                    CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
+                  </div>
+                  <div className="grid grid-cols-8 gap-2">
+                    {tile("Bonus Issued",    liveBonusTxIssued != null && liveBonusTxIssued > 0 ? formatFull(liveBonusTxIssued) : "—",                       CHART_COLORS.amber,     <Zap size={11} />, !liveBonusTxIssued)}
+                    {tile("Bonus Converted", liveBonusConverted != null && liveBonusConverted > 0 ? formatFull(liveBonusConverted) : "—",                     CHART_COLORS.green,     <Zap size={11} />, !liveBonusConverted, "ReasonID 54")}
+                    {tile("Bonus %",         liveBonusPct != null ? `${liveBonusPct}%` : "—",                                                                 CHART_COLORS.teal,      <Percent size={11} />, liveBonusPct == null, "Conv/Issued")}
                   </div>
                 </div>
-                {/* Players group — row 1: 7 tiles, row 2: 3 tiles */}
+                {/* Players group — row 1: 6 tiles, row 2: 6 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
-                  <div className="grid grid-cols-7 gap-2 mb-2">
+                  <div className="grid grid-cols-6 gap-2 mb-2">
                     {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
                     {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
                     {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
                     {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />)}
-                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                             CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
                     {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
                     {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
                   </div>
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid grid-cols-6 gap-2">
                     {tile("Depositors",      liveUniqueDepositors != null && liveUniqueDepositors > 0 ? formatFull(liveUniqueDepositors) : "Pending",              CHART_COLORS.amber,     <DollarSign size={11} />, !liveUniqueDepositors)}
                     {tile("Dep/Customer",    liveUniqueDepositors && transactionSummary.totalDeposits > 0 ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "Pending", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors)}
                     {tile("ARPU",            liveNgr != null && (overviewKPIs.activesSports + overviewKPIs.activesCasino) > 0 ? formatFull(liveNgr / (overviewKPIs.activesSports + overviewKPIs.activesCasino)) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
+                    {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,       <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
                   </div>
                 </div>
               </div>

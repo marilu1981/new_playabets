@@ -37,6 +37,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveNgr, setLiveNgr] = useState<number | null>(null);
   const [liveBonusSpent, setLiveBonusSpent] = useState<number | null>(null);
   const [liveUniqueDepositors, setLiveUniqueDepositors] = useState<number | null>(null);
+  const [liveBonusTxIssued, setLiveBonusTxIssued] = useState<number | null>(null);
+  const [liveBonusConverted, setLiveBonusConverted] = useState<number | null>(null);
+  const [liveBonusPct, setLiveBonusPct] = useState<number | null>(null);
+  const [liveChurnPct, setLiveChurnPct] = useState<number | null>(null);
   const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
@@ -166,6 +170,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           tx_count_other_status?: number;
           unique_depositors?: number;
           bonus_redeemed?: number;
+          bonus_tx_issued?: number;
+          bonus_tx_net?: number;
+          bonus_pct?: number;
+          churn_pct?: number;
         }>(`/kpis?${query}`),
         daily: fetchJson<{
           rows: Array<{
@@ -244,6 +252,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusSpent(k.bonus_spent != null ? Number(k.bonus_spent) : null);
         setLiveFtdRegMonth(k.ftd_reg_month != null ? Number(k.ftd_reg_month) : null);
         setLiveUniqueDepositors(k.unique_depositors != null ? Number(k.unique_depositors) : null);
+        setLiveBonusTxIssued(k.bonus_tx_issued != null ? Number(k.bonus_tx_issued) : null);
+        setLiveBonusConverted(k.bonus_redeemed != null && Number(k.bonus_redeemed) > 0 ? Number(k.bonus_redeemed) : null);
+        setLiveBonusPct(k.bonus_pct != null ? Number(k.bonus_pct) : null);
+        setLiveChurnPct(k.churn_pct != null ? Number(k.churn_pct) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
@@ -267,6 +279,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusSpent(null);
         setLiveFtdRegMonth(null);
         setLiveUniqueDepositors(null);
+        setLiveBonusTxIssued(null);
+        setLiveBonusConverted(null);
+        setLiveBonusPct(null);
+        setLiveChurnPct(null);
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
@@ -760,6 +776,10 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveBonusSpent,
     liveFtdRegMonth,
     liveUniqueDepositors,
+    liveBonusTxIssued,
+    liveBonusConverted,
+    liveBonusPct,
+    liveChurnPct,
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
