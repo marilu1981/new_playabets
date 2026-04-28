@@ -89,40 +89,26 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     betslips["stake_num"] = to_num(betslips[stake], default=0.0)
     betslips["winnings_num"] = to_num(betslips[winnings], default=0.0)
 
-    # Split by credit type: real money vs bonus bets.
-    # DWH view_betslips CreditType: "User Account" = real money, "Bonus" = bonus.
+    # Real-money bets only for all calculations.
+    # view_betslips only returns User Account bets so total = real money.
     credit_col = bcol.get("credittype")
-    betslips_real = betslips.copy()
-    betslips_bonus = pd.DataFrame()
     if credit_col:
-        betslips_real = betslips[betslips[credit_col].astype(str) == "User Account"].copy()
-        betslips_bonus = betslips[betslips[credit_col].astype(str) != "User Account"].copy()
+        betslips = betslips[betslips[credit_col].astype(str) == "User Account"].copy()
 
     # --- Placement-date daily (activity / volume / exposure)
-    # actives and betslips_count use real money only; placed_stake = TOTAL (real + bonus) to match client
     betslips["place_date"] = to_date(betslips[placement])
-    betslips_real["place_date"] = to_date(betslips_real[placement])
 
     placed_daily = (
         betslips.dropna(subset=["place_date"])
                 .groupby("place_date")
                 .agg(
+                    actives_sports=(user_id, "nunique"),
                     betslips_count=(user_id, "size"),
-                    placed_stake=("stake_num", "sum"),       # total incl. bonus
+                    placed_stake=("stake_num", "sum"),
                 )
                 .reset_index()
                 .rename(columns={"place_date": "date"})
     )
-    # Actives from real money only
-    actives_daily = (
-        betslips_real.dropna(subset=["place_date"])
-                     .groupby("place_date")[user_id]
-                     .nunique()
-                     .reset_index()
-                     .rename(columns={"place_date": "date", user_id: "actives_sports"})
-    )
-    placed_daily = placed_daily.merge(actives_daily, on="date", how="left").fillna(0)
-    placed_daily["actives_sports"] = placed_daily["actives_sports"].astype(int)
 
     # Open exposure (only if status col exists)
     if status_col:
@@ -142,38 +128,22 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     # --- Settlement-date daily (revenue truth)
     if payment_col and status_col:
         betslips["pay_date"] = to_date(betslips[payment_col])
-        betslips_real["pay_date"] = to_date(betslips_real[payment_col])
 
-        # Real money settled only (for GGR/NGR)
-        settled_real = betslips_real[betslips_real[status_col].astype(str).eq(SETTLED_STATUS)].copy()
-        # All settled (real + bonus) for total GGR display
         settled = betslips[betslips[status_col].astype(str).eq(SETTLED_STATUS)].copy()
 
-        settled_real_agg = (
-            settled_real.dropna(subset=["pay_date"])
-                        .groupby("pay_date")
-                        .agg(
-                            settled_stake=("stake_num", "sum"),
-                            settled_winnings=("winnings_num", "sum"),
-                        )
-                        .reset_index()
-                        .rename(columns={"pay_date": "date"})
-        )
-        settled_bonus_agg = (
+        settled_daily = (
             settled.dropna(subset=["pay_date"])
                    .groupby("pay_date")
                    .agg(
-                       settled_stake_total=("stake_num", "sum"),
-                       settled_winnings_total=("winnings_num", "sum"),
+                       settled_stake=("stake_num", "sum"),
+                       settled_winnings=("winnings_num", "sum"),
                    )
                    .reset_index()
                    .rename(columns={"pay_date": "date"})
         )
-        settled_daily = settled_real_agg.merge(settled_bonus_agg, on="date", how="outer").fillna(0)
-        # Real money GGR (for NGR)
         settled_daily["ggr"] = settled_daily["settled_stake"] - settled_daily["settled_winnings"]
-        # Total GGR (real + bonus, for display)
-        settled_daily["ggr_total"] = settled_daily["settled_stake_total"] - settled_daily["settled_winnings_total"]
+        # ggr_total = same as ggr since view_betslips only returns User Account bets
+        settled_daily["ggr_total"] = settled_daily["ggr"]
         settled_daily["hold_pct"] = settled_daily.apply(
             lambda r: (r["ggr"] / r["settled_stake"]) if r["settled_stake"] else 0.0,
             axis=1,
