@@ -360,6 +360,40 @@ def main() -> None:
 
     # (Churn is now computed inside the Total Actives block above using sports+casino union)
 
+    # Monthly Unique Depositors — period-unique count per month from DWH.
+    # Daily aggregates can't give period-unique, so we query DWH directly once.
+    try:
+        from src.extract.db_utils import build_engine
+        from sqlalchemy import text as _text
+
+        DEPOSIT_REASON_IDS = (
+            "249,250,830,835,839,843,851,853,855,857,859,"
+            "861,863,865,867,869,871,877,939"
+        )
+        engine = build_engine()
+        with engine.connect() as conn:
+            result = conn.execute(_text(f"""
+                SELECT
+                    TO_CHAR("Date", 'YYYY-MM')  AS month,
+                    COUNT(DISTINCT "UserID")     AS unique_depositors
+                FROM "Dwh_en"."view_transactions"
+                WHERE "TransactionAmountTypeID" = 1
+                  AND "TransactionManagementStatusID" = 3
+                  AND "ReasonID" IN ({DEPOSIT_REASON_IDS})
+                  AND "Date" >= '2026-01-01 00:00:00'
+                GROUP BY TO_CHAR("Date", 'YYYY-MM')
+                ORDER BY month
+            """))
+            rows = result.fetchall()
+        if rows:
+            dep_df = pd.DataFrame(rows, columns=["month", "unique_depositors"])
+            dep_df["unique_depositors"] = dep_df["unique_depositors"].astype(int)
+            dep_out = SERVING / "depositors_monthly.parquet"
+            dep_df.to_parquet(dep_out, index=False)
+            print(f"[domain_kpis] Depositors monthly: {len(dep_df)} rows -> {dep_out}")
+    except Exception as e:
+        print(f"[domain_kpis] Depositors monthly: error - {e}")
+
     print("[domain_kpis] Done.")
 
 

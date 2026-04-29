@@ -478,8 +478,8 @@ export default function Home() {
                   <div className="grid grid-cols-5 gap-2">
                     {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino")}
                     {tile("ARPU",            liveNgr != null && liveTotalActives != null && liveTotalActives > 0 ? formatFull(liveNgr / liveTotalActives) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
-                    {tile("Depositors",      "—",                                                                                                                   CHART_COLORS.amber, <DollarSign size={11} />, true, "period unique TBD")}
-                    {tile("Dep/Customer",    "—",                                                                                                                   CHART_COLORS.teal,  <DollarSign size={11} />, true, "TBD")}
+                    {tile("Depositors",      liveUniqueDepositors != null ? formatFull(liveUniqueDepositors) : "—",                                              CHART_COLORS.amber, <DollarSign size={11} />, liveUniqueDepositors == null, "period unique")}
+                    {tile("Dep/Customer",    liveUniqueDepositors != null && liveUniqueDepositors > 0 && hasTransactionsData ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "—", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors, "deposits/depositor")}
                     {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,   <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
                   </div>
                 </div>

@@ -104,6 +104,7 @@ FTD_REG_MONTH_DAILY_PATH    = _SERVING / "ftd_reg_month_daily.parquet"
 ACTIVES_MONTHLY_PATH        = _SERVING / "actives_monthly.parquet"
 CHURN_MONTHLY_PATH          = _SERVING / "churn_monthly.parquet"
 TOTAL_ACTIVES_MONTHLY_PATH  = _SERVING / "total_actives_monthly.parquet"
+DEPOSITORS_MONTHLY_PATH     = _SERVING / "depositors_monthly.parquet"
 CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
@@ -679,6 +680,21 @@ def _get_churn_pct(end: date) -> float:
     return float(row["churn_pct"].iloc[0]) if not row.empty else 0.0
 
 
+def _get_monthly_depositors(start: date, end: date) -> int:
+    """Return period-unique depositors by summing monthly unique counts."""
+    dep = load_parquet_cached(DEPOSITORS_MONTHLY_PATH, "depositors_monthly")
+    if dep.empty or "month" not in dep.columns:
+        return 0
+    start_month = start.strftime("%Y-%m")
+    end_month = end.strftime("%Y-%m")
+    mask = (dep["month"] >= start_month) & (dep["month"] <= end_month)
+    filtered = dep[mask]
+    if filtered.empty:
+        return 0
+    # For a single month: exact unique count. For multi-month: sum (slight overcount).
+    return int(filtered["unique_depositors"].sum())
+
+
 def _get_total_actives(start: date, end: date) -> int:
     """Return period-unique total actives (sports + casino combined, no double count)."""
     total_act = load_parquet_cached(TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly")
@@ -827,6 +843,7 @@ def kpis(
         "unique_depositors": _i(tx, "unique_depositors"),
         "churn_pct": _get_churn_pct(end),
         "total_actives_unique": _get_total_actives(start, end),
+        "period_unique_depositors": _get_monthly_depositors(start, end),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
         "transactions_enabled": ENABLE_TRANSACTIONS,
         "filters_applied": {

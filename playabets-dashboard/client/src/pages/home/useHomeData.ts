@@ -176,6 +176,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           bonus_pct?: number;
           churn_pct?: number;
           total_actives_unique?: number;
+          period_unique_depositors?: number;
         }>(`/kpis?${query}`),
         daily: fetchJson<{
           rows: Array<{
@@ -259,6 +260,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusPct(k.bonus_pct != null ? Number(k.bonus_pct) : null);
         setLiveChurnPct(k.churn_pct != null ? Number(k.churn_pct) : null);
         setLiveTotalActives(k.total_actives_unique != null && Number(k.total_actives_unique) > 0 ? Number(k.total_actives_unique) : null);
+        setLiveUniqueDepositors(k.period_unique_depositors != null && Number(k.period_unique_depositors) > 0 ? Number(k.period_unique_depositors) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
