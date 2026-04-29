@@ -464,23 +464,23 @@ export default function Home() {
                     {tile("Bonus %",         liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Conv/Issued")}
                   </div>
                 </div>
-                {/* Players group — row 1: 7 tiles, row 2: 4 tiles */}
+                {/* Players group — row 1: 6 tiles, row 2: 5 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
-                  <div className="grid grid-cols-7 gap-2 mb-2">
+                  <div className="grid grid-cols-6 gap-2 mb-2">
                     {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
                     {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
                     {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
                     {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />)}
-                    {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino")}
                     {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
                     {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
                   </div>
-                  <div className="grid grid-cols-6 gap-2">
-                    {tile("Depositors",      "—",                                                                                                                        CHART_COLORS.amber,     <DollarSign size={11} />, true, "period unique TBD")}
-                    {tile("Dep/Customer",   "—",                                                                                                                        CHART_COLORS.teal,      <DollarSign size={11} />, true, "TBD")}
-                    {tile("ARPU",            liveNgr != null && (overviewKPIs.activesSports + overviewKPIs.activesCasino) > 0 ? formatFull(liveNgr / (overviewKPIs.activesSports + overviewKPIs.activesCasino)) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
-                    {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,       <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
+                  <div className="grid grid-cols-5 gap-2">
+                    {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino")}
+                    {tile("ARPU",            liveNgr != null && liveTotalActives != null && liveTotalActives > 0 ? formatFull(liveNgr / liveTotalActives) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
+                    {tile("Depositors",      "—",                                                                                                                   CHART_COLORS.amber, <DollarSign size={11} />, true, "period unique TBD")}
+                    {tile("Dep/Customer",    "—",                                                                                                                   CHART_COLORS.teal,  <DollarSign size={11} />, true, "TBD")}
+                    {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,   <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
                   </div>
                 </div>
               </div>
