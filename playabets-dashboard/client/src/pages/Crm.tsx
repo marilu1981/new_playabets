@@ -43,6 +43,9 @@ export default function CrmPage() {
   const [cohortData, setCohortData]   = useState<Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }>>([]);
   const [rfmData, setRfmData]         = useState<Array<{ segment: string; count: number }>>([]);
   const [avgDepositValue, setAvgDepositValue] = useState<number | null>(null);
+  const [churnPct, setChurnPct]   = useState<number | null>(null);
+  const [arpu, setArpu]           = useState<number | null>(null);
+  const [totalActives, setTotalActives] = useState<number | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -69,8 +72,19 @@ export default function CrmPage() {
       ].filter((s) => s.count > 0));
     }).catch(() => {});
 
-    // Average Deposit Value = deposits / deposit_count from transactions/kpis
-    fetchJson<{ deposits?: number; deposit_count?: number; tx_count?: number }>(
+    // KPIs — churn, total actives, NGR for ARPU
+    fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number }>(
+      `/kpis?${query}`
+    ).then((d) => {
+      setChurnPct(d.churn_pct != null ? Number(d.churn_pct) : null);
+      const act = Number(d.total_actives_unique ?? 0);
+      setTotalActives(act > 0 ? act : null);
+      const ngr = Number(d.ngr ?? 0);
+      setArpu(act > 0 && ngr > 0 ? Math.round(ngr / act) : null);
+    }).catch(() => {});
+
+    // Average Deposit Value = deposits / deposit_count
+    fetchJson<{ deposits?: number; deposit_count?: number }>(
       `/transactions/kpis?${query}`
     ).then((d) => {
       const dep = Number(d.deposits ?? 0);
@@ -89,7 +103,7 @@ export default function CrmPage() {
     >
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KpiCard
             title="Avg Deposit Value"
             value={avgDepositValue != null ? formatFull(avgDepositValue) : "Pending"}
@@ -99,10 +113,24 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Churn (Actives)"
-            value="Coming soon"
-            subtitle="Players left ÷ Total at start × 100"
+            value={churnPct != null ? `${churnPct}%` : "—"}
+            subtitle="Players left ÷ Total prev month"
             icon={<Activity size={18} />}
             accent="amber"
+          />
+          <KpiCard
+            title="ARPU"
+            value={arpu != null ? formatFull(arpu) : "—"}
+            subtitle="NGR ÷ Total Actives"
+            icon={<TrendingUp size={18} />}
+            accent="green"
+          />
+          <KpiCard
+            title="Total Actives"
+            value={totalActives != null ? formatCompact(totalActives) : "—"}
+            subtitle="Unique sports + casino players"
+            icon={<Users size={18} />}
+            accent="teal"
           />
           <KpiCard
             title="LTV"
