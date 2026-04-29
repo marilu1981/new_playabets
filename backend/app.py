@@ -735,9 +735,10 @@ def kpis(
     sportsbook_ggr     += horse_racing_ggr
     sportsbook_turnover += horse_racing_stake
 
-    casino_turnover = _s(casino, "casino_stake")
-    casino_winnings = _s(casino, "casino_winnings")
-    casino_ggr = _s(casino, "casino_ggr")
+    casino_turnover     = _s(casino, "casino_total_stake") or _s(casino, "casino_stake")  # real + bonus
+    casino_ggr_display  = _s(casino, "casino_total_ggr")  or _s(casino, "casino_ggr")   # real + bonus GGR
+    casino_ggr          = _s(casino, "casino_ggr")                                        # real money only
+    casino_winnings     = _s(casino, "casino_winnings")
 
     # Period-unique actives from actives_monthly.parquet (falls back to daily avg).
     actives_monthly = load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
@@ -751,9 +752,9 @@ def kpis(
     else:
         casino_actives = _mean_i(casino, "casino_actives")
 
-    turnover = sportsbook_turnover + casino_turnover
+    turnover = sportsbook_turnover + casino_turnover        # sports + casino (real + bonus)
     winnings = sportsbook_winnings + casino_winnings
-    ggr = sportsbook_ggr + casino_ggr                    # total GGR (display)
+    ggr = sportsbook_ggr + casino_ggr_display              # display GGR (real + bonus)
     ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr  # real money GGR (for NGR)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
@@ -1147,16 +1148,17 @@ def _summary_period(start: date, end: date) -> dict:
     sports_ggr = sports_ggr_total  # alias for hold% calc
     sports_hold = round(sports_ggr / sports_turnover * 100, 1) if sports_turnover > 0 else 0.0
 
-    casino_stake = _s(casino, "casino_stake")
-    casino_winnings = _s(casino, "casino_winnings")
-    casino_ggr = _s(casino, "casino_ggr")
-    casino_real_ggr = _s(casino, "casino_real_ggr") or casino_ggr
+    casino_stake         = _s(casino, "casino_stake")
+    casino_winnings      = _s(casino, "casino_winnings")
+    casino_ggr           = _s(casino, "casino_ggr")           # real money GGR
+    casino_total_ggr     = _s(casino, "casino_total_ggr") or casino_ggr  # real + bonus GGR
+    casino_total_stake   = _s(casino, "casino_total_stake") or casino_stake  # real + bonus stake
     casino_bets = _i(casino, "casino_bets")
     casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
 
-    total_ggr = sports_ggr_total + casino_ggr        # display GGR (total)
-    real_money_ggr = sports_ggr_real + casino_real_ggr  # real money GGR (for NGR)
+    total_ggr = sports_ggr_total + casino_total_ggr        # display GGR (real + bonus)
+    real_money_ggr = sports_ggr_real + casino_ggr           # real money GGR (for NGR)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -1164,7 +1166,7 @@ def _summary_period(start: date, end: date) -> dict:
     # Falls back to bonus_spent from view_BonusBonuses if transactions bonus not yet available.
     bonus_converted = _s(tx, "bonus_redeemed")
     ngr = real_money_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
-    total_turnover = sports_turnover + casino_stake
+    total_turnover = sports_turnover + casino_total_stake  # sports + casino real + casino bonus
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 
     # Actives: period-total unique users from actives_monthly.parquet.

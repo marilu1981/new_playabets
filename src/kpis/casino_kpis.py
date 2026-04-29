@@ -102,24 +102,34 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     c_out  = _agg_daily(casino_only, "casino_")
     hr_out = _agg_daily(horse_racing, "horse_racing_")
 
-    # Casino bonus stake/winnings daily aggregation for real money GGR
+    # Casino bonus stake/winnings — view_Casino.Stake = ImportoGiocato (real money only)
+    # BonusStake = ImportoGiocatoBonus, BonusWinnings = ImportoVintoBonus
+    # casino_ggr = Stake - Winnings = real money GGR (for NGR)
+    # casino_total_ggr = casino_ggr + bonus_ggr (for display)
+    # casino_total_stake = casino_stake + bonus_stake (for turnover display)
     if bonus_stake_col and "bonus_stake_num" in casino_only.columns:
+        bonus_win_col_name = "bonus_winnings_num" if bonus_winnings_col and "bonus_winnings_num" in casino_only.columns else "bonus_stake_num"
         bonus_agg = (
             casino_only.dropna(subset=["casino_date"])
             .groupby("casino_date")
             .agg(
                 casino_bonus_stake=("bonus_stake_num", "sum"),
-                casino_bonus_winnings=("bonus_winnings_num" if bonus_winnings_col and "bonus_winnings_num" in casino_only.columns else "bonus_stake_num", "sum"),
+                casino_bonus_winnings=(bonus_win_col_name, "sum"),
             )
             .reset_index()
             .rename(columns={"casino_date": "date"})
         )
         c_out = c_out.merge(bonus_agg, on="date", how="left").fillna(0)
-        c_out["casino_real_ggr"] = (c_out["casino_stake"] - c_out["casino_bonus_stake"]) - \
-                                   (c_out["casino_winnings"] - c_out["casino_bonus_winnings"])
+        c_out["casino_bonus_ggr"]   = c_out["casino_bonus_stake"] - c_out["casino_bonus_winnings"]
+        c_out["casino_total_ggr"]   = c_out["casino_ggr"] + c_out["casino_bonus_ggr"]
+        c_out["casino_total_stake"] = c_out["casino_stake"] + c_out["casino_bonus_stake"]
+        c_out["casino_real_ggr"]    = c_out["casino_ggr"]  # Stake already = real money only
     else:
         c_out["casino_bonus_stake"]    = 0.0
         c_out["casino_bonus_winnings"] = 0.0
+        c_out["casino_bonus_ggr"]      = 0.0
+        c_out["casino_total_ggr"]      = c_out["casino_ggr"]
+        c_out["casino_total_stake"]    = c_out["casino_stake"]
         c_out["casino_real_ggr"]       = c_out["casino_ggr"]
 
     all_dates = pd.DataFrame(
