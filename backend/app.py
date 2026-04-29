@@ -103,6 +103,7 @@ FTD_DAILY_PATH              = _SERVING / "ftd_daily.parquet"
 FTD_REG_MONTH_DAILY_PATH    = _SERVING / "ftd_reg_month_daily.parquet"
 ACTIVES_MONTHLY_PATH        = _SERVING / "actives_monthly.parquet"
 CHURN_MONTHLY_PATH          = _SERVING / "churn_monthly.parquet"
+TOTAL_ACTIVES_MONTHLY_PATH  = _SERVING / "total_actives_monthly.parquet"
 CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
@@ -668,6 +669,30 @@ def _mean_i(df: pd.DataFrame, col: str) -> int:
     return int(round(df[col].mean())) if col in df.columns and len(df) > 0 else 0
 
 
+def _get_churn_pct(end: date) -> float:
+    """Return churn % for the month ending on `end`."""
+    churn = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
+    if churn.empty or "month" not in churn.columns:
+        return 0.0
+    end_month = end.strftime("%Y-%m")
+    row = churn[churn["month"] == end_month]
+    return float(row["churn_pct"].iloc[0]) if not row.empty else 0.0
+
+
+def _get_total_actives(start: date, end: date) -> int:
+    """Return period-unique total actives (sports + casino combined, no double count)."""
+    total_act = load_parquet_cached(TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly")
+    if total_act.empty or "month" not in total_act.columns:
+        return 0
+    start_month = start.strftime("%Y-%m")
+    end_month = end.strftime("%Y-%m")
+    mask = (total_act["month"] >= start_month) & (total_act["month"] <= end_month)
+    filtered = total_act[mask]
+    if "total_actives_unique" in filtered.columns:
+        return int(filtered["total_actives_unique"].sum())
+    return 0
+
+
 def _load_transactions_df(start: date, end: date) -> pd.DataFrame:
     if not ENABLE_TRANSACTIONS:
         return pd.DataFrame()
@@ -800,6 +825,8 @@ def kpis(
         "bonus_tx_net": _s(bonus, "bonus_tx_net"),
         "bonus_pct": round(_s(tx, "bonus_redeemed") / _s(bonus, "bonus_tx_net") * 100, 1) if _s(bonus, "bonus_tx_net") > 0 else 0.0,
         "unique_depositors": _i(tx, "unique_depositors"),
+        "churn_pct": _get_churn_pct(end),
+        "total_actives_unique": _get_total_actives(start, end),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
         "transactions_enabled": ENABLE_TRANSACTIONS,
         "filters_applied": {

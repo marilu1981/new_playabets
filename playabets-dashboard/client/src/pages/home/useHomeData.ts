@@ -41,6 +41,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveBonusConverted, setLiveBonusConverted] = useState<number | null>(null);
   const [liveBonusPct, setLiveBonusPct] = useState<number | null>(null);
   const [liveChurnPct, setLiveChurnPct] = useState<number | null>(null);
+  const [liveTotalActives, setLiveTotalActives] = useState<number | null>(null);
   const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
@@ -174,6 +175,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           bonus_tx_net?: number;
           bonus_pct?: number;
           churn_pct?: number;
+          total_actives_unique?: number;
         }>(`/kpis?${query}`),
         daily: fetchJson<{
           rows: Array<{
@@ -256,6 +258,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusConverted(k.bonus_redeemed != null && Number(k.bonus_redeemed) > 0 ? Number(k.bonus_redeemed) : null);
         setLiveBonusPct(k.bonus_pct != null ? Number(k.bonus_pct) : null);
         setLiveChurnPct(k.churn_pct != null ? Number(k.churn_pct) : null);
+        setLiveTotalActives(k.total_actives_unique != null && Number(k.total_actives_unique) > 0 ? Number(k.total_actives_unique) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
@@ -283,6 +286,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusConverted(null);
         setLiveBonusPct(null);
         setLiveChurnPct(null);
+        setLiveTotalActives(null);
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
@@ -780,6 +784,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveBonusConverted,
     liveBonusPct,
     liveChurnPct,
+    liveTotalActives,
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,

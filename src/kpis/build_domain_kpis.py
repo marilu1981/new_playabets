@@ -289,6 +289,50 @@ def main() -> None:
     else:
         print("[domain_kpis] Actives monthly: no data - skipping")
 
+    # Total Actives Monthly — union of sports and casino UserIDs (no double counting).
+    # Players active in both sports and casino are counted once.
+    try:
+        sports_month_users: dict = {}
+        casino_month_users: dict = {}
+        betslips_dir2 = RAW / "betslips"
+        if betslips_dir2.exists():
+            from .io_utils import normalize_cols as _nc_ta
+            bs_ta_raw = read_all_parquets(betslips_dir2, "betslips*.parquet")
+            if not bs_ta_raw.empty:
+                bs_ta, bscol_ta = _nc_ta(bs_ta_raw)
+                uid_ta = bscol_ta.get("userid")
+                date_ta = bscol_ta.get("placementdate")
+                credit_ta = bscol_ta.get("credittype")
+                if uid_ta and date_ta:
+                    if credit_ta:
+                        bs_ta = bs_ta[bs_ta[credit_ta].astype(str) == "User Account"]
+                    bs_ta["_dt"] = pd.to_datetime(bs_ta[date_ta], errors="coerce")
+                    bs_ta["_month"] = bs_ta["_dt"].dt.to_period("M")
+                    for period, grp in bs_ta.dropna(subset=["_dt"]).groupby("_month"):
+                        sports_month_users[str(period)] = set(grp[uid_ta].dropna().astype(int).tolist())
+        if not casino_raw.empty:
+            from .io_utils import normalize_cols as _nc_ca2
+            ca2, cacol2 = _nc_ca2(casino_raw)
+            uid_ca2 = cacol2.get("userid")
+            date_ca2 = cacol2.get("placementdate")
+            if uid_ca2 and date_ca2:
+                ca2["_dt"] = pd.to_datetime(ca2[date_ca2], errors="coerce")
+                ca2["_month"] = ca2["_dt"].dt.to_period("M")
+                for period, grp in ca2.dropna(subset=["_dt"]).groupby("_month"):
+                    casino_month_users[str(period)] = set(grp[uid_ca2].dropna().astype(int).tolist())
+        all_m = set(sports_month_users.keys()) | set(casino_month_users.keys())
+        total_act_rows = []
+        for month in sorted(all_m):
+            total = sports_month_users.get(month, set()) | casino_month_users.get(month, set())
+            total_act_rows.append({"month": month, "total_actives_unique": len(total)})
+        if total_act_rows:
+            total_act_df = pd.DataFrame(total_act_rows)
+            total_act_out = SERVING / "total_actives_monthly.parquet"
+            total_act_df.to_parquet(total_act_out, index=False)
+            print(f"[domain_kpis] Total actives monthly: {len(total_act_df)} rows -> {total_act_out}")
+    except Exception as e:
+        print(f"[domain_kpis] Total actives: error - {e}")
+
     # Churn Monthly — % of prev-month real-money bettors who did NOT bet in current month.
     # Uses same filtered betslips (real-money only) as actives_monthly.
     betslips_dir = RAW / "betslips"
