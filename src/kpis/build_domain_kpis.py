@@ -321,59 +321,44 @@ def main() -> None:
                 for period, grp in ca2.dropna(subset=["_dt"]).groupby("_month"):
                     casino_month_users[str(period)] = set(grp[uid_ca2].dropna().astype(int).tolist())
         all_m = set(sports_month_users.keys()) | set(casino_month_users.keys())
+        total_month_users: dict = {}
         total_act_rows = []
         for month in sorted(all_m):
             total = sports_month_users.get(month, set()) | casino_month_users.get(month, set())
+            total_month_users[month] = total
             total_act_rows.append({"month": month, "total_actives_unique": len(total)})
         if total_act_rows:
             total_act_df = pd.DataFrame(total_act_rows)
             total_act_out = SERVING / "total_actives_monthly.parquet"
             total_act_df.to_parquet(total_act_out, index=False)
             print(f"[domain_kpis] Total actives monthly: {len(total_act_df)} rows -> {total_act_out}")
-    except Exception as e:
-        print(f"[domain_kpis] Total actives: error - {e}")
 
-    # Churn Monthly — % of prev-month real-money bettors who did NOT bet in current month.
-    # Uses same filtered betslips (real-money only) as actives_monthly.
-    betslips_dir = RAW / "betslips"
-    if betslips_dir.exists():
-        from .io_utils import normalize_cols as _nc_churn
-        bs_churn_raw = read_all_parquets(betslips_dir, "betslips*.parquet")
-        if not bs_churn_raw.empty:
-            bs_c, bscol_c = _nc_churn(bs_churn_raw)
-            uid_c2 = bscol_c.get("userid")
-            date_c2 = bscol_c.get("placementdate")
-            credit_c2 = bscol_c.get("credittype")
-            if uid_c2 and date_c2:
-                if credit_c2:
-                    bs_c = bs_c[bs_c[credit_c2].astype(str) == "User Account"]
-                bs_c["_dt"] = pd.to_datetime(bs_c[date_c2], errors="coerce")
-                bs_c["_month"] = bs_c["_dt"].dt.to_period("M")
-                month_users: dict = {}
-                for period, grp in bs_c.dropna(subset=["_dt"]).groupby("_month"):
-                    month_users[str(period)] = set(
-                        grp[uid_c2].dropna().astype(int).tolist()
-                    )
-                months_sorted = sorted(month_users.keys())
-                churn_rows = []
-                for i in range(1, len(months_sorted)):
-                    prev_m, curr_m = months_sorted[i - 1], months_sorted[i]
-                    prev_set = month_users[prev_m]
-                    curr_set = month_users[curr_m]
-                    churned = len(prev_set - curr_set)
-                    prev_count = len(prev_set)
-                    churn_pct = round(churned / prev_count * 100, 1) if prev_count > 0 else 0.0
-                    churn_rows.append({
-                        "month": curr_m,
-                        "actives_prev_month": prev_count,
-                        "churned": churned,
-                        "churn_pct": churn_pct,
-                    })
-                if churn_rows:
-                    churn_df = pd.DataFrame(churn_rows)
-                    churn_out = SERVING / "churn_monthly.parquet"
-                    churn_df.to_parquet(churn_out, index=False)
-                    print(f"[domain_kpis] Churn monthly: {len(churn_df)} rows -> {churn_out}")
+        # Churn — uses total actives (sports + casino union) not sports-only.
+        # Sports-only churn over-counts: casino-only players look churned when they stop sports.
+        months_sorted = sorted(total_month_users.keys())
+        churn_rows = []
+        for i in range(1, len(months_sorted)):
+            prev_m, curr_m = months_sorted[i - 1], months_sorted[i]
+            prev_set = total_month_users[prev_m]
+            curr_set = total_month_users[curr_m]
+            churned = len(prev_set - curr_set)
+            prev_count = len(prev_set)
+            churn_pct = round(churned / prev_count * 100, 1) if prev_count > 0 else 0.0
+            churn_rows.append({
+                "month": curr_m,
+                "actives_prev_month": prev_count,
+                "churned": churned,
+                "churn_pct": churn_pct,
+            })
+        if churn_rows:
+            churn_df = pd.DataFrame(churn_rows)
+            churn_out = SERVING / "churn_monthly.parquet"
+            churn_df.to_parquet(churn_out, index=False)
+            print(f"[domain_kpis] Churn monthly: {len(churn_df)} rows -> {churn_out}")
+    except Exception as e:
+        print(f"[domain_kpis] Total actives/churn: error - {e}")
+
+    # (Churn is now computed inside the Total Actives block above using sports+casino union)
 
     print("[domain_kpis] Done.")
 
