@@ -89,11 +89,14 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     betslips["stake_num"] = to_num(betslips[stake], default=0.0)
     betslips["winnings_num"] = to_num(betslips[winnings], default=0.0)
 
-    # Real-money bets only for all calculations.
-    # view_betslips only returns User Account bets so total = real money.
+    # Split by credit type: real money (User Account) vs bonus bets.
     credit_col = bcol.get("credittype")
+    betslips_real = betslips.copy()
+    betslips_bonus_df = pd.DataFrame()
     if credit_col:
-        betslips = betslips[betslips[credit_col].astype(str) == "User Account"].copy()
+        betslips_real = betslips[betslips[credit_col].astype(str) == "User Account"].copy()
+        betslips_bonus_df = betslips[betslips[credit_col].astype(str) != "User Account"].copy()
+    betslips = betslips_real  # all downstream calcs use real money only
 
     # --- Placement-date daily (activity / volume / exposure)
     betslips["place_date"] = to_date(betslips[placement])
@@ -109,6 +112,20 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
                 .reset_index()
                 .rename(columns={"place_date": "date"})
     )
+
+    # Sports bonus turnover (bonus bet stakes)
+    if not betslips_bonus_df.empty:
+        betslips_bonus_df["place_date"] = to_date(betslips_bonus_df[placement])
+        bonus_placed = (
+            betslips_bonus_df.dropna(subset=["place_date"])
+                             .groupby("place_date")["stake_num"]
+                             .sum()
+                             .reset_index()
+                             .rename(columns={"place_date": "date", "stake_num": "placed_stake_bonus"})
+        )
+        placed_daily = placed_daily.merge(bonus_placed, on="date", how="left").fillna(0)
+    else:
+        placed_daily["placed_stake_bonus"] = 0.0
 
     # Open exposure (only if status col exists)
     if status_col:

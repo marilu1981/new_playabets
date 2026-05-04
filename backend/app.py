@@ -765,7 +765,9 @@ def kpis(
         sportsbook_ggr = bs["ggr"]
         sportsbook_actives = 0  # cannot derive actives from betslip filter alone
     else:
-        sportsbook_turnover = _s(df, "placed_stake")       # total incl. bonus bets
+        sportsbook_turnover_real  = _s(df, "placed_stake")
+        sportsbook_turnover_bonus = _s(df, "placed_stake_bonus")
+        sportsbook_turnover = sportsbook_turnover_real + sportsbook_turnover_bonus
         sportsbook_winnings = _s(df, "settled_winnings")
         sportsbook_ggr = _s(df, "ggr_total") or _s(df, "ggr")  # total GGR
         sportsbook_actives = _mean_i(df, "actives_sports")
@@ -794,9 +796,14 @@ def kpis(
         casino_actives = _mean_i(casino, "casino_actives")
 
     turnover = sportsbook_turnover + casino_turnover        # sports + casino (real + bonus)
+    real_money_turnover = sportsbook_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
+    bonus_money_turnover = sportsbook_turnover_bonus + _s(casino, "casino_bonus_stake")
     winnings = sportsbook_winnings + casino_winnings
     ggr = sportsbook_ggr + casino_ggr_display              # display GGR (real + bonus)
     ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr  # real money GGR (for NGR)
+    casino_bonus_ggr = _s(casino, "casino_bonus_ggr")
+    real_money_ggr_display = ggr_real
+    bonus_money_ggr = (sportsbook_ggr - _s(df, "ggr") - horse_racing_ggr) + casino_bonus_ggr
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -816,8 +823,12 @@ def kpis(
         "sports_actives": sportsbook_actives,
         "casino_actives": casino_actives,
         "turnover": turnover,
+        "real_money_turnover": round(real_money_turnover, 2),
+        "bonus_money_turnover": round(bonus_money_turnover, 2),
         "winnings": winnings,
         "ggr": ggr,
+        "real_money_ggr": round(real_money_ggr_display, 2),
+        "bonus_money_ggr": round(bonus_money_ggr, 2),
         "ngr": ngr,
         "bonus_spent": bonus_spent,
         "freebet_spend": freebet_spend,
@@ -1172,7 +1183,9 @@ def _summary_period(start: date, end: date) -> dict:
     # Conv rate = FTD Reg Month ÷ Registrations (users who registered AND ever deposited).
     conv_rate = round(ftd_reg_month / regs * 100, 1) if regs > 0 else 0.0
 
-    sports_turnover = _s(df, "placed_stake")       # total incl. bonus bets
+    sports_turnover_real  = _s(df, "placed_stake")         # real money sports turnover
+    sports_turnover_bonus = _s(df, "placed_stake_bonus")   # bonus sports turnover (~R320K)
+    sports_turnover = sports_turnover_real + sports_turnover_bonus  # total sports
     sports_winnings = _s(df, "settled_winnings")
     sports_ggr_real = _s(df, "ggr")               # real money GGR (for NGR)
     sports_ggr_total = _s(df, "ggr_total") or sports_ggr_real  # total GGR incl. bonus bets
@@ -1211,6 +1224,10 @@ def _summary_period(start: date, end: date) -> dict:
     bonus_converted = _s(tx, "bonus_redeemed")
     ngr = real_money_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_total_stake  # sports + casino real + casino bonus
+    real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
+    bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")
+    casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
+    bonus_money_ggr = casino_bonus_ggr_sp  # sports bonus GGR ≈ 0 (settled GGR only from real money)
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 
     # Actives: period-total unique users from actives_monthly.parquet.
@@ -1256,7 +1273,12 @@ def _summary_period(start: date, end: date) -> dict:
         "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
         "ftd_reg_month": ftd_reg_month,
         "actives_sports": actives_sports, "actives_casino": actives_casino,
-        "turnover": round(total_turnover, 2), "ggr": round(total_ggr, 2),
+        "turnover": round(total_turnover, 2),
+        "real_money_turnover": round(real_money_turnover, 2),
+        "bonus_money_turnover": round(bonus_money_turnover, 2),
+        "ggr": round(total_ggr, 2),
+        "real_money_ggr": round(real_money_ggr, 2),
+        "bonus_money_ggr": round(bonus_money_ggr, 2),
         "ngr": round(ngr, 2), "hold_pct": hold_pct,
         "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
         "bonus_tx_issued": round(bonus_tx_issued, 2),
