@@ -662,12 +662,14 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Total Turnover", current: c.turnover, previous: p.turnover, ytd: y.turnover, isCurrency: true },
             { metric: "Real Money Turnover", current: c.real_money_turnover, previous: p.real_money_turnover, ytd: y.real_money_turnover, isCurrency: true },
             { metric: "Bonus Money Turnover", current: c.bonus_money_turnover, previous: p.bonus_money_turnover, ytd: y.bonus_money_turnover, isCurrency: true },
+            { metric: "Total Winnings", current: (c.turnover ?? 0) - (c.ggr ?? 0), previous: (p.turnover ?? 0) - (p.ggr ?? 0), ytd: (y.turnover ?? 0) - (y.ggr ?? 0), isCurrency: true },
             { metric: "Total GGR", current: c.ggr, previous: p.ggr, ytd: y.ggr, isCurrency: true },
             { metric: "Real Money GGR", current: c.real_money_ggr, previous: p.real_money_ggr, ytd: y.real_money_ggr, isCurrency: true },
             { metric: "Bonus Money GGR", current: c.bonus_money_ggr, previous: p.bonus_money_ggr, ytd: y.bonus_money_ggr, isCurrency: true },
             { metric: "NGR", current: c.ngr, previous: p.ngr, ytd: y.ngr, isCurrency: true },
             { metric: "Hold / Margin %", current: c.hold_pct, previous: p.hold_pct, ytd: y.hold_pct, isPercent: true },
             { metric: "Bonus Spent", current: c.bonus_spent, previous: p.bonus_spent, ytd: y.bonus_spent, isCurrency: true },
+            { metric: "APD (NGR/Depositors)", current: c.period_unique_depositors > 0 ? Math.round(c.ngr / c.period_unique_depositors) : 0, previous: p.period_unique_depositors > 0 ? Math.round(p.ngr / p.period_unique_depositors) : 0, ytd: y.period_unique_depositors > 0 ? Math.round(y.ngr / y.period_unique_depositors) : 0, isCurrency: true },
           ],
           sport: [
             { metric: "Betslips Placed", current: c.sports_bets, previous: p.sports_bets, ytd: y.sports_bets },
@@ -679,6 +681,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Win Rate %", current: c.win_rate, previous: p.win_rate, ytd: y.win_rate, isPercent: true },
             { metric: "Cancel Rate %", current: c.cancel_rate, previous: p.cancel_rate, ytd: y.cancel_rate, isPercent: true },
             { metric: "Avg Stake / Bet", current: c.avg_stake, previous: p.avg_stake, ytd: y.avg_stake, isCurrency: true },
+            { metric: "Avg FTD Value", current: c.ftds > 0 && c.deposits > 0 ? Math.round(c.deposits / c.ftds) : 0, previous: p.ftds > 0 && p.deposits > 0 ? Math.round(p.deposits / p.ftds) : 0, ytd: y.ftds > 0 && y.deposits > 0 ? Math.round(y.deposits / y.ftds) : 0, isCurrency: true },
           ],
           casino: [
             { metric: "Casino Bets", current: c.casino_bets, previous: p.casino_bets, ytd: y.casino_bets },

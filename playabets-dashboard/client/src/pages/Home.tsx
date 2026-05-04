@@ -461,7 +461,7 @@ export default function Home() {
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
                       : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
-                    {tile("Bonus %",         liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Conv/Issued")}
+                    {tile("Bonus Conv %",     liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Converted/Issued")}
                   </div>
                 </div>
                 {/* Players group — row 1: 6 tiles, row 2: 5 tiles */}
