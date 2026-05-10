@@ -133,16 +133,16 @@ export default function CrmPage() {
             accent="teal"
           />
           <KpiCard
-            title="LTV"
-            value="Coming soon"
-            subtitle="Lifetime GGR per player"
+            title="LTV (Period)"
+            value={arpu != null ? formatFull(arpu) : "—"}
+            subtitle="NGR ÷ Active Players"
             icon={<TrendingUp size={18} />}
             accent="green"
           />
           <KpiCard
             title="Retention Rate"
-            value="Coming soon"
-            subtitle="7-day / 30-day / 90-day"
+            value={churnPct != null ? `${(100 - churnPct).toFixed(1)}%` : "—"}
+            subtitle="100% − Monthly Churn"
             icon={<Clock size={18} />}
             accent="teal"
           />
@@ -152,7 +152,7 @@ export default function CrmPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Cohort D7 / D30 Conversion */}
         <div className="rounded-xl p-5" style={CARD_BG}>
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort Conversion Rate</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort — FTD Conversion Rate</h3>
           <p className="text-xs text-gray-500 mb-4">% of registrants who made first deposit within 7 / 30 days</p>
           {cohortData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
