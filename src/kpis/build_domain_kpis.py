@@ -360,39 +360,50 @@ def main() -> None:
 
     # (Churn is now computed inside the Total Actives block above using sports+casino union)
 
-    # Monthly Unique Depositors — period-unique count per month from DWH.
-    # Daily aggregates can't give period-unique, so we query DWH directly once.
-    try:
-        from src.extract.db_utils import build_engine
-        from sqlalchemy import text as _text
+    # Monthly Unique Depositors — only runs if file missing or explicitly requested.
+    # Skipped during normal scheduler runs to avoid DWH timeout (full table scan).
+    # Run manually: REBUILD_DEPOSITORS=1 python -m src.kpis.build_domain_kpis
+    import os as _os
+    dep_out = SERVING / "depositors_monthly.parquet"
+    if _os.environ.get("REBUILD_DEPOSITORS") == "1" or not dep_out.exists():
+        try:
+            from src.extract.db_utils import build_engine
+            from sqlalchemy import text as _text
 
-        DEPOSIT_REASON_IDS = (
-            "249,250,830,835,839,843,851,853,855,857,859,"
-            "861,863,865,867,869,871,877,939"
-        )
-        engine = build_engine()
-        with engine.connect() as conn:
-            result = conn.execute(_text(f"""
-                SELECT
-                    TO_CHAR("Date", 'YYYY-MM')  AS month,
-                    COUNT(DISTINCT "UserID")     AS unique_depositors
-                FROM "Dwh_en"."view_transactions"
-                WHERE "TransactionAmountTypeID" = 1
-                  AND "TransactionManagementStatusID" = 3
-                  AND "ReasonID" IN ({DEPOSIT_REASON_IDS})
-                  AND "Date" >= '2026-01-01 00:00:00'
-                GROUP BY TO_CHAR("Date", 'YYYY-MM')
-                ORDER BY month
-            """))
-            rows = result.fetchall()
-        if rows:
-            dep_df = pd.DataFrame(rows, columns=["month", "unique_depositors"])
-            dep_df["unique_depositors"] = dep_df["unique_depositors"].astype(int)
-            dep_out = SERVING / "depositors_monthly.parquet"
-            dep_df.to_parquet(dep_out, index=False)
-            print(f"[domain_kpis] Depositors monthly: {len(dep_df)} rows -> {dep_out}")
-    except Exception as e:
-        print(f"[domain_kpis] Depositors monthly: error - {e}")
+            DEPOSIT_REASON_IDS = (
+                "249,250,830,835,839,843,851,853,855,857,859,"
+                "861,863,865,867,869,871,877,939"
+            )
+            engine = build_engine()
+            rows = []
+            # Query one month at a time to avoid timeout
+            import datetime
+            months = pd.period_range("2026-01", periods=12, freq="M")
+            for month in months:
+                s = str(month.start_time.date())
+                e = str((month.end_time + datetime.timedelta(days=1)).date())
+                with engine.connect() as conn:
+                    r = conn.execute(_text(f"""
+                        SELECT COUNT(DISTINCT "UserID") AS unique_depositors
+                        FROM "Dwh_en"."view_transactions"
+                        WHERE "TransactionAmountTypeID" = 1
+                          AND "TransactionManagementStatusID" = 3
+                          AND "ReasonID" IN ({DEPOSIT_REASON_IDS})
+                          AND "Date" >= '{s} 00:00:00'
+                          AND "Date" <  '{e} 00:00:00'
+                    """))
+                    val = r.fetchone()
+                    if val and val[0]:
+                        rows.append({"month": str(month), "unique_depositors": int(val[0])})
+                        print(f"[domain_kpis] Depositors {month}: {int(val[0]):,}")
+            if rows:
+                dep_df = pd.DataFrame(rows)
+                dep_df.to_parquet(dep_out, index=False)
+                print(f"[domain_kpis] Depositors monthly: {len(dep_df)} rows -> {dep_out}")
+        except Exception as e:
+            print(f"[domain_kpis] Depositors monthly: error - {e}")
+    else:
+        print(f"[domain_kpis] Depositors monthly: using cached file (set REBUILD_DEPOSITORS=1 to refresh)")
 
     print("[domain_kpis] Done.")
 
