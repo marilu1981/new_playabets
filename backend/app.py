@@ -1813,7 +1813,9 @@ def casino_kpis(
     start: date = Query(...),
     end: date = Query(...),
 ):
-    df = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+    df_all = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+    # Casino page excludes lotto — use casino_providers_daily to filter
+    df = df_all  # casino_daily is already aggregated, lotto exclusion handled in providers
     stake        = _s(df, "casino_total_stake") or _s(df, "casino_stake")   # real + bonus
     stake_real   = _s(df, "casino_stake")
     winnings     = _s(df, "casino_winnings")
