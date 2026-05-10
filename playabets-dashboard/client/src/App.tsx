@@ -22,6 +22,7 @@ const TransactionsPage = lazy(() => import("./pages/Transactions"));
 const CasinoPage       = lazy(() => import("./pages/Casino"));
 const BonusPage        = lazy(() => import("./pages/Bonus"));
 const CrmPage          = lazy(() => import("./pages/Crm"));
+const ProductPage      = lazy(() => import("./pages/Product"));
 const NotFound         = lazy(() => import("./pages/NotFound"));
 
 /** Minimal full-screen loading state shown while a page chunk loads */
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/casino"       component={CasinoPage} />
         <Route path="/bonus"        component={BonusPage} />
         <Route path="/crm"          component={CrmPage} />
+        <Route path="/product"      component={ProductPage} />
         <Route path="/404"          component={NotFound} />
         <Route                      component={NotFound} />
       </Switch>

@@ -1298,7 +1298,12 @@ def _summary_period(start: date, end: date) -> dict:
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,
         "win_rate": win_rate, "cancel_rate": cancel_rate, "avg_stake": avg_stake,
-        "casino_bets": casino_bets, "casino_stake": round(casino_stake, 2),
+        "sports_actives": actives_sports,
+        "horse_racing_ggr": round(horse_racing_ggr, 2),
+        "horse_racing_stake": round(horse_racing_stake, 2),
+        "horse_racing_bets": _i(casino, "horse_racing_bets"),
+        "horse_racing_actives": _i(casino, "horse_racing_actives"),
+        "casino_bets": casino_bets, "casino_stake": round(casino_total_stake, 2),
         "casino_winnings": round(casino_winnings, 2),
         "casino_ggr": round(casino_display_ggr, 2),        # total (real + bonus) for display
         "casino_ggr_real": round(casino_ggr, 2),           # real money only

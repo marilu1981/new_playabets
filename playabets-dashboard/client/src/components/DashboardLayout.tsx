@@ -13,6 +13,7 @@ import {
   Users,
   TrendingUp,
   DollarSign,
+  BarChart2,
   ChevronLeft,
   ChevronRight,
   Bell,
@@ -100,7 +101,8 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Overview",
     items: [
       { path: "/", label: "Dashboard", icon: LayoutDashboard },
-      { path: "/crm", label: "CRM & Player Behaviour", icon: Users },
+      { path: "/crm", label: "CRM Dashboard", icon: Users },
+      { path: "/product", label: "Product Dashboard", icon: BarChart2 },
     ],
   },
   {

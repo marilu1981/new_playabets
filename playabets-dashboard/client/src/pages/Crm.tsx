@@ -95,15 +95,26 @@ export default function CrmPage() {
 
   const totalRfm = rfmData.reduce((s, r) => s + r.count, 0);
 
+  // Cohort summary for period
+  const cohortSummary = cohortData.length > 0 ? {
+    totalRegs: cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0),
+    ftdsD7: cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0),
+    ftdsD30: cohortData.reduce((s, r) => s + (r.ftds_d30 ?? 0), 0),
+    avgD7Rate: cohortData.filter(r => r.rate_d7 != null).reduce((s, r) => s + (r.rate_d7 ?? 0), 0) /
+               Math.max(1, cohortData.filter(r => r.rate_d7 != null).length),
+    avgD30Rate: cohortData.filter(r => r.rate_d30 != null).reduce((s, r) => s + (r.rate_d30 ?? 0), 0) /
+                Math.max(1, cohortData.filter(r => r.rate_d30 != null).length),
+  } : null;
+
   return (
     <DashboardLayout
-      title="CRM & Player Behaviour"
+      title="CRM Dashboard"
       subtitle="Cohort analysis, retention, player value and segment distribution"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
     >
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           <KpiCard
             title="Avg Deposit Value"
             value={avgDepositValue != null ? formatFull(avgDepositValue) : "Pending"}
@@ -145,6 +156,20 @@ export default function CrmPage() {
             subtitle="100% − Monthly Churn"
             icon={<Clock size={18} />}
             accent="teal"
+          />
+          <KpiCard
+            title="Cohort D7 Conv"
+            value={cohortSummary != null ? `${cohortSummary.avgD7Rate.toFixed(1)}%` : "—"}
+            subtitle="Avg D7 FTD conversion"
+            icon={<Users size={18} />}
+            accent="gold"
+          />
+          <KpiCard
+            title="Cohort D30 Conv"
+            value={cohortSummary != null ? `${cohortSummary.avgD30Rate.toFixed(1)}%` : "—"}
+            subtitle="Avg D30 FTD conversion"
+            icon={<Users size={18} />}
+            accent="green"
           />
         </div>
       </div>
