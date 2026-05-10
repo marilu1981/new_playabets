@@ -66,6 +66,11 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     if bonus_winnings_col:
         casino["bonus_winnings_num"] = to_num(casino[bonus_winnings_col], default=0.0)
 
+    # Exclude lotto — client filters to IDTipoProvider IN (5,9) which excludes ISLotto.
+    if provider_col:
+        _is_lotto = casino[provider_col].astype(str).str.contains("Lotto", case=False, na=False)
+        casino = casino[~_is_lotto].copy()
+
     # Identify horse racing rows (Betmakers provider).
     if provider_col:
         _is_hr = casino[provider_col].astype(str).str.contains("Betmakers", case=False, na=False)
