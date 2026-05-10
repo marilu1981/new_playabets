@@ -795,12 +795,14 @@ def kpis(
     else:
         casino_actives = _mean_i(casino, "casino_actives")
 
-    turnover = sportsbook_turnover + casino_turnover        # sports + casino (real + bonus)
+    lotto_ggr_main   = _s(casino, "lotto_ggr")
+    lotto_stake_main = _s(casino, "lotto_stake")
+    turnover = sportsbook_turnover + casino_turnover + lotto_stake_main    # incl lotto
     real_money_turnover = sportsbook_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sportsbook_turnover_bonus + _s(casino, "casino_bonus_stake")
     winnings = sportsbook_winnings + casino_winnings
-    ggr = sportsbook_ggr + casino_ggr_display              # display GGR (real + bonus)
-    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr  # real money GGR (for NGR)
+    ggr = sportsbook_ggr + casino_ggr_display + lotto_ggr_main             # incl lotto
+    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # real money (excl lotto)
     casino_bonus_ggr = _s(casino, "casino_bonus_ggr")
     real_money_ggr_display = ggr_real
     bonus_money_ggr = (sportsbook_ggr - _s(df, "ggr") - horse_racing_ggr) + casino_bonus_ggr
@@ -1208,15 +1210,17 @@ def _summary_period(start: date, end: date) -> dict:
     casino_stake         = _s(casino, "casino_stake")
     casino_winnings      = _s(casino, "casino_winnings")
     casino_ggr           = _s(casino, "casino_ggr")           # real money GGR (for NGR)
-    casino_total_ggr     = _s(casino, "casino_total_ggr") or casino_ggr  # real + bonus GGR (display)
-    casino_total_stake   = _s(casino, "casino_total_stake") or casino_stake  # real + bonus stake
+    casino_total_ggr     = _s(casino, "casino_total_ggr") or casino_ggr  # real + bonus GGR (display, excl lotto)
+    casino_total_stake   = _s(casino, "casino_total_stake") or casino_stake  # real + bonus stake (excl lotto)
+    lotto_ggr            = _s(casino, "lotto_ggr")            # lotto GGR (added to totals)
+    lotto_stake          = _s(casino, "lotto_stake")          # lotto stake (added to totals)
     casino_bets = _i(casino, "casino_bets")
     casino_margin = round(casino_total_ggr / casino_total_stake * 100, 1) if casino_total_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
-    casino_display_ggr = casino_total_ggr  # what summary table shows
+    casino_display_ggr = casino_total_ggr  # Casino page shows casino only (no lotto)
 
-    total_ggr = sports_ggr_total + casino_total_ggr        # display GGR (real + bonus)
-    real_money_ggr = sports_ggr_real + casino_ggr           # real money GGR (for NGR)
+    total_ggr = sports_ggr_total + casino_total_ggr + lotto_ggr   # display GGR (incl lotto)
+    real_money_ggr = sports_ggr_real + casino_ggr                # real money GGR (for NGR, excl lotto)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -1224,7 +1228,7 @@ def _summary_period(start: date, end: date) -> dict:
     # Falls back to bonus_spent from view_BonusBonuses if transactions bonus not yet available.
     bonus_converted = _s(tx, "bonus_redeemed")
     ngr = real_money_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
-    total_turnover = sports_turnover + casino_total_stake  # sports + casino real + casino bonus
+    total_turnover = sports_turnover + casino_total_stake + lotto_stake  # sports + casino + lotto
     real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")
     casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")

@@ -66,14 +66,19 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     if bonus_winnings_col:
         casino["bonus_winnings_num"] = to_num(casino[bonus_winnings_col], default=0.0)
 
-    # Identify horse racing rows (Betmakers provider).
+    # Identify horse racing (Betmakers) and lotto (ISLotto) rows.
+    # Both are split out like horse racing so totals can include them
+    # while Casino page shows pure casino only.
     if provider_col:
-        _is_hr = casino[provider_col].astype(str).str.contains("Betmakers", case=False, na=False)
+        _is_hr    = casino[provider_col].astype(str).str.contains("Betmakers", case=False, na=False)
+        _is_lotto = casino[provider_col].astype(str).str.contains("Lotto", case=False, na=False)
     else:
-        _is_hr = pd.Series(False, index=casino.index)
+        _is_hr    = pd.Series(False, index=casino.index)
+        _is_lotto = pd.Series(False, index=casino.index)
 
-    casino_only = casino[~_is_hr]
+    casino_only  = casino[~_is_hr & ~_is_lotto]
     horse_racing = casino[_is_hr]
+    lotto        = casino[_is_lotto]
 
     def _agg_daily(df: pd.DataFrame, prefix: str) -> pd.DataFrame:
         if df.empty:
@@ -99,8 +104,9 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
         result[f"{prefix}actives"] = result[f"{prefix}actives"].astype(int)
         return result
 
-    c_out  = _agg_daily(casino_only, "casino_")
-    hr_out = _agg_daily(horse_racing, "horse_racing_")
+    c_out     = _agg_daily(casino_only, "casino_")
+    hr_out    = _agg_daily(horse_racing, "horse_racing_")
+    lotto_out = _agg_daily(lotto, "lotto_")
 
     # Casino bonus stake/winnings — view_Casino.Stake = ImportoGiocato (real money only)
     # BonusStake = ImportoGiocatoBonus, BonusWinnings = ImportoVintoBonus
@@ -133,11 +139,18 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
         c_out["casino_real_ggr"]       = c_out["casino_ggr"]
 
     all_dates = pd.DataFrame(
-        {"date": pd.concat([c_out["date"], hr_out["date"]]).drop_duplicates()}
+        {"date": pd.concat([c_out["date"], hr_out["date"],
+                            lotto_out["date"] if not lotto_out.empty else pd.Series(dtype=object)
+                            ]).drop_duplicates()}
     )
-    out = all_dates.merge(c_out, on="date", how="left").merge(hr_out, on="date", how="left").fillna(0)
+    out = (all_dates
+           .merge(c_out,     on="date", how="left")
+           .merge(hr_out,    on="date", how="left")
+           .merge(lotto_out, on="date", how="left")
+           .fillna(0))
 
-    for col in ["casino_bets", "casino_actives", "horse_racing_bets", "horse_racing_actives"]:
+    for col in ["casino_bets", "casino_actives", "horse_racing_bets", "horse_racing_actives",
+                "lotto_bets", "lotto_actives"]:
         if col in out.columns:
             out[col] = out[col].astype(int)
 
