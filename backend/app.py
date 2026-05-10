@@ -1207,12 +1207,13 @@ def _summary_period(start: date, end: date) -> dict:
 
     casino_stake         = _s(casino, "casino_stake")
     casino_winnings      = _s(casino, "casino_winnings")
-    casino_ggr           = _s(casino, "casino_ggr")           # real money GGR
-    casino_total_ggr     = _s(casino, "casino_total_ggr") or casino_ggr  # real + bonus GGR
+    casino_ggr           = _s(casino, "casino_ggr")           # real money GGR (for NGR)
+    casino_total_ggr     = _s(casino, "casino_total_ggr") or casino_ggr  # real + bonus GGR (display)
     casino_total_stake   = _s(casino, "casino_total_stake") or casino_stake  # real + bonus stake
     casino_bets = _i(casino, "casino_bets")
-    casino_margin = round(casino_ggr / casino_stake * 100, 1) if casino_stake > 0 else 0.0
+    casino_margin = round(casino_total_ggr / casino_total_stake * 100, 1) if casino_total_stake > 0 else 0.0
     casino_rtp = round(100.0 - casino_margin, 1)
+    casino_display_ggr = casino_total_ggr  # what summary table shows
 
     total_ggr = sports_ggr_total + casino_total_ggr        # display GGR (real + bonus)
     real_money_ggr = sports_ggr_real + casino_ggr           # real money GGR (for NGR)
@@ -1294,7 +1295,9 @@ def _summary_period(start: date, end: date) -> dict:
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,
         "win_rate": win_rate, "cancel_rate": cancel_rate, "avg_stake": avg_stake,
         "casino_bets": casino_bets, "casino_stake": round(casino_stake, 2),
-        "casino_winnings": round(casino_winnings, 2), "casino_ggr": round(casino_ggr, 2),
+        "casino_winnings": round(casino_winnings, 2),
+        "casino_ggr": round(casino_display_ggr, 2),        # total (real + bonus) for display
+        "casino_ggr_real": round(casino_ggr, 2),           # real money only
         "casino_margin": casino_margin, "casino_rtp": casino_rtp, "casino_actives": actives_casino,
     }
 
@@ -1811,9 +1814,13 @@ def casino_kpis(
     end: date = Query(...),
 ):
     df = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
-    stake    = _s(df, "casino_stake")
-    winnings = _s(df, "casino_winnings")
-    ggr      = _s(df, "casino_ggr")
+    stake        = _s(df, "casino_total_stake") or _s(df, "casino_stake")   # real + bonus
+    stake_real   = _s(df, "casino_stake")
+    winnings     = _s(df, "casino_winnings")
+    ggr          = _s(df, "casino_total_ggr") or _s(df, "casino_ggr")       # real + bonus
+    ggr_real     = _s(df, "casino_ggr")
+    bonus_stake  = _s(df, "casino_bonus_stake")
+    bonus_ggr    = _s(df, "casino_bonus_ggr")
     tx = _load_transactions_df(start, end)
     depositors = _i(tx, "unique_depositors")
     deposits   = _s(tx, "deposits")
@@ -1824,12 +1831,16 @@ def casino_kpis(
         "ggr":      ggr,
         "bets":     _i(df, "casino_bets"),
         "actives":  _i(df, "casino_actives"),
-        "hold_pct": round(ggr / stake * 100, 2) if stake else 0.0,
+        "hold_pct": round(ggr_real / stake_real * 100, 2) if stake_real else 0.0,
         "depositors": depositors,
         "deposit_per_customer": round(deposits / depositors, 2) if depositors > 0 else 0.0,
-        "casino_stake":    stake,
-        "casino_winnings": winnings,
-        "casino_ggr":      ggr,
+        "casino_stake":       stake,
+        "casino_stake_real":  stake_real,
+        "casino_bonus_stake": bonus_stake,
+        "casino_winnings":    winnings,
+        "casino_ggr":         ggr,
+        "casino_ggr_real":    ggr_real,
+        "casino_bonus_ggr":   bonus_ggr,
     }
 
 
