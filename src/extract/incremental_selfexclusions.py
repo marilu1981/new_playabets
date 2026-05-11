@@ -32,8 +32,6 @@ CURRENT_COLUMNS = [
     "StartDate",
     "OldUserStatusId",
     "OldUserStatus",
-    "LogicTypeId",
-    "LogicType",
 ]
 
 HISTORICAL_COLUMNS = [

@@ -670,6 +670,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Hold / Margin %", current: c.hold_pct, previous: p.hold_pct, ytd: y.hold_pct, isPercent: true },
             { metric: "Bonus Spent", current: c.bonus_spent, previous: p.bonus_spent, ytd: y.bonus_spent, isCurrency: true },
             { metric: "APD (NGR/Depositors)", current: c.period_unique_depositors > 0 ? Math.round(c.ngr / c.period_unique_depositors) : 0, previous: p.period_unique_depositors > 0 ? Math.round(p.ngr / p.period_unique_depositors) : 0, ytd: y.period_unique_depositors > 0 ? Math.round(y.ngr / y.period_unique_depositors) : 0, isCurrency: true },
+            { metric: "Avg FTD Value", current: c.ftds > 0 && c.deposits > 0 ? Math.round(c.deposits / c.ftds) : 0, previous: p.ftds > 0 && p.deposits > 0 ? Math.round(p.deposits / p.ftds) : 0, ytd: y.ftds > 0 && y.deposits > 0 ? Math.round(y.deposits / y.ftds) : 0, isCurrency: true },
+            { metric: "Depositors", current: c.period_unique_depositors ?? 0, previous: p.period_unique_depositors ?? 0, ytd: y.period_unique_depositors ?? 0 },
           ],
           sport: [
             { metric: "Betslips Placed", current: c.sports_bets, previous: p.sports_bets, ytd: y.sports_bets },
