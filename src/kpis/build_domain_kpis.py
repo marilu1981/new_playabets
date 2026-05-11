@@ -315,7 +315,11 @@ def main() -> None:
             ca2, cacol2 = _nc_ca2(casino_raw)
             uid_ca2 = cacol2.get("userid")
             date_ca2 = cacol2.get("placementdate")
+            stake_ca2 = cacol2.get("stake")
             if uid_ca2 and date_ca2:
+                # Real money only: exclude bonus-only sessions (Stake == 0)
+                if stake_ca2:
+                    ca2 = ca2[pd.to_numeric(ca2[stake_ca2], errors="coerce").fillna(0) > 0]
                 ca2["_dt"] = pd.to_datetime(ca2[date_ca2], errors="coerce")
                 ca2["_month"] = ca2["_dt"].dt.to_period("M")
                 for period, grp in ca2.dropna(subset=["_dt"]).groupby("_month"):
