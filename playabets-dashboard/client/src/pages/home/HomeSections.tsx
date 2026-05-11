@@ -178,8 +178,9 @@ export function SummaryMetricsTable({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
           style={{ background: chartColors.green, color: "white" }}
           onClick={() => {
+            const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
             const csv = ["Metric,Current Period,Previous Period,Change %,YTD",
-              ...summaryRows.map((r) => `${r.metric},${fmtMetric(r.current, r)},${fmtMetric(r.previous, r)},${pctChange(r.current, r.previous)}%,${fmtMetric(r.ytd, r)}`),
+              ...summaryRows.map((r) => [esc(r.metric), esc(fmtMetric(r.current, r)), esc(fmtMetric(r.previous, r)), `${pctChange(r.current, r.previous)}%`, esc(fmtMetric(r.ytd, r))].join(",")),
             ].join("\n");
             const blob = new Blob([csv], { type: "text/csv" });
             const url = URL.createObjectURL(blob);
@@ -356,8 +357,9 @@ export function DetailedBreakdownTable({
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"
           style={{ background: chartColors.teal, color: "white" }}
           onClick={() => {
+            const esc2 = (v: string) => `"${v.replace(/"/g, '""')}"`;
             const csv = ["Date,Brand,Segment,Territory,Value,% Change",
-              ...detailedBreakdown.map((r) => `${r.date},${r.brand},${r.segment},${r.territory},${formatCompact(r.value)},${r.pctChange >= 0 ? "+" : ""}${r.pctChange}%`),
+              ...detailedBreakdown.map((r) => [esc2(r.date), esc2(r.brand), esc2(r.segment), esc2(r.territory), esc2(formatCompact(r.value)), `${r.pctChange >= 0 ? "+" : ""}${r.pctChange}%`].join(",")),
             ].join("\n");
             const blob = new Blob([csv], { type: "text/csv" });
             const url = URL.createObjectURL(blob);

@@ -1,165 +1,164 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 /**
  * PLAYA BETS — Transactions Page
- * DWH Views: view_Transactions, view_TransactionTypes
- * Data source: mockData.ts (replace with API calls when VPN available)
+ * Live data from /transactions/kpis and /transactions/trend
  */
 
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
-import MockOverlay from "@/components/MockOverlay";
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle } from "lucide-react";
-import {
-  transactionSummary as baseTransactionSummary,
-  transactionsByReason as baseTransactionsByReason,
-  transactionTrend as baseTransactionTrend,
-} from "@/lib/mockData";
-import { formatCompact, formatFull, formatNumber } from "@/lib/formatters";
-import {
-  filterByDateRange,
-  getFilterMultiplier,
-  scaleArrayNumericFields,
-  scaleObjectNumericFields,
-} from "@/lib/filterUtils";
+import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, Users } from "lucide-react";
+import { formatCompact, formatFull } from "@/lib/formatters";
+import { cachedFetch } from "@/lib/apiCache";
 
-const CHART_COLORS = {
-  gold: "oklch(0.72 0.14 85)",
-  green: "oklch(0.62 0.17 145)",
-  teal: "oklch(0.65 0.15 195)",
-  amber: "oklch(0.72 0.17 60)",
-  red: "oklch(0.55 0.22 25)",
-};
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+async function fetchJson<T>(path: string): Promise<T> {
+  return cachedFetch<T>(`${API_BASE_URL}${path}`);
+}
+
+const COLORS = { green: "#7ab800", amber: "#ffb500", red: "#d94040", teal: "#0d8f8f" };
+const CARD_BG = { background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" };
+const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", fontSize: 11 };
+
+interface TxKpis {
+  deposits: number; withdrawals: number; net_deposits: number;
+  tx_count: number; unique_depositors: number;
+  tx_count_accepted: number; tx_count_pending: number; tx_count_other_status: number;
+  has_data: boolean; disabled: boolean;
+}
+interface TrendPoint { date: string; value: number; }
 
 export default function TransactionsPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
-  const transactionTrend = useMemo(
-    () =>
-      scaleArrayNumericFields(
-        filterByDateRange(baseTransactionTrend, filters, (row) => row.date),
-        multiplier,
-        ["date"],
-      ),
-    [filters, multiplier],
-  );
-  const transactionSummary = useMemo(() => {
-    const scaled = scaleObjectNumericFields(baseTransactionSummary, multiplier);
-    if (transactionTrend.length === 0) {
-      return scaled;
-    }
-    const deposits = transactionTrend.reduce((sum, row) => sum + row.deposits, 0);
-    const withdrawals = transactionTrend.reduce((sum, row) => sum + row.withdrawals, 0);
-    return {
-      ...scaled,
-      totalDeposits: deposits,
-      totalWithdrawals: withdrawals,
-    };
-  }, [multiplier, transactionTrend]);
-  const transactionsByReason = useMemo(
-    () => scaleArrayNumericFields(baseTransactionsByReason, multiplier, ["reason", "type"]),
-    [multiplier],
-  );
+  const [kpis, setKpis]       = useState<TxKpis | null>(null);
+  const [depTrend, setDepTrend] = useState<TrendPoint[]>([]);
+  const [wdTrend, setWdTrend]   = useState<TrendPoint[]>([]);
+  const [loading, setLoading]   = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+    Promise.allSettled([
+      fetchJson<TxKpis>(`/transactions/kpis?${query}`),
+      fetchJson<{ has_data: boolean; deposits: TrendPoint[]; withdrawals: TrendPoint[] }>(`/transactions/trend?${query}`),
+    ]).then(([kpisRes, trendRes]) => {
+      if (kpisRes.status === "fulfilled") setKpis(kpisRes.value);
+      if (trendRes.status === "fulfilled" && trendRes.value.has_data) {
+        setDepTrend(trendRes.value.deposits ?? []);
+        setWdTrend(trendRes.value.withdrawals ?? []);
+      }
+      setLoading(false);
+    });
+  }, [filters.dateFrom, filters.dateTo]);
+
+  const trendData = depTrend.map((d, i) => ({
+    date: d.date,
+    deposits: d.value,
+    withdrawals: wdTrend[i]?.value ?? 0,
+    net: d.value - (wdTrend[i]?.value ?? 0),
+  }));
+
+  const dash = loading ? "…" : "—";
+  const pending = !kpis?.has_data;
+
   return (
     <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <div className="text-xs text-gray-400 mb-3">
-        Data mode: Mock / Pending
-      </div>
+
       {/* KPI Row */}
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard title="Total Deposits" value={formatFull(transactionSummary.totalDeposits)} subtitle="All time" icon={<ArrowUpCircle size={18} />} accent="green" />
-          <KpiCard title="Total Withdrawals" value={formatFull(transactionSummary.totalWithdrawals)} subtitle="All time" icon={<ArrowDownCircle size={18} />} accent="amber" />
-          <KpiCard title="Pending" value={formatNumber(transactionSummary.pendingTransactions)} subtitle="Awaiting processing" icon={<Clock size={18} />} accent="red" />
-          <KpiCard title="Accepted Today" value={formatNumber(transactionSummary.acceptedToday)} subtitle={`${transactionSummary.refusedToday} refused`} icon={<CheckCircle size={18} />} accent="teal" />
+      <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KpiCard title="Total Deposits"   value={kpis?.has_data ? formatFull(kpis.deposits)    : pending ? "Pending" : dash} icon={<ArrowUpCircle size={18} />}   accent="green" loading={loading} />
+          <KpiCard title="Total Withdrawals" value={kpis?.has_data ? formatFull(kpis.withdrawals) : pending ? "Pending" : dash} icon={<ArrowDownCircle size={18} />} accent="amber" loading={loading} />
+          <KpiCard title="Net Cash"         value={kpis?.has_data ? formatFull(kpis.net_deposits) : pending ? "Pending" : dash} icon={<DollarSign size={18} />}      accent="teal"  loading={loading} />
+          <KpiCard title="Unique Depositors" value={kpis?.has_data ? kpis.unique_depositors.toLocaleString() : dash} icon={<Users size={18} />}        accent="gold"  loading={loading} />
+          <KpiCard title="Pending Tx"       value={kpis?.has_data ? kpis.tx_count_pending.toLocaleString()   : dash} icon={<Clock size={18} />}         accent="red"   loading={loading} />
+          <KpiCard title="Accepted Tx"      value={kpis?.has_data ? kpis.tx_count_accepted.toLocaleString()  : dash} icon={<CheckCircle size={18} />}    accent="teal"  loading={loading} />
         </div>
       </div>
 
-      {/* Transaction trend */}
+      {/* Trend charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active badge label="Mock Data" />
+        <div className="lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits vs Withdrawals</h3>
-          <p className="text-xs text-gray-400 mb-4">Last 30 days daily flow</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={transactionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="depGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.green} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.green} stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="withGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={CHART_COLORS.amber} stopOpacity={0.3} />
-                  <stop offset="95%" stopColor={CHART_COLORS.amber} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={60} />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
-              <Area type="monotone" dataKey="deposits" name="Deposits" stroke={CHART_COLORS.green} fill="url(#depGrad)" strokeWidth={2} dot={false} />
-              <Area type="monotone" dataKey="withdrawals" name="Withdrawals" stroke={CHART_COLORS.amber} fill="url(#withGrad)" strokeWidth={2} dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <p className="text-xs text-gray-400 mb-4">Daily flow — selected period</p>
+          {trendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trendData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="depGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={COLORS.green} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={COLORS.green} stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="withGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={COLORS.amber} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={COLORS.amber} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={v => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => formatCompact(v)} axisLine={false} tickLine={false} width={60} />
+                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatFull(v)} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Area type="monotone" dataKey="deposits"    name="Deposits"    stroke={COLORS.green} fill="url(#depGrad)"  strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="withdrawals" name="Withdrawals" stroke={COLORS.amber} fill="url(#withGrad)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-xs text-gray-400">
+              {loading ? "Loading…" : "No transaction trend data available for this period"}
+            </div>
+          )}
         </div>
 
-        {/* Net flow */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active badge label="Mock Data" />
+        <div className="rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Net Cash Flow</h3>
-          <p className="text-xs text-gray-400 mb-4">Daily net (Deposits - Withdrawals)</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={transactionTrend.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} tickFormatter={(v) => v.slice(8)} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => `${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} formatter={(v: number) => `${formatCompact(v)}`} />
-              <Bar dataKey="net" name="Net Flow" fill={CHART_COLORS.teal} radius={[3, 3, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <p className="text-xs text-gray-400 mb-4">Daily net (Deposits − Withdrawals)</p>
+          {trendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={trendData.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={v => v.slice(8)} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => formatCompact(v)} axisLine={false} tickLine={false} width={55} />
+                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatFull(v)} />
+                <Bar dataKey="net" name="Net Flow" fill={COLORS.teal} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-xs text-gray-400">
+              {loading ? "Loading…" : "No data"}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Transaction by reason */}
-      <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <MockOverlay active badge label="Mock Data" />
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Transactions by Reason</h3>
-        <p className="text-xs text-gray-400 mb-4">view_Transactions — TransactionReasonId breakdown</p>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ borderBottom: "1px solid #e4ece4" }}>
-                {["Reason", "Type", "Count", "Total Amount", "Avg Amount"].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold uppercase tracking-wider text-gray-400 pb-2 pr-6 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {transactionsByReason.map((t) => (
-                <tr key={t.reason} className="hover:bg-white/3 transition-colors" style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td className="py-3 pr-6 text-gray-800 font-medium">{t.reason}</td>
-                  <td className="py-3 pr-6">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{
-                      background: t.type === "Positive" ? "oklch(0.62 0.17 145 / 15%)" : "oklch(0.55 0.22 25 / 15%)",
-                      color: t.type === "Positive" ? "oklch(0.75 0.17 145)" : "oklch(0.70 0.18 25)",
-                      border: `1px solid ${t.type === "Positive" ? "oklch(0.62 0.17 145 / 25%)" : "oklch(0.55 0.22 25 / 25%)"}`,
-                    }}>
-                      {t.type}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-6 text-gray-500 font-mono text-xs">{formatFull(t.count)}</td>
-                  <td className="py-3 pr-6 font-mono text-xs" style={{color: CHART_COLORS.gold }}>{formatFull(t.amount)}</td>
-                  <td className="py-3 text-gray-500 font-mono text-xs">{formatFull(Math.round(t.amount / t.count))}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Summary stats */}
+      {kpis?.has_data && (
+        <div className="rounded-xl p-5" style={CARD_BG}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-4">Transaction Summary</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Net Cash %</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.deposits > 0 ? `${((kpis.net_deposits / kpis.deposits) * 100).toFixed(1)}%` : "—"}</div>
+            </div>
+            <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Avg Deposit / User</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.unique_depositors > 0 ? formatFull(kpis.deposits / kpis.unique_depositors) : "—"}</div>
+            </div>
+            <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Transactions</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.tx_count.toLocaleString()}</div>
+            </div>
+            <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Other Status</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.tx_count_other_status.toLocaleString()}</div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </DashboardLayout>
   );
 }
