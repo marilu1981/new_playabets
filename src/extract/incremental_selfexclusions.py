@@ -49,8 +49,6 @@ HISTORICAL_COLUMNS = [
     "ApplicationType",
     "OldUserStatusId",
     "OldUserStatus",
-    "LogicTypeId",
-    "LogicType",
 ]
 
 WATERMARK_DB = WATERMARK_DB_PATH
