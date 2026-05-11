@@ -1294,6 +1294,7 @@ def _summary_period(start: date, end: date) -> dict:
         "unique_depositors": unique_depositors,
         "deposits": round(deposits, 2),
         "churn_pct": churn_pct,
+        "period_unique_depositors": _get_monthly_depositors(start, end),
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,
