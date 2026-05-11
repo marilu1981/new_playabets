@@ -83,13 +83,19 @@ export default function CrmPage() {
       setArpu(act > 0 && ngr > 0 ? Math.round(ngr / act) : null);
     }).catch(() => {});
 
-    // Average Deposit Value = deposits / deposit_count
-    fetchJson<{ deposits?: number; deposit_count?: number }>(
-      `/transactions/kpis?${query}`
-    ).then((d) => {
-      const dep = Number(d.deposits ?? 0);
-      const cnt = Number(d.deposit_count ?? 0);
-      setAvgDepositValue(cnt > 0 ? dep / cnt : null);
+    // Average Deposit Value = deposits / deposit_count or deposits / depositors
+    Promise.allSettled([
+      fetchJson<{ deposits?: number; deposit_count?: number }>(`/transactions/kpis?${query}`),
+      fetchJson<{ deposits?: number; period_unique_depositors?: number }>(`/kpis?${query}`),
+    ]).then(([txRes, kpisRes]) => {
+      const tx = txRes.status === "fulfilled" ? txRes.value : null;
+      const kp = kpisRes.status === "fulfilled" ? kpisRes.value : null;
+      const dep = Number(tx?.deposits ?? kp?.deposits ?? 0);
+      const cnt = Number(tx?.deposit_count ?? 0);
+      const dep_unique = Number(kp?.period_unique_depositors ?? 0);
+      if (cnt > 0) setAvgDepositValue(dep / cnt);
+      else if (dep_unique > 0) setAvgDepositValue(dep / dep_unique);
+      else setAvgDepositValue(null);
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo]);
 
@@ -114,7 +120,7 @@ export default function CrmPage() {
     >
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <KpiCard
             title="Avg Deposit Value"
             value={avgDepositValue != null ? formatFull(avgDepositValue) : "Pending"}
