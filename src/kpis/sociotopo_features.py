@@ -204,23 +204,49 @@ def _load_bonus(window_days: int, as_of: pd.Timestamp) -> pd.DataFrame:
 
 
 def _load_user_transactions(window_days: int, as_of: pd.Timestamp) -> Optional[pd.DataFrame]:
-    """Returns None if user_transactions data hasn't been extracted yet."""
+    """Returns None if user_transactions data hasn't been extracted yet.
+
+    Handles aggregated monthly format: userid, month, deposits, withdrawals,
+    net_cashflow, tx_count.
+    """
     folder = raw_dir("user_transactions")
     if not folder.exists() or not list(folder.glob("*.parquet")):
         return None
-    start = as_of - pd.Timedelta(days=window_days)
     df = read_all_parquets(folder, "user_transactions_*.parquet")
     if df.empty:
         return None
     df, col = normalize_cols(df)
+
+    # Monthly aggregated format (from Stats.Transazioni extract)
+    if "month" in col and "deposits" in col:
+        start_month = (as_of - pd.Timedelta(days=window_days)).strftime("%Y-%m")
+        end_month   = as_of.strftime("%Y-%m")
+        df["_month"] = df[col["month"]].astype(str)
+        df = df[(df["_month"] >= start_month) & (df["_month"] <= end_month)].copy()
+        df["userid"]      = to_num(df[col["userid"]], np.nan).astype("Int64")
+        df["deposits"]    = to_num(df[col.get("deposits",    "deposits")],    0.0)
+        df["withdrawals"] = to_num(df[col.get("withdrawals", "withdrawals")], 0.0)
+        df["net_cf"]      = to_num(df[col.get("net_cashflow", "net_cashflow")], 0.0)
+        df["tx_c"]        = to_num(df[col.get("tx_count",    "tx_count")],    0.0)
+        agg = (
+            df.groupby("userid")
+            .agg(
+                net_cashflow_30d=("net_cf",  "sum"),
+                deposit_count_30d=("tx_c",   "sum"),
+                total_deposits=("deposits",  "sum"),
+                total_withdrawals=("withdrawals", "sum"),
+            )
+            .reset_index()
+        )
+        return agg
+
+    # Legacy raw-row format fallback
+    start = as_of - pd.Timedelta(days=window_days)
     df["userid"] = to_num(df[col["userid"]], np.nan).astype("Int64")
     df["date"]   = pd.to_datetime(df[col["date"]], errors="coerce")
     df["amount_num"] = to_num(df[col["amount"]], 0.0)
     df["tx_type"] = df[col["transaction_amount_type"]].astype(str).str.strip().str.lower() if "transaction_amount_type" in col else ""
     df = df[(df["date"] >= start) & (df["date"] <= as_of + pd.Timedelta(days=1))].copy()
-    # Net cashflow: deposits positive, withdrawals negative
-    # transaction_amount_type: 1=Debit (deposit to user), 2=Credit (withdrawal from user)
-    # Treat type 1 as +amount, type 2 as -amount
     df["signed_amount"] = np.where(df["tx_type"] == "2", -df["amount_num"], df["amount_num"])
     agg = (
         df.groupby("userid")
