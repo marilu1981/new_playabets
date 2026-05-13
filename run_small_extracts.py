@@ -4,12 +4,13 @@ run_small_extracts.py
 Run one, several, or all extract modules.
 
 Available modules:
-  bonus         — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
-  users         — view_users (incremental via DateVersion)
-  balances      — view_balances (full-refresh snapshot)
-  casino        — view_casino (incremental via InsertDate)
-  transactions  — view_transactions (incremental via DateVersion)
-  betslips      — view_betslips (incremental via DateVersion, LARGE)
+  bonus              — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
+  users              — view_users (incremental via DateVersion)
+  balances           — view_balances (full-refresh snapshot)
+  casino             — view_casino (incremental via InsertDate)
+  transactions       — view_transactions (incremental via DateVersion)
+  user_transactions  — view_transactions per-user with UserID (for SocioTopography FC axis)
+  betslips           — view_betslips (incremental via DateVersion, LARGE)
 
 Usage examples:
   python run_small_extracts.py                          # runs all except betslips
@@ -45,22 +46,24 @@ WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
 
 # ── Module registry ───────────────────────────────────────────────────────────
 MODULES: dict[str, str] = {
-    "bonus":        "src.extract.incremental_bonus",
-    "users":        "src.extract.incremental_users",
-    "balances":     "src.extract.incremental_balances",
-    "casino":       "src.extract.incremental_casino",
-    "transactions": "src.extract.incremental_transactions",
-    "first_deposits": "src.extract.incremental_first_deposits",
-    "betslips":     "src.extract.incremental_betslips",
+    "bonus":             "src.extract.incremental_bonus",
+    "users":             "src.extract.incremental_users",
+    "balances":          "src.extract.incremental_balances",
+    "casino":            "src.extract.incremental_casino",
+    "transactions":      "src.extract.incremental_transactions",
+    "user_transactions": "src.extract.incremental_user_transactions",
+    "first_deposits":    "src.extract.incremental_first_deposits",
+    "betslips":          "src.extract.incremental_betslips",
 }
 
 TRANSFORM_MODULES: dict[str, str] = {
-    "daily_kpis":  "src.kpis.build_daily_kpis",
-    "domain_kpis": "src.kpis.build_domain_kpis",
+    "daily_kpis":       "src.kpis.build_daily_kpis",
+    "domain_kpis":      "src.kpis.build_domain_kpis",
+    "sociotopo":        "src.kpis.sociotopo_features",
 }
 
 # Default run order when no specific modules are given (excludes betslips)
-DEFAULT_ORDER = ["bonus", "users", "balances", "casino", "transactions", "first_deposits"]
+DEFAULT_ORDER = ["bonus", "users", "balances", "casino", "transactions", "user_transactions", "first_deposits"]
 
 # Maps each module name to the view names it writes watermarks for
 MODULE_VIEWS: dict[str, list[str]] = {
@@ -72,9 +75,10 @@ MODULE_VIEWS: dict[str, list[str]] = {
     "users":        ["Dwh_en.view_users"],
     "balances":     ["Dwh_en.view_balances"],
     "casino":       ["Dwh_en.view_casino"],
-    "transactions": ["Dwh_en.view_transactions"],
-    "first_deposits": ["Stats.Transazioni_DepositiUtente"],
-    "betslips":     ["Dwh_en.view_betslips"],
+    "transactions":      ["Dwh_en.view_transactions"],
+    "user_transactions": ["Dwh_en.view_transactions_per_user"],
+    "first_deposits":    ["Stats.Transazioni_DepositiUtente"],
+    "betslips":          ["Dwh_en.view_betslips"],
 }
 
 # ── Watermark management ──────────────────────────────────────────────────────
@@ -90,6 +94,7 @@ ALL_VIEWS = [
     "Dwh_en.view_casino",
     "Dwh_en.view_payments",
     "Dwh_en.view_transactions",
+    "Dwh_en.view_transactions_per_user",
     "Stats.Transazioni_DepositiUtente",
     "Dwh_en.view_betslips",
     # Legacy mixed-case names from old code — reset these too
@@ -297,12 +302,12 @@ def main():
 
     failed = [k for k, v in results.items() if not v]
     if failed:
-        print(f"\n  {len(failed)} module(s) failed: {failed}")
+        print("  {} module(s) failed: {}".format(len(failed), failed))
         sys.exit(1)
     else:
-        print(f"\n  All {len(results)} module(s) completed successfully.")
+        print("  All {} module(s) completed successfully.".format(len(results)))
         if not run_transforms:
-            print("\n  Tip — run KPI transforms when ready:")
+            print("  Tip -- run KPI transforms when ready:")
             print("    python run_small_extracts.py --transform")
 
 
