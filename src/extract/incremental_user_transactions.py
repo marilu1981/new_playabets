@@ -33,8 +33,10 @@ OUT_DIR       = raw_dir("user_transactions")
 
 # Payment provider types for deposits (2,6,7,8) and withdrawals (4=wd section)
 # Using same approach as client's Grafana SQL
-DEPOSIT_PROVIDERS    = "2, 6, 7, 8"
-WITHDRAWAL_PROVIDERS = "2, 6, 7, 8"
+# ReasonID lists (same as main transactions extract)
+DEPOSIT_REASON_IDS    = "249,250,830,835,839,843,851,853,855,857,859,861,863,865,867,869,871,877,939"
+WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
+CANCEL_WD_REASON_IDS  = "838,842,846,848,850"
 
 
 def _parse_window(value: str | None, label: str) -> str | None:
@@ -80,22 +82,27 @@ def main() -> None:
         params["upper"] = upper
 
     # Per-user monthly deposits and withdrawals from Stats.Transazioni
-    # Uses same IDTipoProvider / IDTipoSezione logic as client's Grafana SQL
+    # Uses IDCausale (ReasonID) and IDTipoImportoTransazione (1=deposit, 2=withdrawal)
     query = text(f"""
         SELECT
-            "IDUtente"                    AS userid,
-            TO_CHAR("Data", 'YYYY-MM')    AS month,
-            SUM(CASE WHEN "IDTipoSezione" = 5 AND "Type" = 1 THEN ABS("Importo") ELSE 0 END)
-                - SUM(CASE WHEN "IDTipoSezione" = 5 AND "Type" = 2 THEN ABS("Importo") ELSE 0 END)
-                                          AS deposits,
-            SUM(CASE WHEN "IDTipoSezione" = 4 AND "Type" = 1 THEN ABS("Importo") ELSE 0 END)
-                - SUM(CASE WHEN "IDTipoSezione" = 4 AND "Type" = 2 THEN ABS("Importo") ELSE 0 END)
-                                          AS withdrawals,
-            COUNT(*)                      AS tx_count
+            "IDUtente"                             AS userid,
+            FORMAT("Data", 'yyyy-MM')              AS month,
+            SUM(CASE WHEN "IDTipoImportoTransazione" = 1
+                      AND "IDCausale" IN ({DEPOSIT_REASON_IDS})
+                      AND "IDStatoGestioneTransazione" = 3
+                 THEN ABS("Importo") ELSE 0 END)   AS deposits,
+            SUM(CASE WHEN "IDTipoImportoTransazione" = 2
+                      AND "IDCausale" IN ({WITHDRAWAL_REASON_IDS})
+                      AND "IDStatoGestioneTransazione" = 3
+                 THEN ABS("Importo") ELSE 0 END)
+                - SUM(CASE WHEN "IDCausale" IN ({CANCEL_WD_REASON_IDS})
+                            AND "IDStatoGestioneTransazione" = 3
+                       THEN ABS("Importo") ELSE 0 END)
+                                                   AS withdrawals,
+            COUNT(*)                               AS tx_count
         FROM "Stats"."Transazioni"
         WHERE {date_filter}
-          AND "IDTipoProvider" IN ({DEPOSIT_PROVIDERS})
-        GROUP BY "IDUtente", TO_CHAR("Data", 'YYYY-MM')
+        GROUP BY "IDUtente", FORMAT("Data", 'yyyy-MM')
         ORDER BY month, userid
     """)
 
