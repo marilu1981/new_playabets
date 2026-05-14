@@ -60,6 +60,7 @@ TRANSFORM_MODULES: dict[str, str] = {
     "daily_kpis":       "src.kpis.build_daily_kpis",
     "domain_kpis":      "src.kpis.build_domain_kpis",
     "sociotopo":        "src.kpis.sociotopo_features",
+    "hv_churn":         "src.kpis.hv_churn_warning",
 }
 
 # Default run order when no specific modules are given (excludes betslips)
