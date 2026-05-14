@@ -291,6 +291,12 @@ def _compute_warning_score(df: pd.DataFrame, churn_gap_days: int) -> pd.DataFram
         right=False,
     )
 
+    # Priority score: warning probability × value rank within HV cohort
+    # Ranks total_stake_window 0→1 within the HV subset so high-stake silent
+    # players surface above low-stake silent ones.
+    stake_rank = out["total_stake_window"].rank(pct=True)
+    out["priority_score"] = (out["warning_score"] * stake_rank).round(4)
+
     # Drop internal computation columns
     out = out.drop(columns=[c for c in out.columns if c.startswith("_")])
     return out
@@ -401,9 +407,10 @@ def build_hv_churn_warning(
         "oi_score",
         "warning_score",
         "warning_tier",
+        "priority_score",
     ]
     output_cols = [c for c in output_cols if c in hv.columns]
-    hv = hv[output_cols].sort_values("warning_score", ascending=False).reset_index(drop=True)
+    hv = hv[output_cols].sort_values("priority_score", ascending=False).reset_index(drop=True)
 
     return hv
 
@@ -437,9 +444,9 @@ def main() -> None:
     print(f"\n[hv_churn] Saved {len(result):,} HV users → {OUT_FILE}")
     print("\n[hv_churn] Warning tier distribution:")
     print(result["warning_tier"].value_counts().sort_index().to_string())
-    print("\n[hv_churn] Top 10 at-risk HV players:")
+    print("\n[hv_churn] Top 10 priority HV players (by priority_score):")
     print(result[["userid", "total_stake_window", "days_since_last_bet",
-                  "stake_trend_7v30", "warning_score", "warning_tier"]]
+                  "warning_score", "priority_score", "warning_tier"]]
           .head(10).to_string(index=False))
 
 
