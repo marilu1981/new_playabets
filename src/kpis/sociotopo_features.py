@@ -589,13 +589,29 @@ def build_sociotopo_features(
         feat["oi_score"]        * W_OI
     ).clip(0, 1)
 
-    # Risk tier
+    # Risk tier from score
     feat["risk_tier"] = pd.cut(
         feat["risk_score"],
         bins=[0, 0.30, 0.55, 0.75, 1.01],
         labels=["Low", "Moderate", "High", "Critical"],
         right=False,
-    )
+    ).astype(str)
+
+    # Override with RFM segment for inactive users — segment is a stronger
+    # churn signal than OI for players with no recent bets (30-day window)
+    _segment_churn = {
+        "VIP":     "Low",
+        "Active":  "Low",
+        "New":     "Moderate",
+        "Cooling": "High",      # slowing down — early churn warning
+        "Lapsed":  "Critical",  # likely churned
+        "Dormant": "Critical",  # almost certainly churned
+    }
+    if "segment" in feat.columns:
+        rfm_tier = feat["segment"].map(_segment_churn)
+        # Only override for users with no recent bets (inactive in 30d window)
+        inactive = feat.get("bets_30d", pd.Series(0, index=feat.index)).fillna(0) == 0
+        feat.loc[inactive, "risk_tier"] = rfm_tier[inactive].fillna(feat.loc[inactive, "risk_tier"])
 
     # Output
     output_cols = [

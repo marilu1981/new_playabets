@@ -77,3 +77,10 @@ docs/SSL-VPN & DWH credentials.msg
 *.pem
 *.key
 *.p12
+
+'April Data Check.xlsx'
+'GlobalGamingDashboard.xlsx'
+
+*.xlsx
+scripts/pip*.exe
+Lib/
