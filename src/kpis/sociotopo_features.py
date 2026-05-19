@@ -20,11 +20,17 @@ large sudden withdrawal).
 Data sources:
   REQUIRED  data/serving/rfm_users.parquet          – base user features
   REQUIRED  data/raw/betslips/*.parquet              – for OI + BIL time-series
+  OPTIONAL  data/raw/casino/*.parquet                – for casino OI features (loss rate, streaks, volatility)
   OPTIONAL  data/raw/users/*.parquet                 – for balance + account status
   OPTIONAL  data/raw/sessions/*.parquet              – for session gap (BIL)
   OPTIONAL  data/raw/bonus/*.parquet                 – for bonus reliance (OI)
   OPTIONAL  data/raw/user_transactions/*.parquet     – for net cashflow (FC)
   OPTIONAL  data/raw/selfexclusions/*.parquet        – for cliff ground-truth flag
+
+OI axis blends sportsbook + casino outcomes, weighted by each user's bet mix.
+Manifold scoring (UMAP + HDBSCAN) adds structural pressure detection on top of
+the linear axes — identifies players near topological breaking points in
+behavioural state space (requires umap-learn + hdbscan; gracefully skipped if absent).
 
 Output:
   data/serving/sociotopo_features.parquet
@@ -275,6 +281,53 @@ def _load_selfexclusions() -> Optional[pd.DataFrame]:
     return excl
 
 
+def _load_casino(window_days: int, as_of: pd.Timestamp) -> pd.DataFrame:
+    """Load casino rounds within the window: userid, bet_date, stake_num, winnings_num.
+    Excludes horse racing and lotto providers (same exclusions as casino_kpis.py)."""
+    start     = as_of - pd.Timedelta(days=window_days)
+    casino_dir = raw_dir("casino")
+    full_file  = casino_dir / "casino_full.parquet"
+    raw_files  = (
+        ([full_file] if full_file.exists() else [])
+        + sorted(casino_dir.glob("casino_increment_*.parquet"))
+    )
+    if not raw_files:
+        return pd.DataFrame()
+
+    df = pd.concat([pd.read_parquet(f) for f in raw_files], ignore_index=True)
+    if df.empty:
+        return df
+
+    df, col = normalize_cols(df)
+    required = {"userid", "stake", "winnings"}
+    if not required.issubset(col):
+        return pd.DataFrame()
+
+    date_col = col.get("placementdate") or col.get("gamedate") or col.get("insertdate")
+    if not date_col:
+        return pd.DataFrame()
+
+    df["_dt"] = to_dt(df[date_col])
+    df = df[(df["_dt"] >= start) & (df["_dt"] <= as_of + pd.Timedelta(days=1))].copy()
+
+    # Exclude horse racing and lotto
+    provider_col = col.get("providername") or col.get("bookmakerprovider_name")
+    if provider_col:
+        mask = df[provider_col].astype(str).str.contains(
+            r"Betmakers|Horse|Lotto|ISLotto", case=False, na=False
+        )
+        df = df[~mask]
+
+    df["userid"]       = to_num(df[col["userid"]], np.nan).astype("Int64")
+    df["stake_num"]    = to_num(df[col["stake"]],    default=0.0)
+    df["winnings_num"] = to_num(df[col["winnings"]], default=0.0)
+    df = df.dropna(subset=["userid"])
+    df["userid"]   = df["userid"].astype("int64")
+    df["bet_date"] = df["_dt"].dt.floor("D")
+
+    return df[["userid", "bet_date", "stake_num", "winnings_num"]].copy()
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Per-axis feature computation
 # ══════════════════════════════════════════════════════════════════════════════
@@ -406,6 +459,169 @@ def _compute_session_features(sessions: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 
+def _compute_casino_features(casino: pd.DataFrame) -> pd.DataFrame:
+    """
+    Per-user casino OI features, mirroring _compute_betslip_features.
+
+    A round is 'losing' when stake > winnings (net negative outcome).
+    All calculations are vectorised — no per-user Python loop.
+    """
+    if casino.empty:
+        return pd.DataFrame(columns=[
+            "userid", "casino_loss_rate_30d", "casino_max_losing_streak_30d",
+            "casino_ggr_daily_cv", "casino_stake_escalation",
+        ])
+
+    c = casino.copy().sort_values(["userid", "bet_date"])
+    c["is_losing"] = (c["stake_num"] > c["winnings_num"]).astype(int)
+    c["ggr"]       = c["stake_num"] - c["winnings_num"]
+
+    # Loss rate
+    loss_rate = (
+        c.groupby("userid")["is_losing"].mean()
+        .rename("casino_loss_rate_30d").reset_index()
+    )
+
+    # Daily GGR volatility
+    daily = c.groupby(["userid", "bet_date"])["ggr"].sum().reset_index()
+    ggr_stats = (
+        daily.groupby("userid")["ggr"]
+        .agg(ggr_std="std", ggr_mean="mean", ggr_days="count")
+        .reset_index()
+    )
+    ggr_stats["casino_ggr_daily_cv"] = np.where(
+        ggr_stats["ggr_days"] >= 2,
+        ggr_stats["ggr_std"] / (ggr_stats["ggr_mean"].abs() + 1.0),
+        0.0,
+    )
+
+    # Stake escalation: first half vs second half of daily stakes (vectorised)
+    daily_s = c.groupby(["userid", "bet_date"])["stake_num"].sum().reset_index()
+    daily_s["rank_frac"] = daily_s.groupby("userid")["bet_date"].rank(pct=True)
+    first_h = daily_s[daily_s["rank_frac"] <= 0.5].groupby("userid")["stake_num"].mean().rename("s_first")
+    last_h  = daily_s[daily_s["rank_frac"] >  0.5].groupby("userid")["stake_num"].mean().rename("s_last")
+    esc = pd.concat([first_h, last_h], axis=1).reset_index()
+    esc["casino_stake_escalation"] = ((esc["s_last"] - esc["s_first"]) / (esc["s_first"] + 1.0)).fillna(0.0)
+
+    # Max losing streak (vectorised run-length encoding)
+    user_changed  = c["userid"] != c["userid"].shift(1)
+    value_changed = c["is_losing"] != c["is_losing"].shift(1)
+    c["streak_id"] = (user_changed | value_changed).cumsum()
+    streak_sizes = (
+        c[c["is_losing"] == 1]
+        .groupby(["userid", "streak_id"]).size()
+        .reset_index(name="streak_len")
+    )
+    max_streaks = (
+        streak_sizes.groupby("userid")["streak_len"].max()
+        .rename("casino_max_losing_streak_30d").reset_index()
+    )
+
+    result = (
+        loss_rate
+        .merge(ggr_stats[["userid", "casino_ggr_daily_cv"]],    on="userid", how="left")
+        .merge(esc[["userid", "casino_stake_escalation"]],        on="userid", how="left")
+        .merge(max_streaks,                                        on="userid", how="left")
+    )
+    result["casino_max_losing_streak_30d"] = result["casino_max_losing_streak_30d"].fillna(0).astype(int)
+    result["casino_stake_escalation"]      = result["casino_stake_escalation"].fillna(0.0)
+    result["casino_ggr_daily_cv"]          = result["casino_ggr_daily_cv"].fillna(0.0)
+
+    return result[["userid", "casino_loss_rate_30d", "casino_max_losing_streak_30d",
+                   "casino_ggr_daily_cv", "casino_stake_escalation"]]
+
+
+def _compute_manifold_pressure(feat: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
+    """
+    UMAP + HDBSCAN structural pressure model — the SocioTopography manifold.
+
+    Each user occupies a point in N-dimensional behavioural space. UMAP learns
+    the shape (manifold) of that space. HDBSCAN identifies clusters and their
+    boundaries — players near boundaries sit at structural pressure points where
+    small additional shocks trigger discontinuous state changes (churn, sudden
+    withdrawal, self-exclusion).
+
+    Outputs: umap_x, umap_y (manifold coordinates), cluster_id,
+             manifold_pressure ∈ [0,1]  (0 = dense cluster core, 1 = boundary).
+
+    Gracefully skips and returns NaN columns if umap-learn / hdbscan are absent.
+    """
+    try:
+        import umap as umap_lib
+        import hdbscan as hdb_lib
+        from sklearn.preprocessing import RobustScaler
+    except ImportError as e:
+        print(f"[sociotopo] Manifold skipped — missing package: {e}")
+        print("[sociotopo]   pip install umap-learn hdbscan scikit-learn")
+        out = feat[["userid"]].copy()
+        out["umap_x"] = np.nan
+        out["umap_y"] = np.nan
+        out["cluster_id"] = -1
+        out["manifold_pressure"] = np.nan
+        return out
+
+    present = [c for c in feature_cols if c in feat.columns]
+    if len(present) < 4:
+        print(f"[sociotopo] Only {len(present)} manifold features present — skipping.")
+        out = feat[["userid"]].copy()
+        out["umap_x"] = np.nan; out["umap_y"] = np.nan
+        out["cluster_id"] = -1; out["manifold_pressure"] = np.nan
+        return out
+
+    X = feat[present].copy().fillna(feat[present].median())
+
+    # RobustScaler: handles the extreme outliers common in gambling spend data
+    X_scaled = RobustScaler().fit_transform(X)
+
+    print(f"[sociotopo] UMAP: embedding {len(X_scaled):,} users × {len(present)} features…")
+    import time
+    t0 = time.time()
+    reducer = umap_lib.UMAP(
+        n_components=2,
+        n_neighbors=20,
+        min_dist=0.05,
+        metric="euclidean",
+        random_state=42,
+        low_memory=True,
+        verbose=False,
+    )
+    embedding = reducer.fit_transform(X_scaled)
+    print(f"[sociotopo] UMAP done in {time.time()-t0:.1f}s")
+
+    print("[sociotopo] HDBSCAN: finding cluster structure on manifold…")
+    clusterer = hdb_lib.HDBSCAN(
+        min_cluster_size=200,
+        min_samples=10,
+        cluster_selection_epsilon=0.5,
+        prediction_data=True,
+    )
+    clusterer.fit(embedding)
+
+    # Structural pressure = blend of:
+    #   outlier_scores_ (GLOSH): high = far from any density peak
+    #   1 - probabilities_: low membership = near cluster boundary
+    outlier = clusterer.outlier_scores_
+    prob    = clusterer.probabilities_
+
+    if outlier.max() > outlier.min():
+        outlier_norm = (outlier - outlier.min()) / (outlier.max() - outlier.min())
+    else:
+        outlier_norm = np.zeros_like(outlier, dtype=float)
+
+    manifold_pressure = (0.6 * outlier_norm + 0.4 * (1.0 - prob)).clip(0, 1)
+
+    n_clusters = len(set(clusterer.labels_)) - (1 if -1 in clusterer.labels_ else 0)
+    n_boundary = (clusterer.labels_ == -1).sum()
+    print(f"[sociotopo] Manifold: {n_clusters} clusters, {n_boundary:,} boundary/noise points")
+
+    out = feat[["userid"]].copy().reset_index(drop=True)
+    out["umap_x"]            = embedding[:, 0]
+    out["umap_y"]            = embedding[:, 1]
+    out["cluster_id"]        = clusterer.labels_
+    out["manifold_pressure"] = manifold_pressure
+    return out
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Main build function
 # ══════════════════════════════════════════════════════════════════════════════
@@ -454,6 +670,7 @@ def build_sociotopo_features(
     # ── Load all sources ──────────────────────────────────────────────────────
     rfm         = _load_rfm()
     betslips    = _load_betslips(window_days, as_of)
+    casino_raw  = _load_casino(window_days, as_of)
     sessions    = _load_sessions(window_days, as_of)
     users_df    = _load_users()
     bonus_agg   = _load_bonus(window_days, as_of)
@@ -461,14 +678,15 @@ def build_sociotopo_features(
     excl_df     = _load_selfexclusions()
 
     print(f"[sociotopo] Sources — RFM:{len(rfm):,}  betslips:{len(betslips):,}  "
-          f"sessions:{len(sessions):,}  users:{len(users_df):,}  "
+          f"casino:{len(casino_raw):,}  sessions:{len(sessions):,}  users:{len(users_df):,}  "
           f"bonus:{len(bonus_agg):,}  "
           f"user_tx:{'yes' if tx_agg is not None else 'NOT YET EXTRACTED'}  "
           f"selfexcl:{'yes' if excl_df is not None else 'empty'}")
 
     # ── Derived per-user features ─────────────────────────────────────────────
-    bs_feats   = _compute_betslip_features(betslips)
-    sess_feats = _compute_session_features(sessions)
+    bs_feats      = _compute_betslip_features(betslips)
+    casino_feats  = _compute_casino_features(casino_raw)
+    sess_feats    = _compute_session_features(sessions)
 
     # ── Assemble ──────────────────────────────────────────────────────────────
     feat = rfm[["userid", "recency_days", "sessions_30d", "bets_30d",
@@ -526,6 +744,39 @@ def build_sociotopo_features(
     gap_fill = gap_q75 if pd.notna(gap_q75) else 24.0
     feat["mean_session_gap_hours"] = feat["mean_session_gap_hours"].fillna(gap_fill)
 
+    # Casino OI features — merged and defaulted to population medians
+    feat = feat.merge(casino_feats, on="userid", how="left")
+    for c, default in {
+        "casino_loss_rate_30d":         0.5,
+        "casino_max_losing_streak_30d": 0.0,
+        "casino_ggr_daily_cv":          0.0,
+        "casino_stake_escalation":      0.0,
+    }.items():
+        med = feat[c].median()
+        feat[c] = feat[c].fillna(med if pd.notna(med) else default)
+
+    # ── Blend sports + casino OI signals (weighted by each user's bet mix) ───
+    sports_bets = feat["bets_30d"].fillna(0)
+    casino_bets = feat["casino_bets_30d"].fillna(0)
+    total_bets  = (sports_bets + casino_bets).clip(lower=1)
+    sw          = sports_bets / total_bets   # sports weight per user
+    cw          = casino_bets / total_bets   # casino weight per user
+
+    feat["blended_loss_rate"] = (
+        sw * feat["loss_rate_30d"] + cw * feat["casino_loss_rate_30d"]
+    )
+    feat["blended_max_streak"] = np.maximum(
+        feat["max_losing_streak_30d"].fillna(0),
+        feat["casino_max_losing_streak_30d"].fillna(0),
+    )
+    feat["blended_ggr_cv"] = (
+        sw * feat["ggr_daily_cv"] + cw * feat["casino_ggr_daily_cv"]
+    )
+    feat["blended_stake_escalation"] = np.maximum(
+        feat["stake_escalation"].fillna(0),
+        feat["casino_stake_escalation"].fillna(0),
+    )
+
     # ── FC sub-features ───────────────────────────────────────────────────────
     # stake-to-balance leverage: how much of their current balance they're staking
     feat["stake_to_balance_ratio"] = feat["settled_stake_30d"] / (feat["balance_raw"].abs() + 1.0)
@@ -556,20 +807,20 @@ def build_sociotopo_features(
     ).clip(lower=0)
 
     feat["bil_raw"] = (
-        np.log1p(feat["sessions_30d"])         * 0.25 +
-        np.log1p(feat["bets_per_active_day"])  * 0.25 +
-        feat["stake_escalation"].clip(-1, 3)   * 0.25 +
-        feat["session_gap_inv"]                * 0.25
+        np.log1p(feat["sessions_30d"])                        * 0.25 +
+        np.log1p(feat["bets_per_active_day"])                 * 0.25 +
+        feat["blended_stake_escalation"].clip(-1, 3)          * 0.25 +
+        feat["session_gap_inv"]                               * 0.25
     )
 
-    # OI raw (higher = more unstable)
+    # OI raw — blended across sports + casino (higher = more unstable)
     feat["oi_raw"] = (
-        feat["loss_rate_30d"]                     * 0.25 +
-        np.log1p(feat["max_losing_streak_30d"])   * 0.20 +
-        feat["ggr_daily_cv"].clip(0, 10)          * 0.15 +
-        feat["bonus_stake_ratio"]                 * 0.10 +
-        feat["status_risk"]                       * 0.20 +
-        feat["self_exclusion_flag"].astype(float) * 0.10
+        feat["blended_loss_rate"]                             * 0.25 +
+        np.log1p(feat["blended_max_streak"])                  * 0.20 +
+        feat["blended_ggr_cv"].clip(0, 10)                    * 0.15 +
+        feat["bonus_stake_ratio"]                             * 0.10 +
+        feat["status_risk"]                                   * 0.20 +
+        feat["self_exclusion_flag"].astype(float)             * 0.10
     )
 
     # Normalize to 0-1
@@ -582,12 +833,45 @@ def build_sociotopo_features(
         feat["bil_score"] = feat["bil_raw"]
         feat["oi_score"]  = feat["oi_raw"]
 
-    # Composite risk score
-    feat["risk_score"] = (
+    # Linear composite (used as fallback and manifold input)
+    linear_risk = (
         (1 - feat["fc_score"])  * W_FC  +
         feat["bil_score"]       * W_BIL +
         feat["oi_score"]        * W_OI
     ).clip(0, 1)
+    feat["risk_score"] = linear_risk  # set now, may be updated by manifold below
+
+    # ── UMAP + HDBSCAN manifold pressure ─────────────────────────────────────
+    # Features fed to UMAP: all sub-features before axis compression.
+    # This lets the manifold capture non-linear interactions the linear model misses.
+    manifold_feature_cols = [
+        # FC sub-features
+        "balance_raw", "net_cashflow_30d", "deposit_count_30d",
+        "bonus_dependency_ratio", "stake_to_balance_ratio",
+        # BIL sub-features
+        "sessions_30d", "bets_per_active_day", "blended_stake_escalation", "session_gap_inv",
+        # OI sub-features (blended)
+        "blended_loss_rate", "blended_max_streak", "blended_ggr_cv",
+        "bonus_stake_ratio", "status_risk",
+        # Hard signals
+        "self_exclusion_flag",
+    ]
+    manifold_df = _compute_manifold_pressure(feat.reset_index(drop=True), manifold_feature_cols)
+    feat = feat.reset_index(drop=True)
+    feat["umap_x"]            = manifold_df["umap_x"].values
+    feat["umap_y"]            = manifold_df["umap_y"].values
+    feat["cluster_id"]        = manifold_df["cluster_id"].values
+    feat["manifold_pressure"] = manifold_df["manifold_pressure"].values
+
+    # Blend manifold pressure into final risk score (55% linear + 45% manifold)
+    if not feat["manifold_pressure"].isna().all():
+        feat["risk_score"] = (
+            0.55 * linear_risk +
+            0.45 * feat["manifold_pressure"].fillna(linear_risk)
+        ).clip(0, 1)
+        print("[sociotopo] Risk score = 55% linear axes + 45% manifold pressure")
+    else:
+        print("[sociotopo] Manifold unavailable — using linear axes only")
 
     # Risk tier from score
     feat["risk_tier"] = pd.cut(
@@ -616,15 +900,24 @@ def build_sociotopo_features(
     # Output
     output_cols = [
         "userid", "segment",
+        # FC features
         "balance_raw", "net_cashflow_30d", "deposit_count_30d",
         "bonus_dependency_ratio", "stake_to_balance_ratio",
+        # BIL features
         "sessions_30d", "bets_30d", "casino_bets_30d", "bets_per_active_day",
-        "stake_escalation", "mean_session_gap_hours",
-        "loss_rate_30d", "max_losing_streak_30d", "ggr_daily_cv",
+        "blended_stake_escalation", "mean_session_gap_hours",
+        # OI features — blended sports + casino
+        "blended_loss_rate", "blended_max_streak", "blended_ggr_cv",
+        "loss_rate_30d", "max_losing_streak_30d", "ggr_daily_cv",           # sports-only (for transparency)
+        "casino_loss_rate_30d", "casino_max_losing_streak_30d", "casino_ggr_daily_cv",  # casino-only
         "bonus_stake_ratio", "status_risk", "self_exclusion_flag",
+        # Axis scores
         "fc_score", "bil_score", "oi_score",
-        "risk_score", "risk_tier",
         "fc_raw", "bil_raw", "oi_raw",
+        # Manifold
+        "manifold_pressure", "umap_x", "umap_y", "cluster_id",
+        # Final
+        "risk_score", "risk_tier",
     ]
     output_cols = [c for c in output_cols if c in feat.columns]
     out = feat[output_cols].copy()
