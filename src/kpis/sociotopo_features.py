@@ -581,6 +581,7 @@ def _compute_manifold_pressure(feat: pd.DataFrame, feature_cols: list[str]) -> p
         n_neighbors=20,
         min_dist=0.05,
         metric="euclidean",
+        init="random",       # avoid spectral init failure on disconnected graph
         random_state=42,
         low_memory=True,
         verbose=False,
@@ -814,13 +815,16 @@ def build_sociotopo_features(
     )
 
     # OI raw — blended across sports + casino (higher = more unstable)
+    # casino_loss_rate is ~0.81 for all players (fixed house edge) so not used here.
+    # Casino instability is captured via casino_ggr_daily_cv and blended_max_streak.
     feat["oi_raw"] = (
-        feat["blended_loss_rate"]                             * 0.25 +
-        np.log1p(feat["blended_max_streak"])                  * 0.20 +
-        feat["blended_ggr_cv"].clip(0, 10)                    * 0.15 +
-        feat["bonus_stake_ratio"]                             * 0.10 +
-        feat["status_risk"]                                   * 0.20 +
-        feat["self_exclusion_flag"].astype(float)             * 0.10
+        feat["loss_rate_30d"]                                 * 0.20 +  # sports loss rate (variable)
+        np.log1p(feat["blended_max_streak"])                  * 0.20 +  # max streak (sports + casino)
+        feat["blended_ggr_cv"].clip(0, 10)                    * 0.15 +  # GGR volatility (blended)
+        feat["casino_ggr_daily_cv"].clip(0, 10)               * 0.10 +  # casino daily volatility
+        feat["bonus_stake_ratio"]                             * 0.10 +  # bonus reliance
+        feat["status_risk"]                                   * 0.20 +  # account status risk
+        feat["self_exclusion_flag"].astype(float)             * 0.05    # hard cliff signal
     )
 
     # Normalize to 0-1
