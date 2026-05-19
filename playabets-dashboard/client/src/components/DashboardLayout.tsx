@@ -22,6 +22,7 @@ import {
   X,
   Activity,
   LogOut,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

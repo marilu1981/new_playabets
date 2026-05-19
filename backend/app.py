@@ -108,6 +108,7 @@ DEPOSITORS_MONTHLY_PATH     = _SERVING / "depositors_monthly.parquet"
 CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
+SOCIOTOPO_PATH         = _SERVING / "sociotopo_features.parquet"
 
 # Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
 # Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus — exclude them.
@@ -1492,6 +1493,81 @@ def rfm_users(
         if "monetary_30d" in row and "monetary" not in row:
             row["monetary"] = row["monetary_30d"]
     return {"users": users}
+
+
+# ---------------------------------------------------------------------------
+# Churn / SocioTopography Risk
+# ---------------------------------------------------------------------------
+@app.get("/rfm/risk")
+def rfm_risk():
+    """Summary of SocioTopography risk tiers across all users."""
+    df = load_parquet_cached(SOCIOTOPO_PATH, "sociotopo_features")
+    if df.empty or "risk_tier" not in df.columns:
+        return {
+            "has_data": False,
+            "tiers": {"Critical": 0, "High": 0, "Moderate": 0, "Low": 0},
+            "total_users": 0,
+            "computed_at": None,
+        }
+    tier_counts = df["risk_tier"].value_counts().to_dict()
+    tiers = {
+        "Critical": int(tier_counts.get("Critical", 0)),
+        "High":     int(tier_counts.get("High",     0)),
+        "Moderate": int(tier_counts.get("Moderate", 0)),
+        "Low":      int(tier_counts.get("Low",      0)),
+    }
+    result: dict = {
+        "has_data":    True,
+        "tiers":       tiers,
+        "total_users": int(len(df)),
+    }
+    if "segment" in df.columns:
+        seg_tier = (
+            df.groupby(["segment", "risk_tier"])
+            .size()
+            .reset_index(name="count")
+            .to_dict(orient="records")
+        )
+        result["segment_breakdown"] = seg_tier
+    avg_cols = ["risk_score", "fc_score", "bil_score", "oi_score"]
+    present = [c for c in avg_cols if c in df.columns]
+    if present:
+        result["avg_scores"] = {c: round(float(df[c].mean()), 3) for c in present}
+    return result
+
+
+@app.get("/rfm/risk/players")
+def rfm_risk_players(
+    tier: Optional[str]    = Query(None, description="Filter by risk tier (Critical, High, Moderate, Low)"),
+    segment: Optional[str] = Query(None, description="Filter by RFM segment (VIP, Active, Lapsed…)"),
+    limit: int             = Query(200, ge=1, le=2000),
+):
+    """Return individual players from sociotopo_features, ordered by risk_score desc."""
+    df = load_parquet_cached(SOCIOTOPO_PATH, "sociotopo_features")
+    if df.empty:
+        return {"players": [], "total": 0}
+    d = df.copy()
+    if tier and "risk_tier" in d.columns:
+        d = d[d["risk_tier"].astype(str) == tier]
+    if segment and "segment" in d.columns:
+        d = d[d["segment"].astype(str) == segment]
+    if "risk_score" in d.columns:
+        d = d.sort_values("risk_score", ascending=False)
+    total = len(d)
+    keep_cols = [c for c in [
+        "userid", "segment", "risk_tier", "risk_score",
+        "fc_score", "bil_score", "oi_score",
+        "bets_30d", "casino_bets_30d", "sessions_30d",
+        "net_cashflow_30d", "balance_raw",
+        "loss_rate_30d", "max_losing_streak_30d",
+        "self_exclusion_flag", "status_risk",
+    ] if c in d.columns]
+    players = d[keep_cols].head(limit).to_dict(orient="records")
+    for p in players:
+        for k, v in p.items():
+            if hasattr(v, "item"):
+                p[k] = v.item()
+    return {"players": players, "total": total}
 
 
 # ---------------------------------------------------------------------------

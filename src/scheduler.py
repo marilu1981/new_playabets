@@ -64,10 +64,12 @@ EXTRACT_MODULES = [
 ]
 if ENABLE_TRANSACTIONS:
     EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions_simple")
+    EXTRACT_MODULES.append("src.extract.incremental_user_transactions")
 
 TRANSFORM_MODULES = [
-    "src.kpis.build_daily_kpis",   # builds daily_kpis.parquet + rfm_users.parquet
-    "src.kpis.build_domain_kpis",  # builds transactions/bonus/casino serving files
+    "src.kpis.build_daily_kpis",      # builds daily_kpis.parquet + rfm_users.parquet
+    "src.kpis.build_domain_kpis",     # builds transactions/bonus/casino serving files
+    "src.kpis.sociotopo_features",    # builds sociotopo_features.parquet (churn/risk)
 ]
 
 TRANSFORM_DEPENDENCIES = {
@@ -80,9 +82,15 @@ TRANSFORM_DEPENDENCIES = {
         "src.extract.incremental_bonus",
         "src.extract.incremental_casino",
     },
+    "src.kpis.sociotopo_features": {
+        "src.extract.incremental_users",
+        "src.extract.incremental_betslips",
+        "src.extract.incremental_sessions",
+    },
 }
 if ENABLE_TRANSACTIONS:
     TRANSFORM_DEPENDENCIES["src.kpis.build_domain_kpis"].add("src.extract.incremental_transactions_simple")
+    TRANSFORM_DEPENDENCIES["src.kpis.sociotopo_features"].add("src.extract.incremental_user_transactions")
 
 
 def _run_module(module: str) -> bool:
