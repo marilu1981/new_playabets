@@ -162,13 +162,20 @@ def main() -> None:
 
     out_path = args.out or f"export_churn_risk_{date.today().isoformat()}.{args.format}"
     if args.format == "xlsx":
-        with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
-            df.to_excel(writer, index=True, sheet_name="At-Risk Players")
-            ws = writer.sheets["At-Risk Players"]
-            for col_cells in ws.columns:
-                max_len = max(len(str(c.value or "")) for c in col_cells)
-                ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
-        print(f"[export] Saved {len(df):,} players → {out_path}")
+        try:
+            import openpyxl  # noqa: F401
+            with pd.ExcelWriter(out_path, engine="openpyxl") as writer:
+                df.to_excel(writer, index=True, sheet_name="At-Risk Players")
+                ws = writer.sheets["At-Risk Players"]
+                for col_cells in ws.columns:
+                    max_len = max(len(str(c.value or "")) for c in col_cells)
+                    ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
+            print(f"[export] Saved {len(df):,} players → {out_path}")
+        except ModuleNotFoundError:
+            out_path = out_path.replace(".xlsx", ".csv")
+            df.to_csv(out_path, index=True)
+            print(f"[export] openpyxl not installed — saved as CSV instead → {out_path}")
+            print("[export] To get Excel: pip install openpyxl")
     else:
         df.to_csv(out_path, index=True)
         print(f"[export] Saved {len(df):,} players → {out_path}")
