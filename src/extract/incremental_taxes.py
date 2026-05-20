@@ -20,7 +20,7 @@ Optional:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, UTC, date as _date
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pandas as pd
@@ -30,7 +30,7 @@ from src.app_config import WATERMARK_DB_PATH, raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
 WATERMARK_KEY = "taxes_paid"
-WATERMARK_DB  = WATERMARK_DB_PATH.parent / "watermarks_taxes.db"
+WATERMARK_DB  = Path.home() / "watermarks_taxes.db"
 OUT_DIR       = raw_dir("taxes")
 
 # IDTipoDatoAggiuntivoCorrelazioneTransazioni = 38 → Betting Tax
