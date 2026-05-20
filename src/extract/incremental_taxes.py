@@ -88,20 +88,20 @@ def main() -> None:
     upper = we
     print(f"[taxes] window: {lower} → {upper or 'now'}")
 
-    date_filter = f'"{DATE_COL}" >= :lower'
+    date_filter = f"{DATE_COL} >= :lower"
     params: dict = {"lower": lower}
     if upper:
-        date_filter += f' AND "{DATE_COL}" < :upper'
+        date_filter += f" AND {DATE_COL} < :upper"
         params["upper"] = upper
 
     query = text(f"""
         SELECT
-            CAST("{DATE_COL}" AS DATE)  AS date,
-            SUM(ABS("{AMOUNT_COL}"))    AS taxes_paid
-        FROM "{TABLE_NAME}"
+            CAST({DATE_COL} AS DATE)  AS date,
+            SUM(ABS({AMOUNT_COL}))    AS taxes_paid
+        FROM {TABLE_NAME}
         WHERE {date_filter}
-          AND "{TYPE_COL}" = {TAX_TYPE_ID}
-        GROUP BY CAST("{DATE_COL}" AS DATE)
+          AND {TYPE_COL} = {TAX_TYPE_ID}
+        GROUP BY CAST({DATE_COL} AS DATE)
         ORDER BY date
     """)
 
