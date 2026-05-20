@@ -46,8 +46,8 @@ TAX_TYPE_ID = 38
 #       print(list(r.keys()))
 #   "
 TABLE_NAME   = "Dwh.CorrelazioneTransazioniDatiAggiuntivi"
-DATE_COL     = "DataTransazione"      # likely — verify on VM
-AMOUNT_COL   = "DadoAggiuntivo"       # likely — verify on VM
+DATE_COL     = "DataCreazione"
+AMOUNT_COL   = "Valore"
 TYPE_COL     = "IDTipoDatoAggiuntivoCorrelazioneTransazioni"
 # ─────────────────────────────────────────────────────────────────────────────
 
