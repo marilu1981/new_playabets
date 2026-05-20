@@ -672,6 +672,21 @@ def _mean_i(df: pd.DataFrame, col: str) -> int:
     return int(round(df[col].mean())) if col in df.columns and len(df) > 0 else 0
 
 
+def _get_taxes_paid(start: date, end: date) -> float:
+    """Return total taxes paid for the period from raw taxes parquet files."""
+    if not TAXES_RAW_DIR.exists():
+        return 0.0
+    files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+    if not files:
+        return 0.0
+    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    if df.empty or "date" not in df.columns or "taxes_paid" not in df.columns:
+        return 0.0
+    df["_d"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+    df = df[(df["_d"] >= start) & (df["_d"] <= end)]
+    return round(float(df["taxes_paid"].sum()), 2)
+
+
 def _get_churn_pct(end: date) -> float:
     """Return churn % for the month ending on `end`."""
     churn = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
@@ -857,6 +872,7 @@ def kpis(
         "bonus_pct": round(_s(tx, "bonus_redeemed") / _s(bonus, "bonus_tx_net") * 100, 1) if _s(bonus, "bonus_tx_net") > 0 else 0.0,
         "unique_depositors": _i(tx, "unique_depositors"),
         "churn_pct": _get_churn_pct(end),
+        "taxes_paid": _get_taxes_paid(start, end),
         "total_actives_unique": _get_total_actives(start, end),
         "period_unique_depositors": _get_monthly_depositors(start, end),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
