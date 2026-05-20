@@ -141,12 +141,10 @@ export default function CasinoPage() {
   return (
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      {/* KPI Row */}
+      {/* KPI Row — casino-specific metrics only (Stake/Winnings/GGR are on Product Dashboard) */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-          <KpiCard title="Total Casino Stake" value={formatFull(casinoKPIs.totalStake)} subtitle="All providers" icon={<DollarSign size={18} />} accent="gold" />
-          <KpiCard title="Total Winnings" value={formatFull(casinoKPIs.totalWinnings)} subtitle="Paid to players" icon={<TrendingUp size={18} />} accent="amber" />
-          <KpiCard title="Casino GGR" value={formatFull(casinoKPIs.grossProfit)} subtitle="Stake minus winnings" icon={<Gamepad2 size={18} />} accent="green" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <KpiCard title="Hold %" value={liveCasinoKPIs ? `${casinoKPIs.margin}%` : "—"} subtitle="GGR / Stake" icon={<TrendingUp size={18} />} accent="green" />
           <KpiCard title="Depositors" value={liveCasinoKPIs?.depositors != null ? formatCompact(liveCasinoKPIs.depositors) : "—"} subtitle="Unique depositors" icon={<DollarSign size={18} />} accent="teal" />
           <KpiCard title="Deposit / Customer" value={liveCasinoKPIs?.depositPerCustomer != null && liveCasinoKPIs.depositPerCustomer > 0 ? formatFull(liveCasinoKPIs.depositPerCustomer) : "—"} subtitle="Avg per depositor" icon={<TrendingUp size={18} />} accent="gold" />
           <KpiCard title="Bonus Issued" value={liveCasinoKPIs?.bonusIssued != null && liveCasinoKPIs.bonusIssued > 0 ? formatFull(liveCasinoKPIs.bonusIssued) : "—"} subtitle="Bonuses granted" icon={<Gamepad2 size={18} />} accent="amber" />

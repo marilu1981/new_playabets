@@ -109,6 +109,7 @@ CASINO_DAILY_PATH           = _SERVING / "casino_daily.parquet"
 CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
 SOCIOTOPO_PATH         = _SERVING / "sociotopo_features.parquet"
+TAXES_RAW_DIR          = _RAW / "taxes"
 
 # Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
 # Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus — exclude them.
@@ -1266,6 +1267,17 @@ def _summary_period(start: date, end: date) -> dict:
         if not churn_row.empty:
             churn_pct = float(churn_row["churn_pct"].iloc[0])
 
+    # Taxes paid — from raw taxes parquet files
+    taxes_paid = 0.0
+    if TAXES_RAW_DIR.exists():
+        tax_files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+        if tax_files:
+            tax_df = pd.concat([pd.read_parquet(f) for f in tax_files], ignore_index=True)
+            if not tax_df.empty and "date" in tax_df.columns and "taxes_paid" in tax_df.columns:
+                tax_df["_d"] = pd.to_datetime(tax_df["date"], errors="coerce").dt.date
+                tax_df = tax_df[(tax_df["_d"] >= start) & (tax_df["_d"] <= end)]
+                taxes_paid = float(tax_df["taxes_paid"].sum())
+
     # Bonus from BonusTransactions (ReasonID 64=issued, 65=reversed)
     bonus_tx_issued   = _s(bonus, "bonus_tx_issued")
     bonus_tx_reversed = _s(bonus, "bonus_tx_reversed")
@@ -1295,6 +1307,7 @@ def _summary_period(start: date, end: date) -> dict:
         "unique_depositors": unique_depositors,
         "deposits": round(deposits, 2),
         "churn_pct": churn_pct,
+        "taxes_paid": round(taxes_paid, 2),
         "period_unique_depositors": _get_monthly_depositors(start, end),
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
@@ -1760,6 +1773,60 @@ def transactions_trend(
         "disabled": False,
         "deposits": [{"date": str(r["date"]), "value": float(r.get("deposits", 0) or 0)} for r in records],
         "withdrawals": [{"date": str(r["date"]), "value": float(r.get("withdrawals", 0) or 0)} for r in records],
+    }
+
+
+@app.get("/transactions/providers")
+def transactions_providers(
+    start: date = Query(...),
+    end: date = Query(...),
+):
+    """Deposit and withdrawal totals grouped by payment provider (ReasonID mapping)."""
+    # ReasonID → human-readable provider name
+    # Expand this map when client confirms the full iSolutions mapping
+    REASON_PROVIDER: dict[int, str] = {
+        249: "EFT Deposit",        250: "EFT Deposit",
+        830: "Credit Card",        835: "Credit Card",
+        839: "Ozow",               843: "Ozow",
+        851: "PayFast",            853: "PayFast",
+        855: "BluVoucher",         857: "BluVoucher",
+        859: "OTT Voucher",        861: "OTT Voucher",
+        863: "1Voucher",           865: "1Voucher",
+        867: "Peach Payments",     869: "Peach Payments",
+        871: "SnapScan",           877: "Bank Transfer",
+        939: "Bank Transfer",
+        251: "EFT Withdrawal",     252: "EFT Withdrawal",
+        253: "Bank Withdrawal",    254: "Bank Withdrawal",
+        831: "Credit Card WD",     833: "Credit Card WD",
+        837: "Ozow WD",            841: "Ozow WD",
+        845: "PayFast WD",         847: "PayFast WD",
+        849: "Voucher WD",         873: "FNB eWallet",
+        875: "InstantMoney",
+    }
+    DEPOSIT_IDS    = {249,250,830,835,839,843,851,853,855,857,859,861,863,865,867,869,871,877,939}
+    WITHDRAWAL_IDS = {251,252,253,254,831,833,837,841,845,847,849,873,875}
+
+    raw_dir_tx = _RAW / "transactions"
+    files = list(raw_dir_tx.glob("transactions_daily_agg_*.parquet")) if raw_dir_tx.exists() else []
+    if not files:
+        return {"providers": [], "has_data": False}
+
+    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+
+    # The daily agg files don't have per-provider data — we need the raw reason breakdown.
+    # Until a provider-level extract exists, return the ReasonID totals from user_transactions.
+    # Check if user_transactions parquets have ReasonID
+    ut_dir = _RAW / "user_transactions"
+    ut_files = list(ut_dir.glob("user_transactions_*.parquet")) if ut_dir.exists() else []
+    if not ut_files:
+        return {"providers": [], "has_data": False, "note": "Provider extract pending"}
+
+    # For now, return a pending response — provider-level requires a new extract
+    # grouping view_transactions by PaymentProvider or ReasonID
+    return {
+        "providers": [],
+        "has_data": False,
+        "note": "Provider breakout requires column verification on VM — pending"
     }
 
 

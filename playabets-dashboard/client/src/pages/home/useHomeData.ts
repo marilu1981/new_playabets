@@ -41,6 +41,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveBonusConverted, setLiveBonusConverted] = useState<number | null>(null);
   const [liveBonusPct, setLiveBonusPct] = useState<number | null>(null);
   const [liveChurnPct, setLiveChurnPct] = useState<number | null>(null);
+  const [liveTaxesPaid, setLiveTaxesPaid] = useState<number | null>(null);
   const [liveTotalActives, setLiveTotalActives] = useState<number | null>(null);
   const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
@@ -175,6 +176,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           bonus_tx_net?: number;
           bonus_pct?: number;
           churn_pct?: number;
+          taxes_paid?: number;
           total_actives_unique?: number;
           period_unique_depositors?: number;
         }>(`/kpis?${query}`),
@@ -259,6 +261,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusConverted(k.bonus_redeemed != null && Number(k.bonus_redeemed) > 0 ? Number(k.bonus_redeemed) : null);
         setLiveBonusPct(k.bonus_pct != null ? Number(k.bonus_pct) : null);
         setLiveChurnPct(k.churn_pct != null ? Number(k.churn_pct) : null);
+        setLiveTaxesPaid(k.taxes_paid != null && Number(k.taxes_paid) > 0 ? Number(k.taxes_paid) : null);
         setLiveTotalActives(k.total_actives_unique != null && Number(k.total_actives_unique) > 0 ? Number(k.total_actives_unique) : null);
         setLiveUniqueDepositors(k.period_unique_depositors != null && Number(k.period_unique_depositors) > 0 ? Number(k.period_unique_depositors) : null);
         setLiveOverviewKPIs((prev) => ({
@@ -798,6 +801,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveBonusConverted,
     liveBonusPct,
     liveChurnPct,
+    liveTaxesPaid,
     liveTotalActives,
     liveBonusCoverage,
     liveBetslipsByStatus,
