@@ -2,7 +2,9 @@
 incremental_payment_providers.py
 ----------------------------------
 Pulls daily deposit/withdrawal totals grouped by payment provider
-from Dwh_en.view_transactions joined with Dwh.Causali for provider names.
+from Stats.Transazioni (fast raw table) joined with Dwh.Causali for
+provider names.  Stats.Transazioni is ~26K rows/day vs view_transactions
+~4M/day, so even large windows complete quickly without chunking.
 
 Output: one parquet per run in data/raw/payment_providers/ with columns:
     date, reasonid, causale_name, group_name, total_amount, tx_count
@@ -22,7 +24,7 @@ from sqlalchemy import text
 from src.app_config import raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-CHUNK_DAYS = 14  # max days per query to avoid view_transactions timeout
+CHUNK_DAYS = 30  # days per query chunk — Stats.Transazioni is fast, 30d is safe
 
 WATERMARK_KEY = "payment_providers"
 WATERMARK_DB  = Path.home() / "watermarks_payment_providers.db"
@@ -68,21 +70,23 @@ def main() -> None:
     upper_dt = datetime.fromisoformat(we) if we else datetime.now(UTC).replace(tzinfo=None)
     print(f"[payment_providers] window: {lower_dt} → {upper_dt}  (chunk={chunk_days}d)")
 
+    # Uses Stats.Transazioni — fast raw table (~26K rows/day vs view_transactions ~4M/day)
+    # JOIN to Dwh.Causali to get provider names and group classification
     query = text("""
         SELECT
-            CAST(t.date AS DATE)  AS date,
-            t.reasonid,
-            c.Causale             AS causale_name,
-            c.GruppoCausale       AS group_name,
-            SUM(t.amount)         AS total_amount,
-            COUNT(*)              AS tx_count
-        FROM Dwh_en.view_transactions t
-        JOIN Dwh.Causali c ON t.reasonid = c.IDCausale
-        WHERE t.date >= :lower AND t.date < :upper
+            CAST(t."Data" AS DATE)  AS date,
+            t."IDCausale"           AS reasonid,
+            c.Causale               AS causale_name,
+            c.GruppoCausale         AS group_name,
+            SUM(ABS(t."Importo"))   AS total_amount,
+            COUNT(*)                AS tx_count
+        FROM "Stats"."Transazioni" t
+        JOIN Dwh.Causali c ON t."IDCausale" = c.IDCausale
+        WHERE t."Data" >= :lower AND t."Data" < :upper
           AND c.GruppoCausale IN ('Deposit', 'Withdrawals')
-          AND t.testuser = 0
-        GROUP BY CAST(t.date AS DATE), t.reasonid, c.Causale, c.GruppoCausale
-        ORDER BY date, t.reasonid
+          AND t."IDStatoGestioneTransazione" = 3
+        GROUP BY CAST(t."Data" AS DATE), t."IDCausale", c.Causale, c.GruppoCausale
+        ORDER BY date, t."IDCausale"
     """)
 
     engine  = build_engine()

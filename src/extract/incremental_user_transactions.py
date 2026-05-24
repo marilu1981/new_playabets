@@ -72,6 +72,9 @@ def main() -> None:
     last_value = get_watermark(WATERMARK_DB, WATERMARK_KEY)
 
     lower = ws or last_value
+    # Watermark may be stored as "YYYY-MM" (month-only) — convert to full datetime
+    if lower and len(lower) == 7:
+        lower = lower + "-01 00:00:00"
     upper = we
     print(f"[user_transactions] window: {lower} → {upper or 'now'}")
 
