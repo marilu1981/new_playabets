@@ -10,7 +10,7 @@ import KpiCard from "@/components/KpiCard";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, Users } from "lucide-react";
+import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, Users, Download } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
 
@@ -171,7 +171,38 @@ export default function TransactionsPage() {
 
       {/* Payment Provider Breakdown */}
       <div className="rounded-xl p-5" style={CARD_BG}>
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits &amp; Withdrawals by Payment Provider</h3>
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="text-sm font-semibold text-gray-800">Deposits &amp; Withdrawals by Payment Provider</h3>
+          {providers.length > 0 && (
+            <button
+              onClick={() => {
+                const header = "Provider,Deposits,Deposit Txns,Withdrawals,WD Txns,Net";
+                const rows = providers.map(p =>
+                  [p.provider, p.deposits.toFixed(2), p.deposit_count, p.withdrawals.toFixed(2), p.withdrawal_count, p.net.toFixed(2)].join(",")
+                );
+                const totals = [
+                  "Total",
+                  providers.reduce((s,p)=>s+p.deposits,0).toFixed(2),
+                  providers.reduce((s,p)=>s+p.deposit_count,0),
+                  providers.reduce((s,p)=>s+p.withdrawals,0).toFixed(2),
+                  providers.reduce((s,p)=>s+p.withdrawal_count,0),
+                  providers.reduce((s,p)=>s+p.net,0).toFixed(2),
+                ].join(",");
+                const csv = [header, ...rows, totals].join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `payment_providers_${filters.dateFrom}_${filters.dateTo}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+            >
+              <Download size={13} /> Export CSV
+            </button>
+          )}
+        </div>
         <p className="text-xs text-gray-400 mb-4">Net of cancellations — selected period</p>
         {providers.length > 0 ? (
           <div className="overflow-x-auto">
