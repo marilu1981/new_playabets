@@ -13,7 +13,7 @@ Run from project root:
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +21,8 @@ from sqlalchemy import text
 
 from src.app_config import raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
+
+CHUNK_DAYS = 14  # max days per query to avoid view_transactions timeout
 
 WATERMARK_KEY = "payment_providers"
 WATERMARK_DB  = Path.home() / "watermarks_payment_providers.db"
@@ -45,6 +47,8 @@ def _build_args() -> argparse.Namespace:
     p.add_argument("--window-start", dest="window_start")
     p.add_argument("--window-end",   dest="window_end")
     p.add_argument("--update-watermark", action="store_true")
+    p.add_argument("--chunk-days", dest="chunk_days", type=int, default=CHUNK_DAYS,
+                   help="Max days per query chunk (default: %(default)s)")
     return p.parse_args()
 
 
@@ -59,17 +63,12 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     last_value = get_watermark(WATERMARK_DB, WATERMARK_KEY)
 
-    lower = ws or last_value
-    upper = we
-    print(f"[payment_providers] window: {lower} → {upper or 'now'}")
+    chunk_days = args.chunk_days
+    lower_dt = datetime.fromisoformat(ws or last_value)
+    upper_dt = datetime.fromisoformat(we) if we else datetime.now(UTC).replace(tzinfo=None)
+    print(f"[payment_providers] window: {lower_dt} → {upper_dt}  (chunk={chunk_days}d)")
 
-    date_filter = "t.date >= :lower"
-    params: dict = {"lower": lower}
-    if upper:
-        date_filter += " AND t.date < :upper"
-        params["upper"] = upper
-
-    query = text(f"""
+    query = text("""
         SELECT
             CAST(t.date AS DATE)  AS date,
             t.reasonid,
@@ -79,26 +78,39 @@ def main() -> None:
             COUNT(*)              AS tx_count
         FROM Dwh_en.view_transactions t
         JOIN Dwh.Causali c ON t.reasonid = c.IDCausale
-        WHERE {date_filter}
+        WHERE t.date >= :lower AND t.date < :upper
           AND c.GruppoCausale IN ('Deposit', 'Withdrawals')
           AND t.testuser = 0
         GROUP BY CAST(t.date AS DATE), t.reasonid, c.Causale, c.GruppoCausale
         ORDER BY date, t.reasonid
     """)
 
-    engine = build_engine()
-    with engine.connect() as conn:
-        df = pd.read_sql(query, conn, params=params)
+    engine  = build_engine()
+    chunks  = []
+    cursor  = lower_dt
+    while cursor < upper_dt:
+        chunk_end = min(cursor + timedelta(days=chunk_days), upper_dt)
+        print(f"[payment_providers] chunk {cursor.date()} → {chunk_end.date()} …", end=" ", flush=True)
+        with engine.connect() as conn:
+            chunk_df = pd.read_sql(query, conn, params={
+                "lower": cursor.strftime("%Y-%m-%d %H:%M:%S"),
+                "upper": chunk_end.strftime("%Y-%m-%d %H:%M:%S"),
+            })
+        print(f"{len(chunk_df)} rows")
+        if not chunk_df.empty:
+            chunks.append(chunk_df)
+        cursor = chunk_end
 
-    print(f"[payment_providers] Rows: {len(df)}")
-
-    if df.empty:
+    if not chunks:
         print("[payment_providers] No data.")
         return
 
-    df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
+    df = pd.concat(chunks, ignore_index=True)
+    df["date"]         = pd.to_datetime(df["date"]).dt.date.astype(str)
     df["total_amount"] = df["total_amount"].astype(float)
     df["tx_count"]     = df["tx_count"].astype(int)
+
+    print(f"[payment_providers] Total rows: {len(df)}")
 
     ts    = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     fname = f"providers_increment_{ts}.parquet" if not ws else \
@@ -110,7 +122,7 @@ def main() -> None:
     print(df.groupby("group_name")["total_amount"].sum())
 
     if (ws is None) or args.update_watermark:
-        set_watermark(WATERMARK_DB, WATERMARK_KEY, str(upper or df["date"].max()))
+        set_watermark(WATERMARK_DB, WATERMARK_KEY, str(upper_dt.strftime("%Y-%m-%d %H:%M:%S")))
         print("[payment_providers] Watermark updated.")
 
 
