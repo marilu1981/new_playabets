@@ -159,8 +159,37 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
                    .rename(columns={"pay_date": "date"})
         )
         settled_daily["ggr"] = settled_daily["settled_stake"] - settled_daily["settled_winnings"]
-        # ggr_total = same as ggr since view_betslips only returns User Account bets
-        settled_daily["ggr_total"] = settled_daily["ggr"]
+
+        # Bonus bet GGR: same settlement logic applied to non-User Account bets
+        if not betslips_bonus_df.empty and payment_col and status_col:
+            betslips_bonus_df["pay_date"] = to_date(betslips_bonus_df[payment_col])
+            bonus_settled_df = betslips_bonus_df[
+                betslips_bonus_df[status_col].astype(str).eq(SETTLED_STATUS)
+            ].copy()
+            if not bonus_settled_df.empty:
+                bonus_settled_daily = (
+                    bonus_settled_df.dropna(subset=["pay_date"])
+                    .groupby("pay_date")
+                    .agg(
+                        bonus_settled_stake=("stake_num", "sum"),
+                        bonus_settled_winnings=("winnings_num", "sum"),
+                    )
+                    .reset_index()
+                    .rename(columns={"pay_date": "date"})
+                )
+                bonus_settled_daily["ggr_bonus"] = (
+                    bonus_settled_daily["bonus_settled_stake"] - bonus_settled_daily["bonus_settled_winnings"]
+                )
+                settled_daily = settled_daily.merge(
+                    bonus_settled_daily[["date", "ggr_bonus"]], on="date", how="left"
+                )
+                settled_daily["ggr_bonus"] = settled_daily["ggr_bonus"].fillna(0.0)
+            else:
+                settled_daily["ggr_bonus"] = 0.0
+        else:
+            settled_daily["ggr_bonus"] = 0.0
+
+        settled_daily["ggr_total"] = settled_daily["ggr"] + settled_daily["ggr_bonus"]
         settled_daily["hold_pct"] = settled_daily.apply(
             lambda r: (r["ggr"] / r["settled_stake"]) if r["settled_stake"] else 0.0,
             axis=1,
@@ -258,8 +287,9 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
     # Dtypes
     out["actives_sports"] = out["actives_sports"].astype(int)
     out["betslips_count"] = out["betslips_count"].astype(int)
-    for c in ["placed_stake", "open_exposure_stake", "settled_stake", "settled_winnings", "ggr", "hold_pct", "win_rate", "cancel_rate"]:
-        out[c] = out[c].astype(float)
+    for c in ["placed_stake", "open_exposure_stake", "settled_stake", "settled_winnings", "ggr", "ggr_bonus", "ggr_total", "hold_pct", "win_rate", "cancel_rate"]:
+        if c in out.columns:
+            out[c] = out[c].astype(float)
     for c in ["betslips_settled_count", "betslips_won_count", "betslips_cancelled_count"]:
         out[c] = out[c].fillna(0).astype(int)
 
