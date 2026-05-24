@@ -61,11 +61,11 @@ EXTRACT_MODULES = [
     "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",
+    "src.extract.incremental_taxes",   # always run — independent of transactions pipeline
 ]
 if ENABLE_TRANSACTIONS:
     EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions_simple")
     EXTRACT_MODULES.append("src.extract.incremental_user_transactions")
-    EXTRACT_MODULES.append("src.extract.incremental_taxes")
 
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",      # builds daily_kpis.parquet + rfm_users.parquet
