@@ -1800,58 +1800,52 @@ def transactions_trend(
     }
 
 
+_PP_DAILY_PATH = _SERVING / "payment_providers_daily.parquet"
+
+
 @app.get("/transactions/providers")
 def transactions_providers(
     start: date = Query(...),
     end: date = Query(...),
 ):
-    """Deposit and withdrawal totals grouped by payment provider (ReasonID mapping)."""
-    # ReasonID → human-readable provider name
-    # Expand this map when client confirms the full iSolutions mapping
-    REASON_PROVIDER: dict[int, str] = {
-        249: "EFT Deposit",        250: "EFT Deposit",
-        830: "Credit Card",        835: "Credit Card",
-        839: "Ozow",               843: "Ozow",
-        851: "PayFast",            853: "PayFast",
-        855: "BluVoucher",         857: "BluVoucher",
-        859: "OTT Voucher",        861: "OTT Voucher",
-        863: "1Voucher",           865: "1Voucher",
-        867: "Peach Payments",     869: "Peach Payments",
-        871: "SnapScan",           877: "Bank Transfer",
-        939: "Bank Transfer",
-        251: "EFT Withdrawal",     252: "EFT Withdrawal",
-        253: "Bank Withdrawal",    254: "Bank Withdrawal",
-        831: "Credit Card WD",     833: "Credit Card WD",
-        837: "Ozow WD",            841: "Ozow WD",
-        845: "PayFast WD",         847: "PayFast WD",
-        849: "Voucher WD",         873: "FNB eWallet",
-        875: "InstantMoney",
-    }
-    DEPOSIT_IDS    = {249,250,830,835,839,843,851,853,855,857,859,861,863,865,867,869,871,877,939}
-    WITHDRAWAL_IDS = {251,252,253,254,831,833,837,841,845,847,849,873,875}
-
-    raw_dir_tx = _RAW / "transactions"
-    files = list(raw_dir_tx.glob("transactions_daily_agg_*.parquet")) if raw_dir_tx.exists() else []
-    if not files:
+    """Deposit and withdrawal totals grouped by payment provider."""
+    if not _PP_DAILY_PATH.exists():
         return {"providers": [], "has_data": False}
 
-    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    df = load_parquet_cached(_PP_DAILY_PATH, "payment_providers_daily")
+    if df.empty:
+        return {"providers": [], "has_data": False}
 
-    # The daily agg files don't have per-provider data — we need the raw reason breakdown.
-    # Until a provider-level extract exists, return the ReasonID totals from user_transactions.
-    # Check if user_transactions parquets have ReasonID
-    ut_dir = _RAW / "user_transactions"
-    ut_files = list(ut_dir.glob("user_transactions_*.parquet")) if ut_dir.exists() else []
-    if not ut_files:
-        return {"providers": [], "has_data": False, "note": "Provider extract pending"}
+    df["_d"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+    df = df[(df["_d"] >= start) & (df["_d"] <= end)]
+    if df.empty:
+        return {"providers": [], "has_data": False}
 
-    # For now, return a pending response — provider-level requires a new extract
-    # grouping view_transactions by PaymentProvider or ReasonID
-    return {
-        "providers": [],
-        "has_data": False,
-        "note": "Provider breakout requires column verification on VM — pending"
-    }
+    agg = (df.groupby("provider")
+           .agg(
+               deposits=("deposits", "sum"),
+               withdrawals=("withdrawals", "sum"),
+               net=("net", "sum"),
+               deposit_count=("deposit_count", "sum"),
+               withdrawal_count=("withdrawal_count", "sum"),
+           )
+           .reset_index()
+           .sort_values("deposits", ascending=False))
+
+    providers = [
+        {
+            "provider": str(r["provider"]),
+            "deposits": round(float(r["deposits"]), 2),
+            "withdrawals": round(float(r["withdrawals"]), 2),
+            "net": round(float(r["net"]), 2),
+            "deposit_count": int(r["deposit_count"]),
+            "withdrawal_count": int(r["withdrawal_count"]),
+        }
+        for _, r in agg.iterrows()
+        if r["deposits"] > 0 or r["withdrawals"] > 0
+    ]
+
+    return {"providers": providers, "has_data": bool(providers)}
 
 
 # ---------------------------------------------------------------------------

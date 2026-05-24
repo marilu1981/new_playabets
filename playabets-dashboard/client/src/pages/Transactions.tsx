@@ -30,13 +30,18 @@ interface TxKpis {
   has_data: boolean; disabled: boolean;
 }
 interface TrendPoint { date: string; value: number; }
+interface ProviderRow {
+  provider: string; deposits: number; withdrawals: number; net: number;
+  deposit_count: number; withdrawal_count: number;
+}
 
 export default function TransactionsPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
-  const [kpis, setKpis]       = useState<TxKpis | null>(null);
-  const [depTrend, setDepTrend] = useState<TrendPoint[]>([]);
-  const [wdTrend, setWdTrend]   = useState<TrendPoint[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [kpis, setKpis]         = useState<TxKpis | null>(null);
+  const [depTrend, setDepTrend]  = useState<TrendPoint[]>([]);
+  const [wdTrend, setWdTrend]    = useState<TrendPoint[]>([]);
+  const [providers, setProviders] = useState<ProviderRow[]>([]);
+  const [loading, setLoading]    = useState(true);
 
   useEffect(() => {
     setLoading(true);
@@ -44,11 +49,15 @@ export default function TransactionsPage() {
     Promise.allSettled([
       fetchJson<TxKpis>(`/transactions/kpis?${query}`),
       fetchJson<{ has_data: boolean; deposits: TrendPoint[]; withdrawals: TrendPoint[] }>(`/transactions/trend?${query}`),
-    ]).then(([kpisRes, trendRes]) => {
+      fetchJson<{ has_data: boolean; providers: ProviderRow[] }>(`/transactions/providers?${query}`),
+    ]).then(([kpisRes, trendRes, provRes]) => {
       if (kpisRes.status === "fulfilled") setKpis(kpisRes.value);
       if (trendRes.status === "fulfilled" && trendRes.value.has_data) {
         setDepTrend(trendRes.value.deposits ?? []);
         setWdTrend(trendRes.value.withdrawals ?? []);
+      }
+      if (provRes.status === "fulfilled" && provRes.value.has_data) {
+        setProviders(provRes.value.providers ?? []);
       }
       setLoading(false);
     });
@@ -137,7 +146,7 @@ export default function TransactionsPage() {
 
       {/* Summary stats */}
       {kpis?.has_data && (
-        <div className="rounded-xl p-5" style={CARD_BG}>
+        <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-4">Transaction Summary</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
@@ -159,6 +168,51 @@ export default function TransactionsPage() {
           </div>
         </div>
       )}
+
+      {/* Payment Provider Breakdown */}
+      <div className="rounded-xl p-5" style={CARD_BG}>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits &amp; Withdrawals by Payment Provider</h3>
+        <p className="text-xs text-gray-400 mb-4">Net of cancellations — selected period</p>
+        {providers.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr style={{ borderBottom: "2px solid #dde8dd" }}>
+                  {["Provider","Deposits","Dep. Txns","Withdrawals","WD Txns","Net"].map(h => (
+                    <th key={h} className={`pb-2 font-semibold text-gray-500 uppercase tracking-wider text-[10px] ${h === "Provider" ? "text-left" : "text-right"}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {providers.map((p, i) => (
+                  <tr key={p.provider} style={{ borderBottom: "1px solid #f0f4f0", background: i % 2 === 0 ? "#fff" : "#fafcfa" }}>
+                    <td className="py-2 pr-4 font-medium text-gray-800">{p.provider}</td>
+                    <td className="py-2 text-right text-gray-700">{formatFull(p.deposits)}</td>
+                    <td className="py-2 text-right text-gray-400">{p.deposit_count.toLocaleString()}</td>
+                    <td className="py-2 text-right text-gray-700">{p.withdrawals > 0 ? formatFull(p.withdrawals) : "—"}</td>
+                    <td className="py-2 text-right text-gray-400">{p.withdrawal_count > 0 ? p.withdrawal_count.toLocaleString() : "—"}</td>
+                    <td className="py-2 text-right font-semibold" style={{ color: p.net >= 0 ? "#7ab800" : "#d94040" }}>{formatFull(p.net)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ borderTop: "2px solid #dde8dd" }}>
+                  <td className="pt-2 font-bold text-gray-800 text-[11px]">Total</td>
+                  <td className="pt-2 text-right font-bold text-gray-800">{formatFull(providers.reduce((s,p)=>s+p.deposits,0))}</td>
+                  <td className="pt-2 text-right font-bold text-gray-400">{providers.reduce((s,p)=>s+p.deposit_count,0).toLocaleString()}</td>
+                  <td className="pt-2 text-right font-bold text-gray-800">{formatFull(providers.reduce((s,p)=>s+p.withdrawals,0))}</td>
+                  <td className="pt-2 text-right font-bold text-gray-400">{providers.reduce((s,p)=>s+p.withdrawal_count,0).toLocaleString()}</td>
+                  <td className="pt-2 text-right font-bold" style={{ color: "#7ab800" }}>{formatFull(providers.reduce((s,p)=>s+p.net,0))}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : (
+          <div className="h-24 flex items-center justify-center text-xs text-gray-400">
+            {loading ? "Loading…" : "No provider data available — run incremental_payment_providers on VM first"}
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

@@ -409,6 +409,42 @@ def main() -> None:
     else:
         print(f"[domain_kpis] Depositors monthly: using cached file (set REBUILD_DEPOSITORS=1 to refresh)")
 
+    # Payment Providers — aggregate raw increments to daily by provider
+    try:
+        import re as _re
+        pp_dir = RAW_ROOT / "payment_providers"
+        pp_files = sorted(pp_dir.glob("providers_*.parquet")) if pp_dir.exists() else []
+        if pp_files:
+            pp_raw = pd.concat([pd.read_parquet(f) for f in pp_files], ignore_index=True)
+
+            def _clean_provider(name: str) -> str:
+                name = _re.sub(r"\s*(Cancel\s+)?(Deposit|Withdraw(al)?)\s*$", "", name, flags=_re.IGNORECASE)
+                return name.strip()
+
+            pp_raw["provider"] = pp_raw["causale_name"].apply(_clean_provider)
+            pp_raw["date"] = pd.to_datetime(pp_raw["date"]).dt.date.astype(str)
+
+            dep = pp_raw[pp_raw["group_name"] == "Deposit"].copy()
+            dep_agg = (dep.groupby(["date", "provider"])
+                       .agg(deposits=("total_amount", "sum"), deposit_count=("tx_count", "sum"))
+                       .reset_index())
+
+            wd = pp_raw[pp_raw["group_name"] == "Withdrawals"].copy()
+            wd["total_amount"] = wd["total_amount"].abs()
+            wd_agg = (wd.groupby(["date", "provider"])
+                      .agg(withdrawals=("total_amount", "sum"), withdrawal_count=("tx_count", "sum"))
+                      .reset_index())
+
+            pp_daily = dep_agg.merge(wd_agg, on=["date", "provider"], how="outer").fillna(0)
+            pp_daily["net"] = pp_daily["deposits"] - pp_daily["withdrawals"]
+            pp_out = SERVING / "payment_providers_daily.parquet"
+            pp_daily.to_parquet(pp_out, index=False)
+            print(f"[domain_kpis] Payment providers daily: {len(pp_daily)} rows -> {pp_out}")
+        else:
+            print("[domain_kpis] Payment providers: no raw files found (run incremental_payment_providers first)")
+    except Exception as e:
+        print(f"[domain_kpis] Payment providers: error - {e}")
+
     print("[domain_kpis] Done.")
 
 
