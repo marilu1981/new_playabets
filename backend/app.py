@@ -822,9 +822,11 @@ def kpis(
     casino_bonus_ggr = _s(casino, "casino_bonus_ggr")
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
     ggr = sportsbook_ggr + casino_ggr_display + lotto_ggr_main - taxes_paid   # incl lotto, net of taxes
-    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # real money (excl lotto)
-    real_money_ggr_display = ggr_real
+    # real_money_ggr = sports(real) + horse_racing + casino(real) + lotto (lotto is real-money only)
+    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # for NGR (excl lotto)
+    real_money_ggr_display = ggr_real + lotto_ggr_main                    # display includes lotto
     bonus_money_ggr = (sportsbook_ggr - _s(df, "ggr") - horse_racing_ggr) + casino_bonus_ggr
+    # Internal check: real_money_ggr_display + bonus_money_ggr - taxes_paid == ggr ✓
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -1252,9 +1254,12 @@ def _summary_period(start: date, end: date) -> dict:
 
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
     casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
-    bonus_money_ggr = casino_bonus_ggr_sp  # sports bonus GGR ≈ 0 (settled GGR only from real money)
+    sports_bonus_ggr = sports_ggr_total - sports_ggr_real  # ggr_total - ggr = bonus bet GGR
+    bonus_money_ggr = sports_bonus_ggr + casino_bonus_ggr_sp
     total_ggr = sports_ggr_total + casino_total_ggr + lotto_ggr - taxes_paid   # display GGR (incl lotto, net of taxes)
-    real_money_ggr = sports_ggr_real + casino_ggr                              # real money GGR (for NGR, excl lotto)
+    # real_money_ggr for NGR (excl lotto); real_money_ggr_display adds lotto so buckets sum to total
+    real_money_ggr = sports_ggr_real + casino_ggr                              # for NGR
+    real_money_ggr_display = real_money_ggr + lotto_ggr                        # for display: includes lotto (real-money only product)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -1314,7 +1319,7 @@ def _summary_period(start: date, end: date) -> dict:
         "real_money_turnover": round(real_money_turnover, 2),
         "bonus_money_turnover": round(bonus_money_turnover, 2),
         "ggr": round(total_ggr, 2),
-        "real_money_ggr": round(real_money_ggr, 2),
+        "real_money_ggr": round(real_money_ggr_display, 2),
         "bonus_money_ggr": round(bonus_money_ggr, 2),
         "ngr": round(ngr, 2), "hold_pct": hold_pct,
         "bonus_spent": round(bonus_spent, 2), "freebet_spend": round(freebet_spend, 2),
