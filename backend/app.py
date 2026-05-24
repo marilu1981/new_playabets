@@ -818,9 +818,11 @@ def kpis(
     real_money_turnover = sportsbook_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sportsbook_turnover_bonus + _s(casino, "casino_bonus_stake")
     winnings = sportsbook_winnings + casino_winnings
-    ggr = sportsbook_ggr + casino_ggr_display + lotto_ggr_main             # incl lotto
-    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # real money (excl lotto)
+    taxes_paid = _get_taxes_paid(start, end)
     casino_bonus_ggr = _s(casino, "casino_bonus_ggr")
+    # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
+    ggr = sportsbook_ggr + casino_ggr_display + lotto_ggr_main - taxes_paid   # incl lotto, net of taxes
+    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # real money (excl lotto)
     real_money_ggr_display = ggr_real
     bonus_money_ggr = (sportsbook_ggr - _s(df, "ggr") - horse_racing_ggr) + casino_bonus_ggr
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
@@ -1237,8 +1239,22 @@ def _summary_period(start: date, end: date) -> dict:
     casino_rtp = round(100.0 - casino_margin, 1)
     casino_display_ggr = casino_total_ggr  # Casino page shows casino only (no lotto)
 
-    total_ggr = sports_ggr_total + casino_total_ggr + lotto_ggr   # display GGR (incl lotto)
-    real_money_ggr = sports_ggr_real + casino_ggr                # real money GGR (for NGR, excl lotto)
+    # Taxes paid — must be computed before total_ggr (client formula: GGR = Real+Bonus GGR - Taxes)
+    taxes_paid = 0.0
+    if TAXES_RAW_DIR.exists():
+        tax_files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+        if tax_files:
+            tax_df = pd.concat([pd.read_parquet(f) for f in tax_files], ignore_index=True)
+            if not tax_df.empty and "date" in tax_df.columns and "taxes_paid" in tax_df.columns:
+                tax_df["_d"] = pd.to_datetime(tax_df["date"], errors="coerce").dt.date
+                tax_df = tax_df[(tax_df["_d"] >= start) & (tax_df["_d"] <= end)]
+                taxes_paid = float(tax_df["taxes_paid"].sum())
+
+    # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
+    casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
+    bonus_money_ggr = casino_bonus_ggr_sp  # sports bonus GGR ≈ 0 (settled GGR only from real money)
+    total_ggr = sports_ggr_total + casino_total_ggr + lotto_ggr - taxes_paid   # display GGR (incl lotto, net of taxes)
+    real_money_ggr = sports_ggr_real + casino_ggr                              # real money GGR (for NGR, excl lotto)
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
@@ -1249,8 +1265,6 @@ def _summary_period(start: date, end: date) -> dict:
     total_turnover = sports_turnover + casino_total_stake + lotto_stake  # sports + casino + lotto
     real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")
-    casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
-    bonus_money_ggr = casino_bonus_ggr_sp  # sports bonus GGR ≈ 0 (settled GGR only from real money)
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 
     # Actives: period-total unique users from actives_monthly.parquet.
@@ -1282,17 +1296,6 @@ def _summary_period(start: date, end: date) -> dict:
         churn_row = churn_monthly[churn_monthly["month"] == end_month]
         if not churn_row.empty:
             churn_pct = float(churn_row["churn_pct"].iloc[0])
-
-    # Taxes paid — from raw taxes parquet files
-    taxes_paid = 0.0
-    if TAXES_RAW_DIR.exists():
-        tax_files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
-        if tax_files:
-            tax_df = pd.concat([pd.read_parquet(f) for f in tax_files], ignore_index=True)
-            if not tax_df.empty and "date" in tax_df.columns and "taxes_paid" in tax_df.columns:
-                tax_df["_d"] = pd.to_datetime(tax_df["date"], errors="coerce").dt.date
-                tax_df = tax_df[(tax_df["_d"] >= start) & (tax_df["_d"] <= end)]
-                taxes_paid = float(tax_df["taxes_paid"].sum())
 
     # Bonus from BonusTransactions (ReasonID 64=issued, 65=reversed)
     bonus_tx_issued   = _s(bonus, "bonus_tx_issued")
