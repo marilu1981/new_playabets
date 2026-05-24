@@ -1,7 +1,5 @@
 /**
  * PLAYA BETS — Betting & Events Page
- * DWH Views: view_Betslips, view_Bets, view_EventProgram
- * Data source: Supabase daily_kpis table via /api/sportsbook/kpis
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +13,7 @@ import StatusBadge from "@/components/StatusBadge";
 import {
   Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Legend,
 } from "recharts";
 import { TrendingUp, Activity, Zap, Target } from "lucide-react";
 import {
@@ -34,15 +33,19 @@ async function fetchJson<T>(path: string): Promise<T> {
   return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
 
-const CHART_COLORS = {
-  gold: "oklch(0.72 0.14 85)",
-  green: "oklch(0.62 0.17 145)",
-  teal: "oklch(0.65 0.15 195)",
-  amber: "oklch(0.72 0.17 60)",
-  red: "oklch(0.55 0.22 25)",
-};
+const COLORS = { gold: "#ffb500", green: "#7ab800", teal: "#0d8f8f", amber: "#e07b00", red: "#d94040" };
+const CARD_BG = { background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" };
+const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", fontSize: 11 };
 
-const PIE_COLORS = [CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.amber];
+const PIE_COLORS = [COLORS.gold, COLORS.teal, COLORS.amber, COLORS.green, COLORS.red];
+
+interface DailyTrendPoint {
+  date: string;
+  settled_stake: number;
+  settled_winnings: number;
+  ggr: number;
+  betslips_count: number;
+}
 
 export default function BettingPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
@@ -56,6 +59,7 @@ export default function BettingPage() {
     cancelRate: number;
     openExposureStake: number;
   } | null>(null);
+  const [liveStakeTrend, setLiveStakeTrend] = useState<DailyTrendPoint[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,56 +89,39 @@ export default function BettingPage() {
           betslips_won_count?: number;
           betslips_cancelled_count?: number;
           cancel_rate?: number;
+          settled_stake?: number;
+          settled_winnings?: number;
+          ggr?: number;
+          betslips_count?: number;
         }>;
-      }>(`/kpis/daily?${query}&metrics=open_exposure_stake,betslips_settled_count,betslips_won_count,betslips_cancelled_count,cancel_rate`),
+      }>(`/kpis/daily?${query}&metrics=open_exposure_stake,betslips_settled_count,betslips_won_count,betslips_cancelled_count,cancel_rate,settled_stake,settled_winnings,ggr,betslips_count`),
     ])
       .then(([kpisRes, statusRes, typeRes, settlementRes]) => {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         if (kpisRes.status === "fulfilled") {
           const stake = Number(kpisRes.value.settled_stake ?? 0);
           const winnings = Number(kpisRes.value.winnings ?? 0);
           const bets = Number(kpisRes.value.betslips ?? 0);
           if (stake > 0 || bets > 0) {
-            setLiveOverviewKPIs({
-              ...baseOverviewKPIs,
-              totalStake: stake,
-              totalWinnings: winnings,
-              totalBetslips: bets,
-            });
+            setLiveOverviewKPIs({ ...baseOverviewKPIs, totalStake: stake, totalWinnings: winnings, totalBetslips: bets });
           } else {
             setLiveOverviewKPIs(null);
           }
-        } else {
-          setLiveOverviewKPIs(null);
         }
 
         if (statusRes.status === "fulfilled") {
           const rows = statusRes.value
-            .map((row) => ({
-              status: String(row.status ?? "Unknown"),
-              statusId: Number(row.statusId ?? 0),
-              count: Number(row.count ?? 0),
-            }))
+            .map((row) => ({ status: String(row.status ?? "Unknown"), statusId: Number(row.statusId ?? 0), count: Number(row.count ?? 0) }))
             .filter((row) => row.count > 0);
           setLiveBetslipsByStatus(rows.length > 0 ? rows : null);
-        } else {
-          setLiveBetslipsByStatus(null);
         }
 
         if (typeRes.status === "fulfilled") {
           const rows = typeRes.value
-            .map((row) => ({
-              type: String(row.type ?? "Unknown"),
-              typeId: Number(row.typeId ?? 0),
-              count: Number(row.count ?? 0),
-            }))
+            .map((row) => ({ type: String(row.type ?? "Unknown"), typeId: Number(row.typeId ?? 0), count: Number(row.count ?? 0) }))
             .filter((row) => row.count > 0);
           setLiveBetslipsByType(rows.length > 0 ? rows : null);
-        } else {
-          setLiveBetslipsByType(null);
         }
 
         if (settlementRes.status === "fulfilled") {
@@ -154,14 +141,21 @@ export default function BettingPage() {
               settledCount: totals.settledCount,
               wonCount: totals.wonCount,
               cancelledCount: totals.cancelledCount,
-              cancelRate: rows.length > 0 ? Number((totals.cancelRateSum / rows.length).toFixed(1)) : 0,
+              cancelRate: rows.length > 0 ? Number((totals.cancelRateSum / rows.length * 100).toFixed(1)) : 0,
               openExposureStake: Number(latestRow?.open_exposure_stake ?? 0),
             });
-          } else {
-            setLiveSettlementMetrics(null);
+
+            const trendRows = rows
+              .filter((r) => Number(r.settled_stake ?? 0) > 0 || Number(r.betslips_count ?? 0) > 0)
+              .map((r) => ({
+                date: r.date,
+                settled_stake: Number(r.settled_stake ?? 0),
+                settled_winnings: Number(r.settled_winnings ?? 0),
+                ggr: Number(r.ggr ?? 0),
+                betslips_count: Number(r.betslips_count ?? 0),
+              }));
+            setLiveStakeTrend(trendRows);
           }
-        } else {
-          setLiveSettlementMetrics(null);
         }
       })
       .catch(() => {
@@ -173,9 +167,7 @@ export default function BettingPage() {
         }
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [filters.dateFrom, filters.dateTo, filters.territory, filters.country, filters.currentSegment]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
@@ -184,70 +176,95 @@ export default function BettingPage() {
     return scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]);
   }, [multiplier, liveOverviewKPIs]);
 
-
   const betslipsByStatus = useMemo(
-    () =>
-      scaleArrayNumericFields(
-        liveBetslipsByStatus ?? baseBetslipsByStatus,
-        liveBetslipsByStatus ? 1 : multiplier,
-        ["status", "statusId"],
-      ),
+    () => scaleArrayNumericFields(liveBetslipsByStatus ?? baseBetslipsByStatus, liveBetslipsByStatus ? 1 : multiplier, ["status", "statusId"]),
     [liveBetslipsByStatus, multiplier],
   );
   const betslipsByType = useMemo(
-    () =>
-      scaleArrayNumericFields(
-        liveBetslipsByType ?? baseBetslipsByType,
-        liveBetslipsByType ? 1 : multiplier,
-        ["type", "typeId"],
-      ),
+    () => scaleArrayNumericFields(liveBetslipsByType ?? baseBetslipsByType, liveBetslipsByType ? 1 : multiplier, ["type", "typeId"]),
     [liveBetslipsByType, multiplier],
   );
-  const totalBetslipsSafe = Math.max(
-    1,
-    liveBetslipsByStatus
-      ? betslipsByStatus.reduce((sum, row) => sum + row.count, 0)
-      : overviewKPIs.totalBetslips,
-  );
+  const totalBetslipsSafe = Math.max(1, liveBetslipsByStatus ? betslipsByStatus.reduce((s, r) => s + r.count, 0) : overviewKPIs.totalBetslips);
   const margin = overviewKPIs.totalStake > 0
     ? ((overviewKPIs.totalStake - overviewKPIs.totalWinnings) / overviewKPIs.totalStake * 100).toFixed(1)
     : "0.0";
 
   return (
-    <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and event program"
+    <DashboardLayout title="Betting & Events" subtitle="Betslip analysis, bet types, and settlement"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
+
       {/* KPI Row */}
       <div className="relative mb-6">
         <MockOverlay active={!liveOverviewKPIs} badge label="Pending Data" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <KpiCard title="Total Betslips" value={formatFull(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
-          <KpiCard title="Total Stake" value={formatFull(overviewKPIs.totalStake)} subtitle="Selected range" icon={<Zap size={18} />} accent="teal" />
-          <KpiCard title="Total Winnings" value={formatFull(overviewKPIs.totalWinnings)} subtitle="Paid to players" icon={<Activity size={18} />} accent="amber" />
-          <KpiCard title="Gross Margin" value={`${margin}%`} subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
+          <KpiCard title="Total Betslips"  value={formatFull(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Total Stake"     value={formatFull(overviewKPIs.totalStake)}    subtitle="Selected range" icon={<Zap size={18} />}         accent="teal" />
+          <KpiCard title="Total Winnings"  value={formatFull(overviewKPIs.totalWinnings)} subtitle="Paid to players" icon={<Activity size={18} />}  accent="amber" />
+          <KpiCard title="Gross Margin"    value={`${margin}%`}                           subtitle="(Stake − Winnings) / Stake" icon={<Target size={18} />} accent="green" />
         </div>
       </div>
 
-      <div className="relative rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      {/* Settlement Monitor */}
+      <div className="relative rounded-xl p-5 mb-6" style={CARD_BG}>
         <MockOverlay active={!liveSettlementMetrics} badge label="Pending Data" />
         <div className="mb-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Bet Settlement Monitor</h3>
           <p className="text-xs text-gray-400">Settlement flow, cancellations, and current exposure</p>
         </div>
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard title="Settled Betslips" value={formatFull(liveSettlementMetrics?.settledCount ?? 0)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
-          <KpiCard title="Won Betslips" value={formatFull(liveSettlementMetrics?.wonCount ?? 0)} subtitle="Selected range" icon={<Target size={18} />} accent="green" />
-          <KpiCard title="Cancelled Betslips" value={formatFull(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range" icon={<Activity size={18} />} accent="amber" />
-          <KpiCard title="Cancel Rate" value={`${liveSettlementMetrics?.cancelRate ?? 0}%`} subtitle="Average across selected days" icon={<Zap size={18} />} accent="red" />
+          <KpiCard title="Settled Betslips"   value={formatFull(liveSettlementMetrics?.settledCount ?? 0)}   subtitle="Selected range"              icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Won Betslips"        value={formatFull(liveSettlementMetrics?.wonCount ?? 0)}       subtitle="Selected range"              icon={<Target size={18} />}     accent="green" />
+          <KpiCard title="Cancelled Betslips"  value={formatFull(liveSettlementMetrics?.cancelledCount ?? 0)} subtitle="Selected range"              icon={<Activity size={18} />}   accent="amber" />
+          <KpiCard title="Cancel Rate"         value={`${liveSettlementMetrics?.cancelRate ?? 0}%`}           subtitle="% of settled stake"          icon={<Zap size={18} />}        accent="red" />
         </div>
+      </div>
+
+      {/* Stake trend */}
+      <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake vs Winnings vs GGR</h3>
+        <p className="text-xs text-gray-400 mb-4">Daily sportsbook activity — selected period</p>
+        {liveStakeTrend.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={liveStakeTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+              <defs>
+                <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.teal} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={COLORS.teal} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="winGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.amber} stopOpacity={0.25} />
+                  <stop offset="95%" stopColor={COLORS.amber} stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="ggrGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={COLORS.green} stopOpacity={0.4} />
+                  <stop offset="95%" stopColor={COLORS.green} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={62} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatFull(v)} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Area type="monotone" dataKey="settled_stake"    name="Stake"    stroke={COLORS.teal}  fill="url(#stakeGrad)" strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="settled_winnings" name="Winnings" stroke={COLORS.amber} fill="url(#winGrad)"   strokeWidth={2} dot={false} />
+              <Area type="monotone" dataKey="ggr"              name="GGR"      stroke={COLORS.green} fill="url(#ggrGrad)"   strokeWidth={2} dot={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[220px] flex items-center justify-center text-xs text-gray-400">
+            No sportsbook trend data for this period
+          </div>
+        )}
       </div>
 
       {/* Betslip breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+
         {/* By Status */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active badge label="Partial Data" />
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">By Status</h3>
-          <p className="text-xs text-gray-400 mb-4">view_Betslips — BetslipStatusId</p>
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={!liveBetslipsByStatus} badge label="Loading" />
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">By Betslip Status</h3>
+          <p className="text-xs text-gray-400 mb-4">Count by status — selected period</p>
           <div className="space-y-2">
             {betslipsByStatus.map((s) => {
               const pct = (s.count / totalBetslipsSafe * 100).toFixed(1);
@@ -258,7 +275,7 @@ export default function BettingPage() {
                     <span className="text-gray-500 font-mono">{formatCompact(s.count)}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CHART_COLORS.gold }} />
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: COLORS.gold }} />
                   </div>
                 </div>
               );
@@ -267,24 +284,24 @@ export default function BettingPage() {
         </div>
 
         {/* By Type (Normal/Live/Mixed) */}
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active badge label="Partial Data" />
+        <div className="relative rounded-xl p-5" style={CARD_BG}>
+          <MockOverlay active={!liveBetslipsByType} badge label="Loading" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">By Betslip Type</h3>
-          <p className="text-xs text-gray-400 mb-4">Normal / Live / Mixed</p>
+          <p className="text-xs text-gray-400 mb-4">Normal / Live / Mixed split</p>
           <ResponsiveContainer width="100%" height={150}>
             <PieChart>
               <Pie data={betslipsByType} cx="50%" cy="50%" innerRadius={35} outerRadius={60} dataKey="count" nameKey="type" paddingAngle={3}>
-                {betslipsByType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                {betslipsByType.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie>
-              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
+              <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
             </PieChart>
           </ResponsiveContainer>
           <div className="space-y-1.5">
             {betslipsByType.map((t, i) => (
               <div key={t.type} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i] }} />
-                  <span className="text-gray-500">{t.type}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span className="text-gray-600">{t.type}</span>
                 </div>
                 <span className="text-gray-700 font-mono">{formatCompact(t.count)}</span>
               </div>
@@ -292,6 +309,51 @@ export default function BettingPage() {
           </div>
         </div>
 
+        {/* Win/Cancel breakdown */}
+        <div className="rounded-xl p-5" style={CARD_BG}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Outcome Breakdown</h3>
+          <p className="text-xs text-gray-400 mb-4">Settled betslip outcomes — selected period</p>
+          {liveSettlementMetrics ? (
+            <div className="space-y-4">
+              {[
+                { label: "Won", count: liveSettlementMetrics.wonCount, color: COLORS.green },
+                { label: "Cancelled", count: liveSettlementMetrics.cancelledCount, color: COLORS.amber },
+                { label: "Other Settled", count: Math.max(0, liveSettlementMetrics.settledCount - liveSettlementMetrics.wonCount - liveSettlementMetrics.cancelledCount), color: COLORS.teal },
+              ].map((item) => {
+                const pct = liveSettlementMetrics.settledCount > 0
+                  ? (item.count / liveSettlementMetrics.settledCount * 100).toFixed(1)
+                  : "0.0";
+                return (
+                  <div key={item.label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-600 font-medium">{item.label}</span>
+                      <span className="font-mono text-gray-500">{formatCompact(item.count)} ({pct}%)</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: item.color }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Cancel Rate</span>
+                  <span className="font-mono font-semibold" style={{ color: COLORS.amber }}>{liveSettlementMetrics.cancelRate}%</span>
+                </div>
+                {liveSettlementMetrics.openExposureStake > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>Open Exposure</span>
+                    <span className="font-mono font-semibold" style={{ color: COLORS.red }}>{formatFull(liveSettlementMetrics.openExposureStake)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="h-40 flex items-center justify-center text-xs text-gray-400">
+              No settlement data for this period
+            </div>
+          )}
+        </div>
       </div>
 
     </DashboardLayout>

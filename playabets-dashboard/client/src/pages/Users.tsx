@@ -510,9 +510,9 @@ export default function UsersPage() {
               { label: "Pending", value: selfExclusionSummary.pending, color: "oklch(0.72 0.17 60)" },
               { label: "Completed", value: selfExclusionSummary.completed, color: CHART_COLORS.green },
             ].map((s) => (
-              <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "oklch(0.22 0.04 155)" }}>
+              <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
                 <div className="text-xl font-bold mb-1" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs text-gray-400">{s.label}</div>
+                <div className="text-xs text-gray-500">{s.label}</div>
               </div>
             ))}
           </div>
