@@ -84,3 +84,6 @@ docs/SSL-VPN & DWH credentials.msg
 *.xlsx
 scripts/pip*.exe
 Lib/
+
+'export_churn_risk_2026-05-19.csv'
+'export_churn_risk_2026-05-19.xlsx'
