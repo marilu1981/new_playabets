@@ -91,7 +91,9 @@ TRANSFORM_DEPENDENCIES = {
     },
 }
 if ENABLE_TRANSACTIONS:
-    TRANSFORM_DEPENDENCIES["src.kpis.build_domain_kpis"].add("src.extract.incremental_transactions_simple")
+    # user_transactions is needed for sociotopo FC axis — block it if that extract fails.
+    # incremental_transactions_simple is NOT a hard dependency of build_domain_kpis:
+    # casino/bonus/payment_providers must keep rebuilding even when transactions extract fails.
     TRANSFORM_DEPENDENCIES["src.kpis.sociotopo_features"].add("src.extract.incremental_user_transactions")
 
 

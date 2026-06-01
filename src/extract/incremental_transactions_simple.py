@@ -119,11 +119,12 @@ BONUS_REASON_IDS = "54,64,65,143"
 
 def _query_bonus(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
+    # CAST to DECIMAL(38,4) prevents numeric overflow if Amount is a small decimal type
     q = text(f"""
         SELECT
-            SUM(CASE WHEN ReasonID = 54       THEN ABS(Amount) ELSE 0 END) AS bonus_redeemed,
-            SUM(CASE WHEN ReasonID IN (64,143) THEN ABS(Amount) ELSE 0 END) AS bonus_issued,
-            SUM(CASE WHEN ReasonID = 65       THEN ABS(Amount) ELSE 0 END) AS bonus_reversed
+            SUM(CASE WHEN ReasonID = 54       THEN CAST(ABS(Amount) AS DECIMAL(38,4)) ELSE 0.0 END) AS bonus_redeemed,
+            SUM(CASE WHEN ReasonID IN (64,143) THEN CAST(ABS(Amount) AS DECIMAL(38,4)) ELSE 0.0 END) AS bonus_issued,
+            SUM(CASE WHEN ReasonID = 65       THEN CAST(ABS(Amount) AS DECIMAL(38,4)) ELSE 0.0 END) AS bonus_reversed
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
@@ -138,11 +139,12 @@ def _query_bonus(conn, sast_date: str) -> pd.DataFrame:
 
 def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
+    # CAST to DECIMAL(38,4) prevents numeric overflow if Amount is a small decimal type
     q = text(f"""
         SELECT
-            SUM(Amount)             AS deposits,
-            COUNT(DISTINCT UserID)  AS unique_depositors,
-            COUNT(*)                AS deposit_count
+            SUM(CAST(Amount AS DECIMAL(38,4))) AS deposits,
+            COUNT(DISTINCT UserID)             AS unique_depositors,
+            COUNT(*)                           AS deposit_count
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
@@ -161,11 +163,12 @@ def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
     s, e = _sast_day_utc_window(sast_date)
     # Net withdrawals = actual withdrawals - cancel withdrawals.
     # Cancel withdrawal ReasonIDs are stored as positive in the DB so we subtract them.
+    # CAST to DECIMAL(38,4) prevents numeric overflow if Amount is a small decimal type
     q = text(f"""
         SELECT
             SUM(CASE
-                WHEN ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS}) THEN -ABS(Amount)
-                ELSE ABS(Amount)
+                WHEN ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS}) THEN -CAST(ABS(Amount) AS DECIMAL(38,4))
+                ELSE CAST(ABS(Amount) AS DECIMAL(38,4))
             END)            AS withdrawals,
             COUNT(*)        AS withdrawal_count
         FROM {VIEW_NAME}
