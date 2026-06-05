@@ -371,39 +371,27 @@ def main() -> None:
     dep_out = SERVING / "depositors_monthly.parquet"
     if _os.environ.get("REBUILD_DEPOSITORS") == "1" or not dep_out.exists():
         try:
-            from src.extract.db_utils import build_engine
-            from sqlalchemy import text as _text
-
-            DEPOSIT_REASON_IDS = (
-                "249,250,830,835,839,843,851,853,855,857,859,"
-                "861,863,865,867,869,871,877,939"
-            )
-            engine = build_engine()
-            rows = []
-            # Query one month at a time to avoid timeout
-            import datetime
-            months = pd.period_range("2026-01", periods=12, freq="M")
-            for month in months:
-                s = str(month.start_time.date())
-                e = str((month.end_time + datetime.timedelta(days=1)).date())
-                with engine.connect() as conn:
-                    r = conn.execute(_text(f"""
-                        SELECT COUNT(DISTINCT "UserID") AS unique_depositors
-                        FROM "Dwh_en"."view_transactions"
-                        WHERE "TransactionAmountTypeID" = 1
-                          AND "TransactionManagementStatusID" = 3
-                          AND "ReasonID" IN ({DEPOSIT_REASON_IDS})
-                          AND "Date" >= '{s} 00:00:00'
-                          AND "Date" <  '{e} 00:00:00'
-                    """))
-                    val = r.fetchone()
-                    if val and val[0]:
-                        rows.append({"month": str(month), "unique_depositors": int(val[0])})
-                        print(f"[domain_kpis] Depositors {month}: {int(val[0]):,}")
-            if rows:
-                dep_df = pd.DataFrame(rows)
+            # Compute from already-extracted user_transactions parquets — no DWH query needed.
+            # user_transactions_month_YYYYMM.parquet has userid + month + deposits per user.
+            # Users with deposits > 0 in a month are that month's unique depositors.
+            user_tx_dir = RAW_ROOT / "user_transactions"
+            user_tx_files = sorted(user_tx_dir.glob("user_transactions_month_*.parquet")) if user_tx_dir.exists() else []
+            if user_tx_files:
+                tx_df = pd.concat([pd.read_parquet(f) for f in user_tx_files], ignore_index=True)
+                dep_df = (
+                    tx_df[tx_df["deposits"] > 0]
+                    .groupby("month")["userid"]
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={"userid": "unique_depositors"})
+                    .sort_values("month")
+                )
+                for _, row in dep_df.iterrows():
+                    print(f"[domain_kpis] Depositors {row['month']}: {int(row['unique_depositors']):,}")
                 dep_df.to_parquet(dep_out, index=False)
                 print(f"[domain_kpis] Depositors monthly: {len(dep_df)} rows -> {dep_out}")
+            else:
+                print("[domain_kpis] Depositors monthly: no user_transactions parquets found — skipping")
         except Exception as e:
             print(f"[domain_kpis] Depositors monthly: error - {e}")
     else:
