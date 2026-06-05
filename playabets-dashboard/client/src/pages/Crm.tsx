@@ -144,7 +144,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Total Actives"
-            value={totalActives != null ? formatCompact(totalActives) : "—"}
+            value={totalActives != null ? formatFull(totalActives) : "—"}
             subtitle="Unique sports + casino players"
             icon={<Users size={18} />}
             accent="teal"
@@ -221,7 +221,7 @@ export default function CrmPage() {
                   <div key={s.segment} className="flex items-center gap-2 text-xs">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: SEGMENT_COLORS[s.segment] ?? COLORS.teal }} />
                     <span className="text-gray-600 w-16">{s.segment}</span>
-                    <span className="font-mono font-bold text-gray-800">{formatCompact(s.count)}</span>
+                    <span className="font-mono font-bold text-gray-800">{s.count.toLocaleString()}</span>
                     <span className="text-gray-400">({totalRfm > 0 ? ((s.count / totalRfm) * 100).toFixed(1) : 0}%)</span>
                   </div>
                 ))}
