@@ -71,7 +71,7 @@ if ENABLE_TRANSACTIONS:
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",      # builds daily_kpis.parquet + rfm_users.parquet
     "src.kpis.build_domain_kpis",     # builds transactions/bonus/casino serving files
-    "src.kpis.sociotopo_features",    # builds sociotopo_features.parquet (churn/risk)
+    # "src.kpis.sociotopo_features",  # DISABLED — ~12 min UMAP run, not yet in production use
 ]
 
 TRANSFORM_DEPENDENCIES = {
@@ -84,17 +84,16 @@ TRANSFORM_DEPENDENCIES = {
         "src.extract.incremental_bonus",
         "src.extract.incremental_casino",
     },
-    "src.kpis.sociotopo_features": {
-        "src.extract.incremental_users",
-        "src.extract.incremental_betslips",
-        "src.extract.incremental_sessions",
-    },
+    # "src.kpis.sociotopo_features": {  # DISABLED
+    #     "src.extract.incremental_users",
+    #     "src.extract.incremental_betslips",
+    #     "src.extract.incremental_sessions",
+    # },
 }
 if ENABLE_TRANSACTIONS:
-    # user_transactions is needed for sociotopo FC axis — block it if that extract fails.
     # incremental_transactions_simple is NOT a hard dependency of build_domain_kpis:
     # casino/bonus/payment_providers must keep rebuilding even when transactions extract fails.
-    TRANSFORM_DEPENDENCIES["src.kpis.sociotopo_features"].add("src.extract.incremental_user_transactions")
+    pass  # sociotopo_features disabled — user_transactions dependency removed
 
 
 def _run_module(module: str) -> bool:
