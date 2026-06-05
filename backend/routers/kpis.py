@@ -107,6 +107,13 @@ def kpis(
     else:
         casino_actives = _mean_i(casino, "casino_actives")
 
+    # Average Play Days: total wagering user-days / period unique actives
+    # sum(daily_actives) over period = total (user, day) wagering events
+    sports_user_days = _s(df, "actives_sports")
+    casino_user_days = _s(casino, "casino_actives")
+    sports_apd = round(sports_user_days / sportsbook_actives, 1) if sportsbook_actives > 0 else 0.0
+    casino_apd = round(casino_user_days / casino_actives, 1) if casino_actives > 0 else 0.0
+
     lotto_ggr_main   = _s(casino, "lotto_ggr")
     lotto_stake_main = _s(casino, "lotto_stake")
     turnover = sportsbook_turnover + casino_turnover + lotto_stake_main    # incl lotto
@@ -172,6 +179,8 @@ def kpis(
         "unique_depositors": _i(tx, "unique_depositors"),
         "churn_pct": _get_churn_pct(end),
         "taxes_paid": taxes_paid,
+        "sports_apd": sports_apd,
+        "casino_apd": casino_apd,
         "total_actives_unique": _get_total_actives(start, end),
         "period_unique_depositors": _get_monthly_depositors(start, end),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,

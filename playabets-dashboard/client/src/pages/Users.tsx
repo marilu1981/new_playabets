@@ -157,6 +157,7 @@ export default function UsersPage() {
   // so returning to this page feels instant. On first load it starts as true.
   const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
+  const [liveApd, setLiveApd] = useState<{ sports: number; casino: number } | null>(null);
   const [liveRegistrationsDaily, setLiveRegistrationsDaily] = useState<Array<{ date: string; value: number }> | null>(null);
   const [liveDailyActives, setLiveDailyActives] = useState<Array<{ date: string; actives: number }> | null>(null);
   const [liveStatusBreakdown, setLiveStatusBreakdown] = useState<Array<{ status: string; count: number }> | null>(null);
@@ -238,7 +239,7 @@ export default function UsersPage() {
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
       const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes, selfExTrendRes] = await Promise.allSettled([
-        fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number }>(`/kpis?${query}`),
+        fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number; sports_apd?: number; casino_apd?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
@@ -262,6 +263,9 @@ export default function UsersPage() {
           activesSports: Number(kpisRes.value.actives_sports ?? 0),
           activesCasino: Number(kpisRes.value.actives_casino ?? 0),
         });
+        const sa = Number(kpisRes.value.sports_apd ?? 0);
+        const ca = Number(kpisRes.value.casino_apd ?? 0);
+        setLiveApd(sa > 0 || ca > 0 ? { sports: sa, casino: ca } : null);
       }
 
       if (hasRegs) {
@@ -412,12 +416,14 @@ export default function UsersPage() {
     >
 
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <KpiCard title="Registrations" value={formatFull(overviewKPIs.totalUsers)} subtitle="Total registrations in selected range" icon={<Users size={18} />} accent="teal" loading={isLoading} />
           <KpiCard title="Active Users" value={formatFull(overviewKPIs.activeUsers)} subtitle="Status: Enabled" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
           <KpiCard title="Frozen Accounts" value={formatFull(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
           <KpiCard title="Pending KYC" value={formatFull(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
           <KpiCard title="Self-Exclusions" value={liveSelfExclusions ? formatFull(selfExclusionSummary.total) : "Pending"} valueClassName={!liveSelfExclusions ? "text-white/30" : undefined} subtitle="Active self-exclusions" icon={<Shield size={18} />} accent="red" loading={isLoading} />
+          <KpiCard title="Sports APD" value={liveApd ? `${liveApd.sports}d` : "—"} subtitle="Avg play days / bettor" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
+          <KpiCard title="Casino APD" value={liveApd ? `${liveApd.casino}d` : "—"} subtitle="Avg play days / player" icon={<UserCheck size={18} />} accent="gold" loading={isLoading} />
         </div>
       </div>
 
