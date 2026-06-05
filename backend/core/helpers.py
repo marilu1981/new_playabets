@@ -67,6 +67,8 @@ def _get_taxes_paid(start: date, end: date) -> float:
         df = cached["df"]
     if df.empty or "_d" not in df.columns or "taxes_paid" not in df.columns:
         return 0.0
+    # Deduplicate by date — cron runs accumulate duplicate records across multiple files
+    df = df.drop_duplicates(subset=["_d"], keep="last")
     return round(float(df[(df["_d"] >= start) & (df["_d"] <= end)]["taxes_paid"].sum()), 2)
 
 
