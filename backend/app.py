@@ -673,18 +673,25 @@ def _mean_i(df: pd.DataFrame, col: str) -> int:
 
 
 def _get_taxes_paid(start: date, end: date) -> float:
-    """Return total taxes paid for the period from raw taxes parquet files."""
+    """Return total taxes paid for the period. Caches the combined DataFrame by newest-file mtime."""
     if not TAXES_RAW_DIR.exists():
         return 0.0
-    files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+    files = sorted(TAXES_RAW_DIR.glob("taxes_*.parquet"))
     if not files:
         return 0.0
-    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-    if df.empty or "date" not in df.columns or "taxes_paid" not in df.columns:
+    newest_mtime = max(f.stat().st_mtime for f in files)
+    cache_key = "_taxes_raw"
+    cached = _PARQUET_CACHE.get(cache_key)
+    if cached is None or cached.get("mtime") != newest_mtime:
+        df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+        if "date" in df.columns:
+            df["_d"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+        _PARQUET_CACHE[cache_key] = {"mtime": newest_mtime, "df": df}
+    else:
+        df = cached["df"]
+    if df.empty or "_d" not in df.columns or "taxes_paid" not in df.columns:
         return 0.0
-    df["_d"] = pd.to_datetime(df["date"], errors="coerce").dt.date
-    df = df[(df["_d"] >= start) & (df["_d"] <= end)]
-    return round(float(df["taxes_paid"].sum()), 2)
+    return round(float(df[(df["_d"] >= start) & (df["_d"] <= end)]["taxes_paid"].sum()), 2)
 
 
 def _get_churn_pct(end: date) -> float:
@@ -876,7 +883,7 @@ def kpis(
         "bonus_pct": round(_s(tx, "bonus_redeemed") / _s(bonus, "bonus_tx_net") * 100, 1) if _s(bonus, "bonus_tx_net") > 0 else 0.0,
         "unique_depositors": _i(tx, "unique_depositors"),
         "churn_pct": _get_churn_pct(end),
-        "taxes_paid": _get_taxes_paid(start, end),
+        "taxes_paid": taxes_paid,
         "total_actives_unique": _get_total_actives(start, end),
         "period_unique_depositors": _get_monthly_depositors(start, end),
         "has_transactions_data": ENABLE_TRANSACTIONS and not tx.empty,
@@ -1242,15 +1249,7 @@ def _summary_period(start: date, end: date) -> dict:
     casino_display_ggr = casino_total_ggr  # Casino page shows casino only (no lotto)
 
     # Taxes paid — must be computed before total_ggr (client formula: GGR = Real+Bonus GGR - Taxes)
-    taxes_paid = 0.0
-    if TAXES_RAW_DIR.exists():
-        tax_files = list(TAXES_RAW_DIR.glob("taxes_*.parquet"))
-        if tax_files:
-            tax_df = pd.concat([pd.read_parquet(f) for f in tax_files], ignore_index=True)
-            if not tax_df.empty and "date" in tax_df.columns and "taxes_paid" in tax_df.columns:
-                tax_df["_d"] = pd.to_datetime(tax_df["date"], errors="coerce").dt.date
-                tax_df = tax_df[(tax_df["_d"] >= start) & (tax_df["_d"] <= end)]
-                taxes_paid = float(tax_df["taxes_paid"].sum())
+    taxes_paid = _get_taxes_paid(start, end)
 
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
     casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
@@ -2126,27 +2125,18 @@ def casino_types(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
 ):
-    casino_dir = RAW_ROOT / "casino"
-    full_file = casino_dir / "casino_full.parquet"
-    raw_files = (
-        ([full_file] if full_file.exists() else [])
-        + sorted(casino_dir.glob("casino_increment_*.parquet"))
-    )
-    if not raw_files:
+    df = load_parquet_cached(CASINO_PROVIDERS_DAILY_PATH, "casino_providers_daily")
+    if df.empty or "casino_type" not in df.columns:
         return {"types": []}
-
-    df = pd.concat([pd.read_parquet(f) for f in raw_files], ignore_index=True)
-    if start and end and "PlacementDate" in df.columns:
-        df["_d"] = pd.to_datetime(df["PlacementDate"], errors="coerce").dt.date
-        df = df[(df["_d"] >= start) & (df["_d"] <= end)]
-
-    if "CasinoType" not in df.columns:
+    if start and end and "date" in df.columns:
+        df = _filter_range(df, start, end)
+    if df.empty:
         return {"types": []}
-
     out = (
-        df.groupby("CasinoType")
-        .agg(stake=("Stake", "sum"), winnings=("Winnings", "sum"))
+        df.groupby("casino_type")
+        .agg(stake=("stake", "sum"), winnings=("winnings", "sum"))
         .reset_index()
+        .rename(columns={"casino_type": "CasinoType"})
     )
     out["ggr"] = out["stake"] - out["winnings"]
     return {"types": out.sort_values("ggr", ascending=False).to_dict(orient="records")}
