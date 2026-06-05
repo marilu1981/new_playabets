@@ -175,16 +175,15 @@ def _summary_period(start: date, end: date) -> dict:
     sports_bonus_ggr = sports_ggr_total - sports_ggr_real  # ggr_total - ggr = bonus bet GGR
     bonus_money_ggr = sports_bonus_ggr + casino_bonus_ggr_sp
     total_ggr = sports_ggr_total + casino_total_ggr + lotto_ggr - taxes_paid   # display GGR (incl lotto, net of taxes)
-    # real_money_ggr for NGR (excl lotto); real_money_ggr_display adds lotto so buckets sum to total
-    real_money_ggr = sports_ggr_real + casino_ggr                              # for NGR
-    real_money_ggr_display = real_money_ggr + lotto_ggr                        # for display: includes lotto (real-money only product)
+    # Real Money GGR = sports_real + casino_real + lotto - taxes (client formula)
+    real_money_ggr = sports_ggr_real + casino_ggr                              # pre-tax, excl lotto
+    real_money_ggr_display = real_money_ggr + lotto_ggr - taxes_paid           # displayed value: incl lotto, net of taxes
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
-    # NGR = Real Money GGR - Bonus Converted (ReasonID 54).
-    # Falls back to bonus_spent from view_BonusBonuses if transactions bonus not yet available.
+    # NGR = Real Money GGR (excl lotto, net of taxes) - Bonus Converted
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = real_money_ggr - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = real_money_ggr - taxes_paid - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_total_stake + lotto_stake  # sports + casino + lotto
     real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")

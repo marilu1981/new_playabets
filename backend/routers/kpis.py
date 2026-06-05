@@ -125,15 +125,14 @@ def kpis(
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
     ggr = sportsbook_ggr + casino_ggr_display + lotto_ggr_main - taxes_paid   # incl lotto, net of taxes
     # real_money_ggr = sports(real) + horse_racing + casino(real) + lotto (lotto is real-money only)
-    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # for NGR (excl lotto)
-    real_money_ggr_display = ggr_real + lotto_ggr_main                    # display includes lotto
+    ggr_real = (_s(df, "ggr") + horse_racing_ggr) + casino_ggr            # pre-tax, excl lotto
+    real_money_ggr_display = ggr_real + lotto_ggr_main - taxes_paid       # displayed: incl lotto, net of taxes (client formula)
     bonus_money_ggr = (sportsbook_ggr - _s(df, "ggr") - horse_racing_ggr) + casino_bonus_ggr
-    # Internal check: real_money_ggr_display + bonus_money_ggr - taxes_paid == ggr ✓
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = ggr_real - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = ggr_real - taxes_paid - (bonus_converted if bonus_converted > 0 else bonus_spent)
 
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
