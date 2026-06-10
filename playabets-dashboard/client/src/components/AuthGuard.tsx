@@ -1,38 +1,59 @@
 /**
  * AuthGuard — wraps the entire app.
  * Shows the Login page if the user is not authenticated.
- * Listens to Supabase auth state changes for real-time session management.
+ * Enforces mandatory TOTP 2FA: accounts without a verified factor are
+ * routed to enrollment; accounts with a factor must complete a challenge
+ * each session before reaching the dashboard.
  */
 
-import { useState, useEffect, ReactNode } from "react";
+import { useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import Login from "../pages/Login";
+import MfaEnroll from "../pages/MfaEnroll";
+import MfaChallenge from "../pages/MfaChallenge";
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
+type AuthState = "loading" | "signed-out" | "needs-enroll" | "needs-challenge" | "authenticated";
+
 export default function AuthGuard({ children }: AuthGuardProps) {
-  const [session, setSession] = useState<boolean | null>(null); // null = loading
+  const [state, setState] = useState<AuthState>("loading");
+
+  const refresh = useCallback(async () => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      setState("signed-out");
+      return;
+    }
+
+    const { data: aal, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error || !aal) {
+      setState("signed-out");
+      return;
+    }
+
+    if (aal.currentLevel === "aal2") {
+      setState("authenticated");
+    } else if (aal.nextLevel === "aal2") {
+      // Account has a verified MFA factor but this session hasn't completed the challenge
+      setState("needs-challenge");
+    } else {
+      // No verified MFA factor enrolled yet — mandatory setup
+      setState("needs-enroll");
+    }
+  }, []);
 
   useEffect(() => {
-    // Check existing session on mount
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(!!data.session);
-    });
-
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(!!s);
-    });
-
+    refresh();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => refresh());
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [refresh]);
 
-  // Loading state — show nothing while checking session
-  if (session === null) {
+  if (state === "loading") {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -46,8 +67,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (!session) {
-    return <Login onLogin={() => setSession(true)} />;
+  if (state === "signed-out") {
+    return <Login onLogin={refresh} />;
+  }
+
+  if (state === "needs-enroll") {
+    return <MfaEnroll onComplete={refresh} />;
+  }
+
+  if (state === "needs-challenge") {
+    return <MfaChallenge onComplete={refresh} />;
   }
 
   return <>{children}</>;
