@@ -35,6 +35,8 @@ SELECT_COLUMNS = [
     "u.bookmaker AS bookmaker",
     "u.parentid AS parentid",
     "u.username AS username",
+    "u.name AS name",
+    "u.surname AS surname",
     "u.userstatus AS userstatus",
     "u.testuser AS testuser",
     "u.usertypeid AS usertypeid",

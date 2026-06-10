@@ -23,6 +23,7 @@ from .bonus_kpis import compute_bonus_daily, compute_bonus_transactions_daily
 from .ftd_kpis import compute_ftd_daily
 from .casino_kpis import compute_casino_daily, compute_casino_provider_daily
 from .conversion_cohorts_kpi import compute_conversion_cohorts_daily
+from .vip_kpis import build_vip_roster
 
 RAW = RAW_ROOT
 SERVING = SERVING_ROOT
@@ -432,6 +433,20 @@ def main() -> None:
             print("[domain_kpis] Payment providers: no raw files found (run incremental_payment_providers first)")
     except Exception as e:
         print(f"[domain_kpis] Payment providers: error - {e}")
+
+    # VIP roster — built from client-provided vip_list.csv (committed to repo)
+    try:
+        vip_df = build_vip_roster()
+        if not vip_df.empty:
+            vip_out = SERVING / "vip_roster.parquet"
+            vip_df.to_parquet(vip_out, index=False)
+            n_err = int(vip_df["is_date_error"].sum())
+            print(f"[domain_kpis] VIP roster: {len(vip_df)} stints, {vip_df['userid'].nunique()} users -> {vip_out}"
+                  + (f" ({n_err} date errors flagged)" if n_err else ""))
+        else:
+            print("[domain_kpis] VIP roster: vip_list.csv not found — skipping")
+    except Exception as e:
+        print(f"[domain_kpis] VIP roster: error - {e}")
 
     print("[domain_kpis] Done.")
 
