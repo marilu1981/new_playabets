@@ -16,6 +16,7 @@ from backend.core.cache import (
     RFM_MONTHLY_PATH,
     SELFEXCLUSIONS_PATH,
     SOCIOTOPO_PATH,
+    VIP_LIST_PATH,
     load_parquet_cached,
     load_daily_df,
 )
@@ -27,6 +28,97 @@ from backend.core.filters import (
 )
 
 router = APIRouter()
+
+
+def _load_vip_list() -> pd.DataFrame:
+    if not VIP_LIST_PATH.exists():
+        return pd.DataFrame()
+    try:
+        df = pd.read_csv(VIP_LIST_PATH)
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return df
+    df, _ = normalize_cols(df)
+    rename_map = {
+        "userid": "user_id",
+        "accountmanager": "account_manager",
+        "viplifecyclestage": "vip_lifecycle_stage",
+        "onboarddate": "onboard_date",
+        "offboarddate": "offboard_date",
+    }
+    cols = {c: rename_map.get(c, c) for c in df.columns}
+    df = df.rename(columns=cols)
+    for col in ["user_id", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date"]:
+        if col not in df.columns:
+            df[col] = None
+    df["user_id"] = df["user_id"].astype(str).str.strip()
+    df["account_manager"] = df["account_manager"].fillna("Unassigned").astype(str).str.strip().replace("", "Unassigned")
+    df["vip_lifecycle_stage"] = df["vip_lifecycle_stage"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
+    df["onboard_date"] = pd.to_datetime(df["onboard_date"], errors="coerce").dt.date
+    if "offboard_date" in df.columns:
+        df["offboard_date"] = pd.to_datetime(df["offboard_date"], errors="coerce").dt.date
+    return df
+
+
+@router.get("/vip/list")
+def vip_list(
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+    limit: int = Query(250, ge=1, le=5000),
+):
+    df = _load_vip_list()
+    if df.empty:
+        return {"rows": [], "total": 0, "has_data": False}
+
+    d = df.copy()
+    if account_manager:
+        am = str(account_manager).strip()
+        d = d[d["account_manager"].astype(str) == am]
+    if stage:
+        st = str(stage).strip()
+        d = d[d["vip_lifecycle_stage"].astype(str) == st]
+
+    d = d.sort_values(["vip_lifecycle_stage", "account_manager", "user_id"], kind="stable")
+    total = int(len(d))
+    rows = d.head(limit)[[c for c in ["user_id", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date"] if c in d.columns]].copy()
+    records = rows.to_dict(orient="records")
+    for row in records:
+        if row.get("onboard_date") is not None:
+            row["onboard_date"] = str(row["onboard_date"])
+        if row.get("offboard_date") is not None:
+            row["offboard_date"] = str(row["offboard_date"])
+    return {
+        "rows": records,
+        "total": total,
+        "has_data": True,
+        "filters_applied": {
+            "account_manager": bool(account_manager),
+            "stage": bool(stage),
+        },
+    }
+
+
+@router.get("/vip/summary")
+def vip_summary():
+    df = _load_vip_list()
+    if df.empty:
+        return {"has_data": False, "total": 0, "by_stage": [], "by_account_manager": []}
+
+    total = int(len(df))
+    stage_counts = df["vip_lifecycle_stage"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown").value_counts()
+    manager_counts = df["account_manager"].fillna("Unassigned").astype(str).str.strip().replace("", "Unassigned").value_counts()
+    onboarded = int(df["onboard_date"].notna().sum()) if "onboard_date" in df.columns else 0
+    active_now = int((df.get("vip_lifecycle_stage", pd.Series(dtype=str)).astype(str).str.lower() == "hosted vip").sum()) if "vip_lifecycle_stage" in df.columns else 0
+
+    return {
+        "has_data": True,
+        "total": total,
+        "active_now": active_now,
+        "with_onboard_date": onboarded,
+        "by_stage": [{"stage": str(stage), "count": int(count)} for stage, count in stage_counts.items()],
+        "by_account_manager": [{"account_manager": str(manager), "count": int(count)} for manager, count in manager_counts.items()],
+    }
 
 
 @router.get("/users/status-breakdown")

@@ -61,6 +61,7 @@ CASINO_PROVIDERS_DAILY_PATH = _SERVING / "casino_providers_daily.parquet"
 SELFEXCLUSIONS_PATH    = _RAW / "selfexclusions" / "selfexclusions_current_latest.parquet"
 SOCIOTOPO_PATH         = _SERVING / "sociotopo_features.parquet"
 TAXES_RAW_DIR          = _RAW / "taxes"
+VIP_LIST_PATH           = _ROOT / "vip_list.csv"
 
 # Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
 # Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus — exclude them.

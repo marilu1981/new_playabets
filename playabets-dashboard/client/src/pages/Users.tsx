@@ -9,9 +9,10 @@ import DashboardLayout from "@/components/DashboardLayout";
 import KpiCard from "@/components/KpiCard";
 import StatusBadge from "@/components/StatusBadge";
 import MockOverlay from "@/components/MockOverlay";
+import DataTable from "@/components/DataTable";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Users, UserCheck, UserX, Shield, Clock } from "lucide-react";
 import {
@@ -150,6 +151,23 @@ function aggregateByGranularity<T extends Record<string, unknown>>(
     });
 }
 
+  type VipRow = {
+    user_id: string;
+    account_manager: string;
+    vip_lifecycle_stage: string;
+    onboard_date?: string | null;
+    offboard_date?: string | null;
+  };
+
+  type VipSummary = {
+    has_data: boolean;
+    total: number;
+    active_now: number;
+    with_onboard_date: number;
+    by_stage: Array<{ stage: string; count: number }>;
+    by_account_manager: Array<{ account_manager: string; count: number }>;
+  };
+
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
@@ -165,7 +183,9 @@ export default function UsersPage() {
     total: number; inProgress: number; pending: number; completed: number;
     byPeriod: Array<{ period: string; count: number }>;
   } | null>(null);
-  const [liveSelfExclusionTrend, setLiveSelfExclusionTrend] = useState<Array<{ date: string; started: number; active: number; completed: number }> | null>(null);
+  const [vipSummary, setVipSummary] = useState<VipSummary | null>(null);
+  const [vipRows, setVipRows] = useState<VipRow[] | null>(null);
+  const [vipManagerFilter, setVipManagerFilter] = useState<string>("all");
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const fallbackYear = useMemo(() => {
@@ -245,7 +265,6 @@ export default function UsersPage() {
         fetchJson<{ rows: Array<{ date: string; actives_sports?: number }> }>(`/kpis/daily?${query}&metrics=actives_sports`),
         fetchJson<{ points: Array<{ date: string; casino_actives?: number; actives?: number }> }>(`/casino/daily?${query}`),
         fetchJson<{ total: number; inProgress: number; pending: number; completed: number; byPeriod: Array<{ period: string; count: number }>; has_data?: boolean }>(`/users/self-exclusions`),
-        fetchJson<{ points: Array<{ date: string; started: number; active: number; completed: number }> }>(`/users/self-exclusions/trend?start=${filters.dateFrom}&end=${filters.dateTo}`),
       ]);
 
       if (cancelled) {
@@ -293,12 +312,6 @@ export default function UsersPage() {
         setLiveSelfExclusions(null);
       }
 
-      if (selfExTrendRes.status === "fulfilled" && (selfExTrendRes.value.points?.length ?? 0) > 0) {
-        setLiveSelfExclusionTrend(selfExTrendRes.value.points);
-      } else {
-        setLiveSelfExclusionTrend(null);
-      }
-
       if (dailyRes.status === "fulfilled" || casinoRes.status === "fulfilled") {
         const sportsbookRows = dailyRes.status === "fulfilled" ? dailyRes.value.rows ?? [] : [];
         const casinoRows = casinoRes.status === "fulfilled" ? casinoRes.value.points ?? [] : [];
@@ -337,6 +350,49 @@ export default function UsersPage() {
     filters.currentSegment,
     filters.granularity,
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadVipData() {
+      const params = new URLSearchParams();
+      if (vipManagerFilter !== "all") {
+        params.set("account_manager", vipManagerFilter);
+      }
+      const query = params.toString();
+      const [summaryRes, listRes] = await Promise.allSettled([
+        fetchJson<VipSummary>("/vip/summary"),
+        fetchJson<{ rows: VipRow[] }>(`/vip/list${query ? `?${query}` : ""}`),
+      ]);
+
+      if (cancelled) {
+        return;
+      }
+
+      if (summaryRes.status === "fulfilled") {
+        setVipSummary(summaryRes.value);
+      } else {
+        setVipSummary(null);
+      }
+
+      if (listRes.status === "fulfilled") {
+        setVipRows(listRes.value.rows ?? []);
+      } else {
+        setVipRows(null);
+      }
+    }
+
+    loadVipData().catch(() => {
+      if (!cancelled) {
+        setVipSummary(null);
+        setVipRows(null);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [vipManagerFilter]);
 
   const statusSource = liveStatusBreakdown ?? baseUsersByStatus;
   const statusMultiplier = liveStatusBreakdown ? 1 : multiplier;
@@ -383,14 +439,6 @@ export default function UsersPage() {
       byPeriod: scaledByPeriod,
     };
   }, [liveSelfExclusions, multiplier]);
-  const selfExclusionTrend = useMemo(
-    () => {
-      const source = liveSelfExclusionTrend ?? baseSelfExclusionTrend;
-      const filtered = filterByDateRange(source, filters, (row) => row.date, { fallbackYear });
-      return aggregateByGranularity(filtered, filters.granularity ?? "daily", (row) => row.date, { fallbackYear });
-    },
-    [fallbackYear, filters, liveSelfExclusionTrend],
-  );
   const overviewKPIs = useMemo(() => {
     const totalUsers = usersByStatus.reduce((sum, row) => sum + row.count, 0);
     const activeUsers = usersByStatus.find((row) => row.status === "Enabled")?.count ?? 0;
@@ -405,7 +453,11 @@ export default function UsersPage() {
   const totalUsersSafe = Math.max(1, overviewKPIs.totalUsers);
   const frozenUsers = usersByStatus.find((u) => u.status === "Frozen")?.count ?? 0;
   const pendingKycUsers = usersByStatus.find((u) => u.status === "Be Validated")?.count ?? 0;
-  const selfExclusionTotalSafe = Math.max(1, selfExclusionSummary.total);
+  const vipTableRows = vipRows ?? [];
+  const vipManagerOptions = useMemo(() => {
+    const managers = vipSummary?.by_account_manager?.map((row) => row.account_manager) ?? [];
+    return Array.from(new Set(managers)).sort((a, b) => a.localeCompare(b));
+  }, [vipSummary]);
 
   return (
     <DashboardLayout
@@ -458,8 +510,8 @@ export default function UsersPage() {
       </div>
 
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="mb-6">
+        <div className="relative rounded-xl p-5 mb-4" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveStatusBreakdown} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-2">User Status Breakdown</h3>
           <p className="text-xs text-gray-400 mb-4">Derived from the latest `userstatus` field export.</p>
@@ -488,50 +540,87 @@ export default function UsersPage() {
         </div>
 
         <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active={!liveSelfExclusionTrend} badge label="PENDING DATA" />
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusions Over Time</h3>
-          <p className="text-xs text-gray-400 mb-4">{granularityLabel} responsible-gaming trend</p>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={selfExclusionTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 9 }} axisLine={false} tickLine={false} interval={0} />
-              <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
-              <Tooltip contentStyle={{ background: "#fff", border: "1px solid #e4ece4", fontSize: 11 }} />
-              <Line type="monotone" dataKey="active" name="Active" stroke={CHART_COLORS.red} strokeWidth={2.25} dot={false} />
-              <Line type="monotone" dataKey="started" name="Started" stroke={CHART_COLORS.gold} strokeWidth={1.75} dot={false} />
-              <Line type="monotone" dataKey="completed" name="Completed" stroke={CHART_COLORS.green} strokeWidth={1.75} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active={!liveSelfExclusions} badge label="Pending Data" />
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Self-Exclusion Summary</h3>
-          <p className="text-xs text-gray-400 mb-4">Responsible gaming overview{liveSelfExclusions ? " — live data" : " — mock data"}</p>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[
-              { label: "In Progress", value: selfExclusionSummary.inProgress, color: CHART_COLORS.gold },
-              { label: "Pending", value: selfExclusionSummary.pending, color: "oklch(0.72 0.17 60)" },
-              { label: "Completed", value: selfExclusionSummary.completed, color: CHART_COLORS.green },
-            ].map((s) => (
-              <div key={s.label} className="text-center p-3 rounded-lg" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
-                <div className="text-xl font-bold mb-1" style={{ color: s.color }}>{s.value}</div>
-                <div className="text-xs text-gray-500">{s.label}</div>
-              </div>
-            ))}
+          <MockOverlay active={!vipSummary} badge label="VIP CSV" />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between mb-5">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">VIP Snapshot</h3>
+              <p className="text-xs text-gray-400">Root-level CSV snapshot with user, manager, lifecycle stage, and onboard date.</p>
+            </div>
+            <div className="flex items-center gap-3 text-sm">
+              <label className="text-xs font-medium uppercase tracking-wide text-gray-500" htmlFor="vip-manager-filter">Account manager</label>
+              <select
+                id="vip-manager-filter"
+                value={vipManagerFilter}
+                onChange={(e) => setVipManagerFilter(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="all">All managers</option>
+                {vipManagerOptions.map((manager) => (
+                  <option key={manager} value={manager}>{manager}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="space-y-2">
-            {selfExclusionSummary.byPeriod.map((p) => (
-              <div key={p.period} className="flex items-center justify-between text-xs">
-                <span className="text-gray-500">{p.period}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-1.5 rounded-full bg-white/5 overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${(p.count / selfExclusionTotalSafe) * 100}%`, background: CHART_COLORS.red }} />
-                  </div>
-                  <span className="text-gray-600 w-6 text-right font-medium">{p.count}</span>
-                </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="rounded-lg border border-gray-200 bg-emerald-50 p-3">
+              <div className="text-xs uppercase tracking-wide text-emerald-700/70">VIP users</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-900">{vipSummary ? formatFull(vipSummary.total) : "—"}</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-emerald-50 p-3">
+              <div className="text-xs uppercase tracking-wide text-emerald-700/70">Hosted VIP</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-900">{vipSummary ? formatFull(vipSummary.active_now) : "—"}</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-emerald-50 p-3">
+              <div className="text-xs uppercase tracking-wide text-emerald-700/70">With onboard date</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-900">{vipSummary ? formatFull(vipSummary.with_onboard_date) : "—"}</div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-emerald-50 p-3">
+              <div className="text-xs uppercase tracking-wide text-emerald-700/70">Managers</div>
+              <div className="mt-1 text-2xl font-semibold text-emerald-900">{vipSummary ? formatFull(vipSummary.by_account_manager.length) : "—"}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <div className="rounded-lg border border-gray-200 p-4 xl:col-span-1">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">By lifecycle stage</h4>
+              <div className="space-y-3">
+                {(vipSummary?.by_stage ?? []).map((row) => {
+                  const pct = vipSummary && vipSummary.total > 0 ? (row.count / vipSummary.total) * 100 : 0;
+                  return (
+                    <div key={row.stage}>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-600">{row.stage}</span>
+                        <span className="font-medium text-gray-800">{formatNumber(row.count)}</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: CHART_COLORS.teal }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </div>
+
+            <div className="rounded-lg border border-gray-200 p-4 xl:col-span-2">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">VIP roster</h4>
+              <DataTable<VipRow>
+                compact
+                className="border-gray-200"
+                emptyMessage={vipSummary ? "No VIP rows match the selected manager." : "VIP data is not available yet."}
+                columns={[
+                  { key: "user_id", header: "User ID", mono: true },
+                  { key: "account_manager", header: "Account Manager" },
+                  { key: "vip_lifecycle_stage", header: "Lifecycle Stage" },
+                  {
+                    key: "onboard_date",
+                    header: "Onboard Date",
+                    render: (row) => row.onboard_date ?? "—",
+                  },
+                ]}
+                data={vipTableRows}
+              />
+            </div>
           </div>
         </div>
       </div>
