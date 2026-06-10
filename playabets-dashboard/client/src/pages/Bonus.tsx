@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 /**
  * PLAYA BETS — Bonus & Campaigns Page
  * DWH Views: view_BonusCampaigns, view_BonusBalances, view_Freebets
@@ -8,17 +8,10 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
-import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
 import { Gift, Users, Percent, Ticket } from "lucide-react";
-import { bonusCampaigns as baseBonusCampaigns, bonusKPIs as baseBonusKPIs } from "@/lib/mockData";
-import { formatCompact, formatFull, formatNumber } from "@/lib/formatters";
-import {
-  filterByDateRange,
-  getFilterMultiplier,
-  scaleArrayNumericFields,
-  scaleObjectNumericFields,
-} from "@/lib/filterUtils";
+import { formatCompact, formatFull } from "@/lib/formatters";
+import { filterByDateRange } from "@/lib/filterUtils";
 
 import { cachedFetch } from "@/lib/apiCache";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
@@ -58,7 +51,6 @@ export default function BonusPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [liveBonusCards, setLiveBonusCards] = useState<BonusCards | null>(null);
   const [liveCampaigns, setLiveCampaigns] = useState<BonusCampaignRow[] | null>(null);
-  const [liveFreebets, setLiveFreebets] = useState<{ issued: number; used: number; expired: number; pending: number; total_amount: number } | null>(null);
 
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
@@ -107,118 +99,31 @@ export default function BonusPage() {
         setLiveCampaigns(campaigns.length > 0 ? campaigns : null);
       })
       .catch(() => setLiveCampaigns(null));
-
-    fetchJson<{ issued?: number; used?: number; expired?: number; pending?: number; total_amount?: number; has_data?: boolean }>(
-      `/bonus/freebets?${query}`
-    )
-      .then((d) => {
-        if (d.has_data === false || (d.issued ?? 0) === 0) {
-          setLiveFreebets(null);
-          return;
-        }
-        setLiveFreebets({
-          issued: Number(d.issued ?? 0),
-          used: Number(d.used ?? 0),
-          expired: Number(d.expired ?? 0),
-          pending: Number(d.pending ?? 0),
-          total_amount: Number(d.total_amount ?? 0),
-        });
-      })
-      .catch(() => setLiveFreebets(null));
   }, [filters.dateFrom, filters.dateTo]);
 
-  const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
-  const bonusCampaigns = useMemo<BonusCampaignRow[]>(
-    () => {
-      if (liveCampaigns) {
-        return filterByDateRange(liveCampaigns, filters, (row) => row.startDate);
-      }
-      return scaleArrayNumericFields(
-        filterByDateRange(baseBonusCampaigns, filters, (row) => row.startDate),
-        multiplier,
-        ["campaignId", "name", "status", "bonusType", "startDate", "endDate", "roi"],
-      ) as BonusCampaignRow[];
-    },
-    [filters, liveCampaigns, multiplier],
-  );
-  const bonusKPIs = useMemo(() => {
-    return scaleObjectNumericFields(baseBonusKPIs, multiplier);
-  }, [multiplier]);
-
-  const bonusCards = useMemo<BonusCards>(() => {
-    if (liveBonusCards) return liveBonusCards;
-    return {
-      totalBonusesCredited: Number(bonusKPIs.totalBonusBalance ?? 0),
-      estTotalBonusesPerUser: Number(bonusKPIs.freebetsIssued ?? 0),
-      averageDailyBonusPerUser: Number(bonusKPIs.avgBonusPerUser ?? 0),
-      averageDailyUniqueBonusUsers: Number(bonusKPIs.activeCampaigns ?? 0),
-      bonusesPaidTotalCount: Number((bonusKPIs.freebetsUsed ?? 0) + (bonusKPIs.freebetsExpired ?? 0)),
-    };
-  }, [bonusKPIs, liveBonusCards]);
-
-  const freebetStats = useMemo(() => {
-    if (liveFreebets) return liveFreebets;
-    return {
-      issued: bonusKPIs.freebetsIssued,
-      used: bonusKPIs.freebetsUsed,
-      expired: bonusKPIs.freebetsExpired,
-      pending: bonusKPIs.freebetsIssued - bonusKPIs.freebetsUsed - bonusKPIs.freebetsExpired,
-      total_amount: 0,
-    };
-  }, [liveFreebets, bonusKPIs]);
-  const issuedSafe = Math.max(1, freebetStats.issued);
-  const pageMode = liveBonusCards || liveCampaigns || liveFreebets ? "partial" : "mock";
+  const bonusCampaigns = liveCampaigns
+    ? filterByDateRange(liveCampaigns, filters, (row) => row.startDate)
+    : [];
 
   return (
     <DashboardLayout title="Bonus & Campaigns" subtitle="Campaign performance, freebet usage, and bonus balances"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      <div className="text-xs text-gray-400 mb-3">
-        Data mode: {pageMode === "partial" ? "Partial Live" : "Mock"}
-      </div>
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-          <KpiCard title="Average Daily Unique Bonus Users" value={formatFull(Math.round(bonusCards.averageDailyUniqueBonusUsers))} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
-          <KpiCard title="Total Bonuses Credited" value={formatFull(bonusCards.totalBonusesCredited)} subtitle="Total credited in selected range" icon={<Percent size={18} />} accent="amber" />
-          <KpiCard title="Est. Total Bonuses per User" value={formatFull(bonusCards.estTotalBonusesPerUser)} subtitle="Sum of daily bonus-per-user values" icon={<Ticket size={18} />} accent="teal" />
-          <KpiCard title="Average Daily Bonus per User" value={`${bonusCards.averageDailyBonusPerUser.toFixed(1)}`} subtitle="Mean of daily credited/user" icon={<Users size={18} />} accent="green" />
-          <KpiCard title="Bonuses Paid - Total Count" value={formatFull(bonusCards.bonusesPaidTotalCount)} subtitle="Total bonus count in selected range" icon={<Gift size={18} />} accent="gold" />
+          <KpiCard title="Average Daily Unique Bonus Users" value={liveBonusCards ? formatFull(Math.round(liveBonusCards.averageDailyUniqueBonusUsers)) : "Pending"} subtitle="Mean daily unique users bonused" icon={<Gift size={18} />} accent="gold" />
+          <KpiCard title="Total Bonuses Credited" value={liveBonusCards ? formatFull(liveBonusCards.totalBonusesCredited) : "Pending"} subtitle="Total credited in selected range" icon={<Percent size={18} />} accent="amber" />
+          <KpiCard title="Est. Total Bonuses per User" value={liveBonusCards ? formatFull(liveBonusCards.estTotalBonusesPerUser) : "Pending"} subtitle="Sum of daily bonus-per-user values" icon={<Ticket size={18} />} accent="teal" />
+          <KpiCard title="Average Daily Bonus per User" value={liveBonusCards ? liveBonusCards.averageDailyBonusPerUser.toFixed(1) : "Pending"} subtitle="Mean of daily credited/user" icon={<Users size={18} />} accent="green" />
+          <KpiCard title="Bonuses Paid - Total Count" value={liveBonusCards ? formatFull(liveBonusCards.bonusesPaidTotalCount) : "Pending"} subtitle="Total bonus count in selected range" icon={<Gift size={18} />} accent="gold" />
         </div>
       </div>
 
-      {/* Freebet funnel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active={!liveFreebets} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Freebet Funnel</h3>
-          <p className="text-xs text-gray-400 mb-4">Issued → Used → Expired</p>
-          <div className="space-y-4">
-            {[
-              { label: "Issued", value: freebetStats.issued, color: CHART_COLORS.gold, pct: 100 },
-              { label: "Used", value: freebetStats.used, color: CHART_COLORS.green, pct: freebetStats.used / issuedSafe * 100 },
-              { label: "Expired", value: freebetStats.expired, color: CHART_COLORS.red, pct: freebetStats.expired / issuedSafe * 100 },
-              { label: "Pending", value: freebetStats.pending, color: CHART_COLORS.amber, pct: freebetStats.pending / issuedSafe * 100 },
-            ].map((f) => (
-              <div key={f.label}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-500">{f.label}</span>
-                  <span className="font-mono" style={{color: f.color }}>
-                    {formatCompact(f.value)} ({f.pct.toFixed(1)}%)
-                  </span>
-                </div>
-                <div className="h-2.5 rounded-full bg-white/5 overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${f.pct}%`, background: f.color }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Campaign stats */}
-        <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <MockOverlay active={!liveCampaigns} badge label="Mock Data" />
-          <h3 className="text-sm font-semibold text-gray-800 mb-1">Campaign Performance</h3>
-          <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns — recent campaigns</p>
+      {/* Campaign Performance */}
+      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Campaign Performance</h3>
+        <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns — recent campaigns</p>
+        {bonusCampaigns.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -253,7 +158,11 @@ export default function BonusPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        ) : (
+          <div className="h-24 flex items-center justify-center text-xs text-gray-400">
+            No campaign data available for this period
+          </div>
+        )}
       </div>
 
     </DashboardLayout>
