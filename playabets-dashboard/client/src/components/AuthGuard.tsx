@@ -1,47 +1,51 @@
 /**
  * AuthGuard — wraps the entire app.
  * Shows the Login page if the user is not authenticated.
- * Enforces mandatory TOTP 2FA: accounts without a verified factor are
- * routed to enrollment; accounts with a factor must complete a challenge
- * each session before reaching the dashboard.
+ * 2FA is not enforced in-app; session authentication is sufficient.
  */
 
 import { useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import Login from "../pages/Login";
-import MfaEnroll from "../pages/MfaEnroll";
-import MfaChallenge from "../pages/MfaChallenge";
 
 interface AuthGuardProps {
   children: ReactNode;
 }
 
-type AuthState = "loading" | "signed-out" | "needs-enroll" | "needs-challenge" | "authenticated";
+type AuthState = "loading" | "signed-out" | "authenticated";
+
+const AUTH_TIMEOUT_MS = 10000;
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Auth request timed out")), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const [state, setState] = useState<AuthState>("loading");
 
   const refresh = useCallback(async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      setState("signed-out");
-      return;
-    }
+    try {
+      const { data: sessionData } = await withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS);
+      if (!sessionData.session) {
+        setState("signed-out");
+        return;
+      }
 
-    const { data: aal, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (error || !aal) {
-      setState("signed-out");
-      return;
-    }
-
-    if (aal.currentLevel === "aal2") {
       setState("authenticated");
-    } else if (aal.nextLevel === "aal2") {
-      // Account has a verified MFA factor but this session hasn't completed the challenge
-      setState("needs-challenge");
-    } else {
-      // No verified MFA factor enrolled yet — mandatory setup
-      setState("needs-enroll");
+    } catch (error) {
+      console.error("Auth guard refresh failed", error);
+      setState("signed-out");
     }
   }, []);
 
@@ -69,14 +73,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   if (state === "signed-out") {
     return <Login onLogin={refresh} />;
-  }
-
-  if (state === "needs-enroll") {
-    return <MfaEnroll onComplete={refresh} />;
-  }
-
-  if (state === "needs-challenge") {
-    return <MfaChallenge onComplete={refresh} />;
   }
 
   return <>{children}</>;
