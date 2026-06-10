@@ -103,6 +103,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [
       { path: "/", label: "Dashboard", icon: LayoutDashboard },
       { path: "/crm", label: "CRM Dashboard", icon: Users },
+      { path: "/vip", label: "VIP Portfolio", icon: ShieldAlert },
       { path: "/product", label: "Product Dashboard", icon: BarChart2 },
     ],
   },

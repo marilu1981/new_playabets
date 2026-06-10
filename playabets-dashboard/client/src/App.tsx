@@ -22,6 +22,7 @@ const TransactionsPage = lazy(() => import("./pages/Transactions"));
 const CasinoPage       = lazy(() => import("./pages/Casino"));
 const BonusPage        = lazy(() => import("./pages/Bonus"));
 const CrmPage          = lazy(() => import("./pages/Crm"));
+const VipPage          = lazy(() => import("./pages/Vip"));
 const ProductPage      = lazy(() => import("./pages/Product"));
 const NotFound         = lazy(() => import("./pages/NotFound"));
 
@@ -57,6 +58,7 @@ function Router() {
         <Route path="/casino"       component={CasinoPage} />
         <Route path="/bonus"        component={BonusPage} />
         <Route path="/crm"          component={CrmPage} />
+        <Route path="/vip"          component={VipPage} />
         <Route path="/product"      component={ProductPage} />
         <Route path="/404"          component={NotFound} />
         <Route                      component={NotFound} />

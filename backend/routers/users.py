@@ -17,12 +17,14 @@ from backend.core.cache import (
     SELFEXCLUSIONS_PATH,
     SOCIOTOPO_PATH,
     VIP_LIST_PATH,
+    VIP_ROSTER_PATH,
     load_parquet_cached,
     load_daily_df,
 )
 from backend.core.helpers import _filter_range
 from backend.core.filters import (
     _normalize_value,
+    _load_latest_users,
     _load_users_for_filters,
     _apply_user_filters,
 )
@@ -30,94 +32,250 @@ from backend.core.filters import (
 router = APIRouter()
 
 
-def _load_vip_list() -> pd.DataFrame:
+def _normalize_vip_stage(series: pd.Series) -> pd.Series:
+    stage_map = {
+        "hosted vip": "Hosted VIP",
+        "unhosted vip": "Unhosted VIP",
+        "self excluded": "Self Excluded",
+        "self-excluded": "Self Excluded",
+        "time-out": "Time-Out",
+        "timeout": "Time-Out",
+    }
+    cleaned = series.fillna("Unknown").astype(str).str.strip()
+    return cleaned.map(lambda s: stage_map.get(s.lower(), s if s else "Unknown"))
+
+
+def _ensure_vip_roster_shape(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return pd.DataFrame(columns=[
+            "userid", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date", "is_current", "is_date_error",
+        ])
+
+    roster, mapping = normalize_cols(df)
+    rename: dict[str, str] = {}
+    for key, target in {
+        "userid": "userid",
+        "user_id": "userid",
+        "accountmanager": "account_manager",
+        "account_manager": "account_manager",
+        "viplifecyclestage": "vip_lifecycle_stage",
+        "vip_lifecycle_stage": "vip_lifecycle_stage",
+        "onboarddate": "onboard_date",
+        "onboard_date": "onboard_date",
+        "offboarddate": "offboard_date",
+        "offboard_date": "offboard_date",
+        "iscurrent": "is_current",
+        "is_current": "is_current",
+        "isdateerror": "is_date_error",
+        "is_date_error": "is_date_error",
+    }.items():
+        col = mapping.get(key)
+        if col:
+            rename[col] = target
+    roster = roster.rename(columns=rename)
+
+    for col in ["userid", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date", "is_current", "is_date_error"]:
+        if col not in roster.columns:
+            roster[col] = None
+
+    roster["userid"] = pd.to_numeric(roster["userid"], errors="coerce").astype("Int64")
+    roster["account_manager"] = roster["account_manager"].fillna("Unassigned").astype(str).str.strip().replace("", "Unassigned")
+    roster["vip_lifecycle_stage"] = _normalize_vip_stage(roster["vip_lifecycle_stage"])
+    roster["onboard_date"] = pd.to_datetime(roster["onboard_date"], errors="coerce", dayfirst=True).dt.date
+
+    raw_offboard = roster["offboard_date"].fillna("").astype(str).str.strip()
+    offboard_blank = raw_offboard.isin(["", "-", "nan", "NaT", "None"])
+    roster["offboard_date"] = pd.to_datetime(raw_offboard.where(~offboard_blank, None), errors="coerce", dayfirst=True).dt.date
+    roster["is_current"] = roster["offboard_date"].isna()
+    roster["is_date_error"] = roster["offboard_date"].notna() & roster["onboard_date"].notna() & (roster["offboard_date"] < roster["onboard_date"])
+
+    roster = roster.dropna(subset=["userid"]).sort_values(["account_manager", "vip_lifecycle_stage", "userid", "onboard_date"], kind="stable")
+    return roster.reset_index(drop=True)
+
+
+def _load_vip_roster() -> pd.DataFrame:
+    if VIP_ROSTER_PATH.exists():
+        roster = load_parquet_cached(VIP_ROSTER_PATH, "vip_roster")
+        if not roster.empty:
+            return _ensure_vip_roster_shape(roster)
+
     if not VIP_LIST_PATH.exists():
         return pd.DataFrame()
     try:
-        df = pd.read_csv(VIP_LIST_PATH)
+        csv_rows = pd.read_csv(VIP_LIST_PATH)
     except Exception:
         return pd.DataFrame()
+    return _ensure_vip_roster_shape(csv_rows)
+
+
+def _apply_vip_filters(df: pd.DataFrame, account_manager: Optional[str], stage: Optional[str]) -> pd.DataFrame:
     if df.empty:
         return df
-    df, _ = normalize_cols(df)
-    rename_map = {
-        "userid": "user_id",
-        "accountmanager": "account_manager",
-        "viplifecyclestage": "vip_lifecycle_stage",
-        "onboarddate": "onboard_date",
-        "offboarddate": "offboard_date",
-    }
-    cols = {c: rename_map.get(c, c) for c in df.columns}
-    df = df.rename(columns=cols)
-    for col in ["user_id", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date"]:
-        if col not in df.columns:
-            df[col] = None
-    df["user_id"] = df["user_id"].astype(str).str.strip()
-    df["account_manager"] = df["account_manager"].fillna("Unassigned").astype(str).str.strip().replace("", "Unassigned")
-    df["vip_lifecycle_stage"] = df["vip_lifecycle_stage"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
-    df["onboard_date"] = pd.to_datetime(df["onboard_date"], errors="coerce").dt.date
-    if "offboard_date" in df.columns:
-        df["offboard_date"] = pd.to_datetime(df["offboard_date"], errors="coerce").dt.date
-    return df
+    out = df.copy()
+    am = _normalize_value(account_manager)
+    if am:
+        out = out[out["account_manager"].astype(str).str.strip().str.lower() == am.lower()]
+    st = _normalize_value(stage)
+    if st:
+        out = out[out["vip_lifecycle_stage"].astype(str).str.strip().str.lower() == st.lower()]
+    return out
+
+
+def _vip_overlap_mask(df: pd.DataFrame, start: Optional[date], end: Optional[date]) -> pd.Series:
+    valid = (~df["is_date_error"].fillna(False)) & df["onboard_date"].notna()
+    if start is None or end is None:
+        return valid
+    return valid & (df["onboard_date"] <= end) & (df["offboard_date"].isna() | (df["offboard_date"] >= start))
+
+
+def _vip_active_as_of_mask(df: pd.DataFrame, as_of: date) -> pd.Series:
+    valid = (~df["is_date_error"].fillna(False)) & df["onboard_date"].notna()
+    return valid & (df["onboard_date"] <= as_of) & (df["offboard_date"].isna() | (df["offboard_date"] >= as_of))
+
+
+def _load_vip_user_details() -> pd.DataFrame:
+    users = _load_latest_users()
+    if users.empty:
+        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance"])
+
+    details, mapping = normalize_cols(users)
+    rename: dict[str, str] = {}
+    for key in ["userid", "name", "surname", "country", "userstatus", "balance"]:
+        col = mapping.get(key)
+        if col:
+            rename[col] = key
+    details = details.rename(columns=rename)
+    if "userid" not in details.columns:
+        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance"])
+
+    details["userid"] = pd.to_numeric(details["userid"], errors="coerce").astype("Int64")
+    keep = [c for c in ["userid", "name", "surname", "country", "userstatus", "balance"] if c in details.columns]
+    details = details[keep].dropna(subset=["userid"]).drop_duplicates(subset=["userid"], keep="last")
+    return details
+
+
+def _serialize_vip_rows(df: pd.DataFrame) -> list[dict]:
+    records = df.to_dict(orient="records")
+    for row in records:
+        row["user_id"] = str(row.pop("userid")) if row.get("userid") is not None and pd.notna(row.get("userid")) else None
+        for key in ("onboard_date", "offboard_date"):
+            row[key] = str(row[key]) if row.get(key) is not None and pd.notna(row.get(key)) else None
+        for key in ("balance",):
+            if row.get(key) is not None and pd.notna(row.get(key)):
+                row[key] = round(float(row[key]), 2)
+            else:
+                row[key] = None
+        for key in ("is_current", "is_date_error"):
+            row[key] = bool(row.get(key))
+    return records
 
 
 @router.get("/vip/list")
 def vip_list(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
     account_manager: Optional[str] = Query(None),
     stage: Optional[str] = Query(None),
+    current_only: bool = Query(False),
     limit: int = Query(250, ge=1, le=5000),
 ):
-    df = _load_vip_list()
+    df = _load_vip_roster()
     if df.empty:
-        return {"rows": [], "total": 0, "has_data": False}
+        return {"rows": [], "total": 0, "unique_users": 0, "has_data": False}
 
-    d = df.copy()
-    if account_manager:
-        am = str(account_manager).strip()
-        d = d[d["account_manager"].astype(str) == am]
-    if stage:
-        st = str(stage).strip()
-        d = d[d["vip_lifecycle_stage"].astype(str) == st]
+    d = _apply_vip_filters(df, account_manager, stage)
+    if start and end:
+        d = d[_vip_overlap_mask(d, start, end)]
+    else:
+        d = d[_vip_overlap_mask(d, None, None)]
+    if current_only:
+        d = d[_vip_active_as_of_mask(d, end or date.today())]
 
-    d = d.sort_values(["vip_lifecycle_stage", "account_manager", "user_id"], kind="stable")
+    if not d.empty:
+        details = _load_vip_user_details()
+        if not details.empty:
+            d = d.merge(details, on="userid", how="left")
+
+    d = d.sort_values(["is_current", "account_manager", "vip_lifecycle_stage", "userid", "onboard_date"], ascending=[False, True, True, True, False], kind="stable")
     total = int(len(d))
-    rows = d.head(limit)[[c for c in ["user_id", "account_manager", "vip_lifecycle_stage", "onboard_date", "offboard_date"] if c in d.columns]].copy()
-    records = rows.to_dict(orient="records")
-    for row in records:
-        if row.get("onboard_date") is not None:
-            row["onboard_date"] = str(row["onboard_date"])
-        if row.get("offboard_date") is not None:
-            row["offboard_date"] = str(row["offboard_date"])
+    unique_users = int(d["userid"].dropna().nunique()) if "userid" in d.columns else 0
+    rows = d.head(limit)[[c for c in [
+        "userid", "name", "surname", "account_manager", "vip_lifecycle_stage", "country", "userstatus", "balance",
+        "onboard_date", "offboard_date", "is_current", "is_date_error",
+    ] if c in d.columns]].copy()
+    records = _serialize_vip_rows(rows)
     return {
         "rows": records,
         "total": total,
+        "unique_users": unique_users,
         "has_data": True,
         "filters_applied": {
+            "start": str(start) if start else None,
+            "end": str(end) if end else None,
             "account_manager": bool(account_manager),
             "stage": bool(stage),
+            "current_only": current_only,
         },
     }
 
 
 @router.get("/vip/summary")
-def vip_summary():
-    df = _load_vip_list()
+def vip_summary(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    df = _load_vip_roster()
     if df.empty:
-        return {"has_data": False, "total": 0, "by_stage": [], "by_account_manager": []}
+        return {
+            "has_data": False,
+            "total": 0,
+            "stints": 0,
+            "active_now": 0,
+            "active_as_of_end": 0,
+            "onboarded_in_period": 0,
+            "offboarded_in_period": 0,
+            "with_onboard_date": 0,
+            "date_errors": 0,
+            "by_stage": [],
+            "by_account_manager": [],
+            "account_managers": [],
+            "stages": [],
+        }
 
-    total = int(len(df))
-    stage_counts = df["vip_lifecycle_stage"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown").value_counts()
-    manager_counts = df["account_manager"].fillna("Unassigned").astype(str).str.strip().replace("", "Unassigned").value_counts()
-    onboarded = int(df["onboard_date"].notna().sum()) if "onboard_date" in df.columns else 0
-    active_now = int((df.get("vip_lifecycle_stage", pd.Series(dtype=str)).astype(str).str.lower() == "hosted vip").sum()) if "vip_lifecycle_stage" in df.columns else 0
+    base = _apply_vip_filters(df, account_manager, stage)
+    valid = base[_vip_overlap_mask(base, None, None)]
+    period_df = valid[_vip_overlap_mask(valid, start, end)] if start and end else valid
+    as_of = end or date.today()
+    active_as_of = valid[_vip_active_as_of_mask(valid, as_of)]
+    onboarded = valid[(valid["onboard_date"].notna()) & ((start is None) or (valid["onboard_date"] >= start)) & ((end is None) or (valid["onboard_date"] <= end))]
+    offboarded = valid[(valid["offboard_date"].notna()) & ((start is None) or (valid["offboard_date"] >= start)) & ((end is None) or (valid["offboard_date"] <= end))]
+
+    total = int(period_df["userid"].dropna().nunique()) if not period_df.empty else 0
+    stage_counts = period_df.groupby("vip_lifecycle_stage")["userid"].nunique().sort_values(ascending=False) if not period_df.empty else pd.Series(dtype="int64")
+    manager_counts = period_df.groupby("account_manager")["userid"].nunique().sort_values(ascending=False) if not period_df.empty else pd.Series(dtype="int64")
 
     return {
         "has_data": True,
         "total": total,
-        "active_now": active_now,
-        "with_onboard_date": onboarded,
+        "stints": int(len(period_df)),
+        "active_now": int(active_as_of["userid"].dropna().nunique()) if not active_as_of.empty else 0,
+        "active_as_of_end": int(active_as_of["userid"].dropna().nunique()) if not active_as_of.empty else 0,
+        "onboarded_in_period": int(onboarded["userid"].dropna().nunique()) if not onboarded.empty else 0,
+        "offboarded_in_period": int(offboarded["userid"].dropna().nunique()) if not offboarded.empty else 0,
+        "with_onboard_date": int(valid["onboard_date"].notna().sum()),
+        "date_errors": int(base["is_date_error"].fillna(False).sum()),
         "by_stage": [{"stage": str(stage), "count": int(count)} for stage, count in stage_counts.items()],
         "by_account_manager": [{"account_manager": str(manager), "count": int(count)} for manager, count in manager_counts.items()],
+        "account_managers": sorted(base["account_manager"].dropna().astype(str).str.strip().unique().tolist()),
+        "stages": sorted(base["vip_lifecycle_stage"].dropna().astype(str).str.strip().unique().tolist()),
+        "filters_applied": {
+            "start": str(start) if start else None,
+            "end": str(end) if end else None,
+            "account_manager": bool(account_manager),
+            "stage": bool(stage),
+        },
     }
 
 
