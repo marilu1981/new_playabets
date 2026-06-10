@@ -96,8 +96,7 @@ export default function Home() {
     liveChurnPct,
     liveTaxesPaid,
     liveTotalActives,
-    liveSportsApd,
-    liveCasinoApd,
+    liveTotalApd,
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
@@ -479,14 +478,13 @@ export default function Home() {
                     {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
                     {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
                   </div>
-                  <div className="grid grid-cols-5 lg:grid-cols-7 gap-2">
+                  <div className="grid grid-cols-6 gap-2">
                     {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino")}
                     {tile("ARPU",            liveNgr != null && liveTotalActives != null && liveTotalActives > 0 ? formatFull(liveNgr / liveTotalActives) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
                     {tile("Depositors",      liveUniqueDepositors != null ? formatFull(liveUniqueDepositors) : "—",                                              CHART_COLORS.amber, <DollarSign size={11} />, liveUniqueDepositors == null, "period unique")}
                     {tile("Dep/Customer",    liveUniqueDepositors != null && liveUniqueDepositors > 0 && hasTransactionsData ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "—", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors, "deposits/depositor")}
                     {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,   <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
-                    {tile("Sports APD",      liveSportsApd != null ? `${liveSportsApd}d` : "—",                                                                    CHART_COLORS.green, <Activity size={11} />, liveSportsApd == null, "avg play days/user")}
-                    {tile("Casino APD",      liveCasinoApd != null ? `${liveCasinoApd}d` : "—",                                                                    CHART_COLORS.gold,  <Activity size={11} />, liveCasinoApd == null, "avg play days/user")}
+                    {tile("APD",             liveTotalApd != null ? `${liveTotalApd}d` : "—",                                                                      CHART_COLORS.green, <Activity size={11} />, liveTotalApd == null, "avg play days/user")}
                   </div>
                 </div>
               </div>

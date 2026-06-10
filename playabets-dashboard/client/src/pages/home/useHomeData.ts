@@ -43,8 +43,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveChurnPct, setLiveChurnPct] = useState<number | null>(null);
   const [liveTaxesPaid, setLiveTaxesPaid] = useState<number | null>(null);
   const [liveTotalActives, setLiveTotalActives] = useState<number | null>(null);
-  const [liveSportsApd, setLiveSportsApd] = useState<number | null>(null);
-  const [liveCasinoApd, setLiveCasinoApd] = useState<number | null>(null);
+  const [liveTotalApd, setLiveTotalApd] = useState<number | null>(null);
   const [liveFtdRegMonth, setLiveFtdRegMonth] = useState<number | null>(null);
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
@@ -266,8 +265,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveTaxesPaid(k.taxes_paid != null && Number(k.taxes_paid) > 0 ? Number(k.taxes_paid) : null);
         setLiveTotalActives(k.total_actives_unique != null && Number(k.total_actives_unique) > 0 ? Number(k.total_actives_unique) : null);
         setLiveUniqueDepositors(k.period_unique_depositors != null && Number(k.period_unique_depositors) > 0 ? Number(k.period_unique_depositors) : null);
-        setLiveSportsApd(k.sports_apd != null && Number(k.sports_apd) > 0 ? Number(k.sports_apd) : null);
-        setLiveCasinoApd(k.casino_apd != null && Number(k.casino_apd) > 0 ? Number(k.casino_apd) : null);
+        setLiveTotalApd(k.total_apd != null && Number(k.total_apd) > 0 ? Number(k.total_apd) : null);
         setLiveOverviewKPIs((prev) => ({
           ...baseOverviewKPIs,
           activesSports: Number(k.sports_actives ?? k.actives_sports ?? 0),
@@ -296,8 +294,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveBonusPct(null);
         setLiveChurnPct(null);
         setLiveTotalActives(null);
-        setLiveSportsApd(null);
-        setLiveCasinoApd(null);
+        setLiveTotalApd(null);
         setLiveBonusCoverage(null);
         setHasTransactionsData(false);
         setLiveTransactionSummary(null);
@@ -809,8 +806,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveChurnPct,
     liveTaxesPaid,
     liveTotalActives,
-    liveSportsApd,
-    liveCasinoApd,
+    liveTotalApd,
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
