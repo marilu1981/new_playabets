@@ -183,9 +183,9 @@ def _summary_period(start: date, end: date) -> dict:
     bonus_spent = _s(bonus, "bonus_total") or _s(bonus, "bonus_credited")
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
-    # NGR = Real Money GGR (excl lotto, net of taxes) - Bonus Converted
+    # NGR = Real Money GGR (displayed: incl lotto, net of taxes) - Bonus Converted (client formula)
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = real_money_ggr - taxes_paid - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = real_money_ggr_display - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_total_stake + lotto_stake  # sports + casino + lotto
     real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
     bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")

@@ -132,7 +132,7 @@ def kpis(
     freebet_issued = _s(bonus, "freebet_issued")
     freebet_spend  = _s(bonus, "freebet_spend")
     bonus_converted = _s(tx, "bonus_redeemed")
-    ngr = ggr_real - taxes_paid - (bonus_converted if bonus_converted > 0 else bonus_spent)
+    ngr = real_money_ggr_display - (bonus_converted if bonus_converted > 0 else bonus_spent)
 
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
