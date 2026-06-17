@@ -79,16 +79,20 @@ def _pages_from_str(pages_str: str) -> list[str]:
 
 
 def get_all_users() -> list[dict]:
-    with _connect() as conn:
-        rows = conn.execute(
-            "SELECT * FROM user_permissions ORDER BY user_email"
-        ).fetchall()
-    result = []
-    for r in rows:
-        d = dict(r)
-        d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
-        result.append(d)
-    return result
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM user_permissions ORDER BY user_email"
+            ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
+            result.append(d)
+        return result
+    except sqlite3.OperationalError as exc:
+        _log.warning("get_all_users failed (%s)", exc)
+        return []
 
 
 def get_user(email: str) -> dict | None:
