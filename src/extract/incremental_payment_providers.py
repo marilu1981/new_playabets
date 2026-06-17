@@ -23,7 +23,7 @@ from sqlalchemy import text
 from src.app_config import raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-CHUNK_DAYS = 7  # view_transactions is large — keep chunks small
+CHUNK_DAYS = 30  # Stats.Transazioni is fast — 30d chunks are fine
 
 WATERMARK_KEY = "payment_providers"
 WATERMARK_DB  = Path.home() / "watermarks_payment_providers.db"
@@ -74,45 +74,50 @@ def main() -> None:
     upper_dt = datetime.fromisoformat(we) if we else datetime.now(UTC).replace(tzinfo=None)
     print(f"[payment_providers] window: {lower_dt} → {upper_dt}  (chunk={chunk_days}d)")
 
-    # Uses Dwh_en.view_transactions — same source as the main KPI pipeline.
-    # This ensures the provider totals reconcile exactly with the headline
-    # deposits/withdrawals figures. Stats.Transazioni included all accounting
-    # legs (player + house + settlement) causing ~4x inflation.
+    # Uses Stats.Transazioni (fast ~26K rows/day) filtered to the player-credit
+    # leg only via IDTipoImportoTransazione:
+    #   1 = credit to player wallet  → deposits & cancel-withdrawals
+    #   2 = debit from player wallet → withdrawals
+    # Without this filter, Stats.Transazioni includes all accounting legs
+    # (player + house + settlement) causing ~4x amount inflation.
     query = text(f"""
         SELECT
-            CAST(t.Date AS DATE)  AS date,
-            t.ReasonID            AS reasonid,
-            c.Causale             AS causale_name,
+            CAST(t."Data" AS DATE)  AS date,
+            t."IDCausale"           AS reasonid,
+            c.Causale               AS causale_name,
             CASE
-                WHEN t.ReasonID IN ({DEPOSIT_REASON_IDS})
+                WHEN t."IDCausale" IN ({DEPOSIT_REASON_IDS})
                      THEN 'Deposit'
-                WHEN t.ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS})
+                WHEN t."IDCausale" IN ({CANCEL_WITHDRAWAL_REASON_IDS})
                      THEN 'CancelWithdrawal'
                 ELSE 'Withdrawal'
-            END                   AS group_name,
-            SUM(ABS(t.Amount))    AS total_amount,
-            COUNT(*)              AS tx_count
-        FROM Dwh_en.view_transactions t
-        JOIN Dwh.Causali c ON t.ReasonID = c.IDCausale
-        WHERE t.Date >= :lower AND t.Date < :upper
-          AND t.ReasonID IN (
-              {DEPOSIT_REASON_IDS},
-              {WITHDRAWAL_REASON_IDS},
-              {CANCEL_WITHDRAWAL_REASON_IDS}
-          )
-          AND t.TransactionManagementStatusID = 3
-          AND t.UserID NOT IN (
+            END                     AS group_name,
+            SUM(ABS(t."Importo"))   AS total_amount,
+            COUNT(*)                AS tx_count
+        FROM "Stats"."Transazioni" t
+        JOIN Dwh.Causali c ON t."IDCausale" = c.IDCausale
+        WHERE t."Data" >= :lower AND t."Data" < :upper
+          AND t."IDStatoGestioneTransazione" = 3
+          AND t."IDUtente" NOT IN (
               SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
           )
-        GROUP BY CAST(t.Date AS DATE), t.ReasonID, c.Causale,
+          AND (
+              (t."IDCausale" IN ({DEPOSIT_REASON_IDS})
+               AND t."IDTipoImportoTransazione" = 1)
+           OR (t."IDCausale" IN ({WITHDRAWAL_REASON_IDS})
+               AND t."IDTipoImportoTransazione" = 2)
+           OR (t."IDCausale" IN ({CANCEL_WITHDRAWAL_REASON_IDS})
+               AND t."IDTipoImportoTransazione" = 1)
+          )
+        GROUP BY CAST(t."Data" AS DATE), t."IDCausale", c.Causale,
                  CASE
-                     WHEN t.ReasonID IN ({DEPOSIT_REASON_IDS})
+                     WHEN t."IDCausale" IN ({DEPOSIT_REASON_IDS})
                           THEN 'Deposit'
-                     WHEN t.ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS})
+                     WHEN t."IDCausale" IN ({CANCEL_WITHDRAWAL_REASON_IDS})
                           THEN 'CancelWithdrawal'
                      ELSE 'Withdrawal'
                  END
-        ORDER BY date, t.ReasonID
+        ORDER BY date, t."IDCausale"
     """)
 
     engine  = build_engine()
