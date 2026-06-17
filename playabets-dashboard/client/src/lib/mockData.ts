@@ -150,6 +150,7 @@ export const selfExclusionTrend = [
 export const transactionSummary = {
   totalDeposits: 12_840_200,
   totalWithdrawals: 9_420_100,
+  netDeposits: 3_420_100,
   pendingTransactions: 342,
   acceptedToday: 8_420,
   refusedToday: 128,

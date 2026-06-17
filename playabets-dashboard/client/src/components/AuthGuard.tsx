@@ -1,12 +1,15 @@
 /**
  * AuthGuard — wraps the entire app.
  * Shows the Login page if the user is not authenticated.
- * 2FA is not enforced in-app; session authentication is sufficient.
+ * After a valid session is confirmed, fetches the user's dashboard permissions
+ * from /admin/me and makes them available via PermissionsContext.
  */
 
 import { useState, useEffect, useCallback, ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import Login from "../pages/Login";
+import { PermissionsProvider, defaultPermissions, type UserPermissions } from "../contexts/PermissionsContext";
+import { adminApi } from "../lib/api";
 
 interface AuthGuardProps {
   children: ReactNode;
@@ -33,6 +36,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const [state, setState] = useState<AuthState>("loading");
+  const [permissions, setPermissions] = useState<UserPermissions>(defaultPermissions);
 
   const refresh = useCallback(async () => {
     try {
@@ -40,6 +44,19 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       if (!sessionData.session) {
         setState("signed-out");
         return;
+      }
+
+      const email = sessionData.session.user.email ?? "";
+      try {
+        const perms = await adminApi.getMe(email);
+        setPermissions({
+          userEmail: perms.user_email,
+          role: perms.role,
+          allowedPages: perms.allowed_pages,
+        });
+      } catch {
+        // Admin endpoint unreachable — grant full access as safe fallback
+        setPermissions({ userEmail: email, role: "viewer", allowedPages: ["*"] });
       }
 
       setState("authenticated");
@@ -75,5 +92,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return <Login onLogin={refresh} />;
   }
 
-  return <>{children}</>;
+  return (
+    <PermissionsProvider value={permissions}>
+      {children}
+    </PermissionsProvider>
+  );
 }

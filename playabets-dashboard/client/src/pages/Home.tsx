@@ -458,10 +458,10 @@ export default function Home() {
                   <div className="grid grid-cols-6 gap-2">
                     {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
                     {tile("Withdrawals",     hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
-                    {tile("Net Cash",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) : "Pending",
-                                                                                                                                                              CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd")}
+                    {tile("Net Cash",        hasTransactionsData ? formatFull((transactionSummary as typeof transactionSummary & { netDeposits?: number }).netDeposits ?? (transactionSummary.totalDeposits - transactionSummary.totalWithdrawals)) : "Pending",
+                                                                                                                                                              CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd (accepted)")}
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
-                      ? `${(((transactionSummary.totalDeposits - transactionSummary.totalWithdrawals) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
+                      ? `${((((transactionSummary as typeof transactionSummary & { netDeposits?: number }).netDeposits ?? (transactionSummary.totalDeposits - transactionSummary.totalWithdrawals)) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
                       : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
                     {tile("Taxes Paid",      liveTaxesPaid != null && liveTaxesPaid > 0 ? formatFull(liveTaxesPaid) : "—",                                    CHART_COLORS.red,       <DollarSign size={11} />, liveTaxesPaid == null, "IDType 38")}
                     {tile("Bonus Conv %",     liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Converted/Issued")}

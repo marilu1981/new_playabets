@@ -24,6 +24,7 @@ DATA_ROOT = _path_from_env("PLAYABETS_DATA_ROOT", PROJECT_ROOT / "data")
 RAW_ROOT = _path_from_env("PLAYABETS_RAW_ROOT", DATA_ROOT / "raw")
 SERVING_ROOT = _path_from_env("PLAYABETS_SERVING_ROOT", DATA_ROOT / "serving")
 WATERMARK_DB_PATH = _path_from_env("PLAYABETS_WATERMARK_DB", DATA_ROOT / "watermarks.db")
+ADMIN_DB_PATH     = _path_from_env("PLAYABETS_ADMIN_DB",     DATA_ROOT / "admin.db")
 TX_WATERMARK_DB_PATH = _path_from_env(
     "PLAYABETS_TX_WATERMARK_DB",
     DATA_ROOT / "watermarks_transactions.db",

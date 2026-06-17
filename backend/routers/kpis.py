@@ -19,6 +19,7 @@ from backend.core.cache import (
     RFM_MONTHLY_PATH,
     FTD_DAILY_PATH,
     FTD_REG_MONTH_DAILY_PATH,
+    FTD_NEW_DEP_DAILY_PATH,
     BONUS_DAILY_PATH,
     CASINO_DAILY_PATH,
     ACTIVES_MONTHLY_PATH,
@@ -137,6 +138,9 @@ def kpis(
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
     ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
+    # FTD New Depositors: registered AND first deposited in same period — matches client's report.
+    ftd_new_dep = _filter_range(load_parquet_cached(FTD_NEW_DEP_DAILY_PATH, "ftd_new_dep_daily"), start, end)
+    ftd_new_depositors = _i(ftd_new_dep, "ftd_new_depositors")
 
     filtered_registrations = _filtered_registration_total(start, end, territory, country, customer_status, current_segment) if allowed_ids is not None else None
 
@@ -162,8 +166,18 @@ def kpis(
         "casino_turnover": casino_turnover,
         "casino_winnings": casino_winnings,
         "casino_ggr": casino_ggr,
+        # Horse racing standalone fields (absorbed into sportsbook totals above,
+        # but exposed separately so the Product dashboard can show them per vertical)
+        "horse_racing_ggr": round(horse_racing_ggr, 2),
+        "horse_racing_stake": round(horse_racing_stake, 2),
+        "horse_racing_bets": _i(casino, "horse_racing_bets"),
+        "horse_racing_actives": _i(casino, "horse_racing_actives"),
+        # FTDs: users whose globally earliest deposit falls in the queried period.
+        # ftd_reg_month: users who *registered* in the period and have ever deposited.
+        # These differ by ~4% because some users register before the period and deposit later.
         "ftds": _i(ftd, "ftds"),
         "ftd_reg_month": ftd_reg_month,
+        "ftd_new_depositors": ftd_new_depositors,
         "deposits": _s(tx, "deposits"),
         "withdrawals": _s(tx, "withdrawals"),
         "net_deposits": _s(tx, "net_deposits"),

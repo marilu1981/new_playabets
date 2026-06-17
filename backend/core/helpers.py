@@ -21,6 +21,7 @@ from backend.core.cache import (
     BONUS_DAILY_PATH,
     FTD_DAILY_PATH,
     FTD_REG_MONTH_DAILY_PATH,
+    FTD_NEW_DEP_DAILY_PATH,
     ACTIVES_MONTHLY_PATH,
     CASINO_DAILY_PATH,
     load_parquet_cached,
@@ -132,6 +133,12 @@ def _summary_period(start: date, end: date) -> dict:
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
     ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
 
+    # FTD New Depositors: users who BOTH registered AND first deposited in the same calendar
+    # month as the queried period.  This is the client's GlobalGamingReport definition.
+    # Difference vs ftds: ftds counts all first deposits in period (any registration date).
+    ftd_new_dep_df = _filter_range(load_parquet_cached(FTD_NEW_DEP_DAILY_PATH, "ftd_new_dep_daily"), start, end)
+    ftd_new_depositors = _i(ftd_new_dep_df, "ftd_new_depositors")
+
     # Conv rate = FTD Reg Month ÷ Registrations (users who registered AND ever deposited).
     conv_rate = round(ftd_reg_month / regs * 100, 1) if regs > 0 else 0.0
 
@@ -233,6 +240,7 @@ def _summary_period(start: date, end: date) -> dict:
     return {
         "registrations": regs, "ftds": ftds, "ftd_conv_rate": conv_rate,
         "ftd_reg_month": ftd_reg_month,
+        "ftd_new_depositors": ftd_new_depositors,
         "actives_sports": actives_sports, "actives_casino": actives_casino,
         "turnover": round(total_turnover, 2),
         "real_money_turnover": round(real_money_turnover, 2),

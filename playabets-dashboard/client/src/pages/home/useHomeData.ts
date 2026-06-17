@@ -180,6 +180,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           taxes_paid?: number;
           total_actives_unique?: number;
           period_unique_depositors?: number;
+          total_apd?: number;
+          net_deposits?: number;
         }>(`/kpis?${query}`),
         daily: fetchJson<{
           rows: Array<{
@@ -280,6 +282,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           ...baseTransactionSummary,
           totalDeposits: Number(k.deposits ?? 0),
           totalWithdrawals: Number(k.withdrawals ?? 0),
+          // Use backend pre-computed net_deposits (deps - wds, accepted status, correct causale IDs)
+          // rather than recomputing client-side to ensure alignment with the DWH figures.
+          netDeposits: Number((k as Record<string, number>).net_deposits ?? (Number(k.deposits ?? 0) - Number(k.withdrawals ?? 0))),
           pendingTransactions: Number(k.tx_count_pending ?? 0),
           acceptedToday: Number(k.tx_count_accepted ?? 0),
           refusedToday: Number(k.tx_count_other_status ?? 0),

@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { supabase } from "../lib/supabase";
 import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
+import { usePermissions, canViewPage } from "../contexts/PermissionsContext";
 import {
   LayoutDashboard,
   Users,
@@ -23,6 +24,7 @@ import {
   Activity,
   LogOut,
   ShieldAlert,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -132,9 +134,22 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, title, subtitle, filtersBar }: DashboardLayoutProps) {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const permissions = usePermissions();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Redirect away from pages the user is not allowed to view.
+  // /admin is handled by Admin.tsx itself; skip the check there.
+  useEffect(() => {
+    if (
+      permissions.userEmail &&
+      location !== "/admin" &&
+      !canViewPage(permissions, location)
+    ) {
+      navigate("/");
+    }
+  }, [permissions, location, navigate]);
 
   const today = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
@@ -207,67 +222,111 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
 
         {/* Navigation */}
         <nav className="relative flex-1 overflow-y-auto py-4 px-2 space-y-4">
-          {navGroups.map((group) => (
-            <div key={group.label}>
+          {navGroups.map((group) => {
+            const visibleItems = group.items.filter(
+              (item) => !item.disabled && canViewPage(permissions, item.path)
+            );
+            // Keep disabled items visible (they show as greyed-out, not hidden)
+            const disabledItems = group.items.filter((item) => item.disabled);
+            const renderItems = [...visibleItems, ...disabledItems];
+            if (renderItems.length === 0) return null;
+            return (
+              <div key={group.label}>
+                {!collapsed && (
+                  <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-widest text-white/25">
+                    {group.label}
+                  </div>
+                )}
+                <div className="space-y-0.5">
+                  {renderItems.map((item) => {
+                    const isActive = location === item.path;
+                    const isDisabled = Boolean(item.disabled);
+                    const Icon = item.icon;
+                    const content = (
+                      <div
+                        className={cn(
+                          "flex items-center gap-3 px-2 py-2 rounded text-sm transition-all duration-150 group",
+                          isActive
+                            ? "nav-active text-white"
+                            : "text-white/50 hover:text-white/80 hover:bg-white/5",
+                          isDisabled ? "opacity-40 cursor-not-allowed hover:text-white/50 hover:bg-transparent" : "cursor-pointer",
+                        )}
+                      >
+                        {item.imgIcon ? (
+                          <img
+                            src={item.imgIcon}
+                            alt={item.label}
+                            className="flex-shrink-0 w-4 h-4 object-contain"
+                            style={{
+                              opacity: isActive ? 1 : 0.5,
+                              transition: "opacity 0.15s",
+                            }}
+                          />
+                        ) : Icon ? (
+                          <Icon
+                            size={16}
+                            className={cn(
+                              "flex-shrink-0 transition-colors",
+                              isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
+                            )}
+                            style={isActive ? { color: "#7ab800" } : {}}
+                          />
+                        ) : null}
+                        {!collapsed && (
+                          <span className="truncate font-medium">{item.label}</span>
+                        )}
+                      </div>
+                    );
+
+                    if (isDisabled) {
+                      return <div key={item.path}>{content}</div>;
+                    }
+
+                    return (
+                      <Link key={item.path} href={item.path}>
+                        {content}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Admin link — only shown to users with admin role */}
+          {permissions.role === "admin" && (
+            <div>
               {!collapsed && (
                 <div className="px-2 mb-1 text-xs font-semibold uppercase tracking-widest text-white/25">
-                  {group.label}
+                  Administration
                 </div>
               )}
               <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const isActive = location === item.path;
-                  const isDisabled = Boolean(item.disabled);
-                  const Icon = item.icon;
-                  const content = (
-                    <div
+                <Link href="/admin">
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 px-2 py-2 rounded text-sm transition-all duration-150 group cursor-pointer",
+                      location === "/admin"
+                        ? "nav-active text-white"
+                        : "text-white/50 hover:text-white/80 hover:bg-white/5"
+                    )}
+                  >
+                    <Settings
+                      size={16}
                       className={cn(
-                        "flex items-center gap-3 px-2 py-2 rounded text-sm transition-all duration-150 group",
-                        isActive
-                          ? "nav-active text-white"
-                          : "text-white/50 hover:text-white/80 hover:bg-white/5",
-                        isDisabled ? "opacity-40 cursor-not-allowed hover:text-white/50 hover:bg-transparent" : "cursor-pointer",
+                        "flex-shrink-0 transition-colors",
+                        location === "/admin" ? "" : "text-white/40 group-hover:text-white/70"
                       )}
-                    >
-                      {item.imgIcon ? (
-                        <img
-                          src={item.imgIcon}
-                          alt={item.label}
-                          className="flex-shrink-0 w-4 h-4 object-contain"
-                          style={{
-                            opacity: isActive ? 1 : 0.5,
-                            transition: "opacity 0.15s",
-                          }}
-                        />
-                      ) : Icon ? (
-                        <Icon
-                          size={16}
-                          className={cn(
-                            "flex-shrink-0 transition-colors",
-                            isActive ? "text-gold" : "text-white/40 group-hover:text-white/70"
-                          )}
-                          style={isActive ? { color: "#7ab800" } : {}}
-                        />
-                      ) : null}
-                      {!collapsed && (
-                        <span className="truncate font-medium">{item.label}</span>
-                      )}
-                    </div>
-                  );
-
-                  if (isDisabled) {
-                    return <div key={item.path}>{content}</div>;
-                  }
-
-                  return (
-                    <Link key={item.path} href={item.path}>
-                      {content}
-                    </Link>
-                  );
-                })}
+                      style={location === "/admin" ? { color: "#7ab800" } : {}}
+                    />
+                    {!collapsed && (
+                      <span className="truncate font-medium">User Access</span>
+                    )}
+                  </div>
+                </Link>
               </div>
             </div>
-          ))}
+          )}
         </nav>
 
         {/* Footer */}

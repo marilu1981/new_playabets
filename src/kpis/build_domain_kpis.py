@@ -165,6 +165,52 @@ def main() -> None:
     else:
         print("[domain_kpis] No first_deposits raw dir - skipping")
 
+    # FTD New Depositors — users who BOTH registered AND first deposited in the same calendar
+    # month, indexed by first deposit date.  This is the "clean" FTD metric that matches
+    # the client's GlobalGamingReport definition and explains the ~4 % gap versus ftd_daily
+    # (which counts ALL first deposits regardless of registration date).
+    if ftd_dir.exists() and (ftd_dir / "first_deposits_full.parquet").exists():
+        _ftd_nd = pd.read_parquet(ftd_dir / "first_deposits_full.parquet")
+        _usr_nd_dir = RAW / "users"
+        _usr_nd = read_all_parquets(_usr_nd_dir, "users_increment_*.parquet") if _usr_nd_dir.exists() else pd.DataFrame()
+        if not _ftd_nd.empty and not _usr_nd.empty:
+            from .io_utils import normalize_cols as _nc_nd
+            _u, _ucol = _nc_nd(_usr_nd)
+            _f, _fcol = _nc_nd(_ftd_nd)
+            _uid   = _ucol.get("userid")
+            _creat = _ucol.get("creationdate")
+            _fuid  = _fcol.get("idutente")
+            _fdate = _fcol.get("dataprimodeposito")
+            if _uid and _creat and _fuid and _fdate:
+                _u["_uid"]  = pd.to_numeric(_u[_uid], errors="coerce")
+                _u["_rdate"] = pd.to_datetime(_u[_creat], errors="coerce").dt.date
+                _u = _u.dropna(subset=["_uid", "_rdate"])
+                _tc = _ucol.get("testuser")
+                if _tc:
+                    _u = _u[pd.to_numeric(_u[_tc], errors="coerce").fillna(0).astype(int) == 0]
+                _u = _u.drop_duplicates(subset=["_uid"], keep="first")
+                _f["_uid"]  = pd.to_numeric(_f[_fuid], errors="coerce")
+                _f["_ddate"] = pd.to_datetime(_f[_fdate], errors="coerce").dt.date
+                _f = _f.dropna(subset=["_uid", "_ddate"]).drop_duplicates(subset=["_uid"], keep="first")
+                _mx = _u[["_uid", "_rdate"]].merge(_f[["_uid", "_ddate"]], on="_uid", how="inner")
+                _mx["_rm"] = _mx["_rdate"].apply(lambda d: d.strftime("%Y-%m"))
+                _mx["_dm"] = _mx["_ddate"].apply(lambda d: d.strftime("%Y-%m"))
+                _same = _mx[_mx["_rm"] == _mx["_dm"]]
+                _nd_daily = (
+                    _same.groupby("_ddate")["_uid"]
+                    .nunique()
+                    .reset_index()
+                    .rename(columns={"_ddate": "date", "_uid": "ftd_new_depositors"})
+                )
+                _nd_daily["ftd_new_depositors"] = _nd_daily["ftd_new_depositors"].astype(int)
+                _nd_out = SERVING / "ftd_new_dep_daily.parquet"
+                _nd_daily.to_parquet(_nd_out, index=False)
+                print(f"[domain_kpis] FTD New Depositors (same-month): {len(_nd_daily)} rows -> {_nd_out}")
+            else:
+                print("[domain_kpis] FTD New Depositors: missing columns (uid/creationdate/idutente/dataprimodeposito)")
+        else:
+            print("[domain_kpis] FTD New Depositors: insufficient data - skipping")
+
     # Casino (horse racing split into separate columns via compute_casino_daily)
     casino_dir = RAW / "casino"
     casino_raw = pd.DataFrame()

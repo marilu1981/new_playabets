@@ -377,3 +377,70 @@ export function getApiStatus(): { enabled: boolean; baseUrl: string; mode: "live
     mode: API_ENABLED ? "live" : "mock",
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN API
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface PermissionsResponse {
+  user_email: string;
+  role: "admin" | "viewer";
+  allowed_pages: string[];
+}
+
+export interface AdminUser extends PermissionsResponse {
+  id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+async function adminFetch<T>(
+  method: string,
+  endpoint: string,
+  userEmail: string,
+  body?: unknown
+): Promise<T> {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "X-User-Email": userEmail,
+        ...(apiKey ? { "X-API-Key": apiKey } : {}),
+      },
+      signal: controller.signal,
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => res.statusText);
+      throw new Error(`API Error ${res.status}: ${text}`);
+    }
+    return res.json() as Promise<T>;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export const adminApi = {
+  getMe: (userEmail: string) =>
+    adminFetch<PermissionsResponse>("GET", "/admin/me", userEmail),
+
+  listUsers: (userEmail: string) =>
+    adminFetch<{ users: AdminUser[]; dashboard_paths: string[] }>("GET", "/admin/users", userEmail),
+
+  upsertUser: (
+    callerEmail: string,
+    payload: { user_email: string; role: "admin" | "viewer"; allowed_pages: string[] }
+  ) => adminFetch<AdminUser>("PUT", "/admin/users", callerEmail, payload),
+
+  deleteUser: (callerEmail: string, targetEmail: string) =>
+    adminFetch<{ ok: boolean }>(
+      "DELETE",
+      `/admin/users/${encodeURIComponent(targetEmail)}`,
+      callerEmail
+    ),
+};

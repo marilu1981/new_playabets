@@ -48,7 +48,7 @@ from backend.core.cache import (
     ACTIVES_MONTHLY_PATH,
     CASINO_DAILY_PATH,
 )
-from backend.routers import kpis, users, sportsbook, transactions, bonus, casino, product
+from backend.routers import kpis, users, sportsbook, transactions, bonus, casino, product, admin
 
 import pandas as pd
 
@@ -82,8 +82,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=False,          # No cookies — we use Authorization header
-    allow_methods=["GET", "OPTIONS"],  # Read-only API
-    allow_headers=["Content-Type", "Authorization", "Accept", "X-API-Key"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "X-API-Key", "X-User-Email"],
 )
 
 
@@ -128,6 +128,7 @@ app.include_router(transactions.router)
 app.include_router(bonus.router)
 app.include_router(casino.router)
 app.include_router(product.router)
+app.include_router(admin.router)
 
 
 # ---------------------------------------------------------------------------
