@@ -459,18 +459,33 @@ def main() -> None:
             pp_raw["provider"] = pp_raw["causale_name"].apply(_clean_provider)
             pp_raw["date"] = pd.to_datetime(pp_raw["date"]).dt.date.astype(str)
 
+            # Normalise legacy 'Withdrawals' (plural) → 'Withdrawal' from old parquet files.
+            pp_raw["group_name"] = pp_raw["group_name"].replace("Withdrawals", "Withdrawal")
+
             dep = pp_raw[pp_raw["group_name"] == "Deposit"].copy()
             dep_agg = (dep.groupby(["date", "provider"])
                        .agg(deposits=("total_amount", "sum"), deposit_count=("tx_count", "sum"))
                        .reset_index())
 
-            wd = pp_raw[pp_raw["group_name"] == "Withdrawals"].copy()
+            wd = pp_raw[pp_raw["group_name"] == "Withdrawal"].copy()
             wd["total_amount"] = wd["total_amount"].abs()
             wd_agg = (wd.groupby(["date", "provider"])
                       .agg(withdrawals=("total_amount", "sum"), withdrawal_count=("tx_count", "sum"))
                       .reset_index())
 
-            pp_daily = dep_agg.merge(wd_agg, on=["date", "provider"], how="outer").fillna(0)
+            # Cancel-withdrawals reduce the net withdrawal figure (money returned to house).
+            cw = pp_raw[pp_raw["group_name"] == "CancelWithdrawal"].copy()
+            cw["total_amount"] = cw["total_amount"].abs()
+            cw_agg = (cw.groupby(["date", "provider"])
+                      .agg(cancel_withdrawals=("total_amount", "sum"))
+                      .reset_index())
+
+            pp_daily = (dep_agg
+                        .merge(wd_agg, on=["date", "provider"], how="outer")
+                        .merge(cw_agg, on=["date", "provider"], how="outer")
+                        .fillna(0))
+            pp_daily["withdrawals"] = (pp_daily["withdrawals"] - pp_daily["cancel_withdrawals"]).clip(lower=0)
+            pp_daily = pp_daily.drop(columns=["cancel_withdrawals"])
             pp_daily["net"] = pp_daily["deposits"] - pp_daily["withdrawals"]
             pp_out = SERVING / "payment_providers_daily.parquet"
             pp_daily.to_parquet(pp_out, index=False)
