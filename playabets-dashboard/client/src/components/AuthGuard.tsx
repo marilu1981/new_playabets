@@ -17,22 +17,6 @@ interface AuthGuardProps {
 
 type AuthState = "loading" | "signed-out" | "authenticated";
 
-const AUTH_TIMEOUT_MS = 10000;
-
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Auth request timed out")), timeoutMs);
-    promise
-      .then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      })
-      .catch((error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-  });
-}
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const [state, setState] = useState<AuthState>("loading");
@@ -40,7 +24,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   const refresh = useCallback(async () => {
     try {
-      const { data: sessionData } = await withTimeout(supabase.auth.getSession(), AUTH_TIMEOUT_MS);
+      const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
         setState("signed-out");
         return;
