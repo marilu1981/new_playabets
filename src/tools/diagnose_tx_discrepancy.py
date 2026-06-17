@@ -139,82 +139,81 @@ def main() -> None:
         print(f"{'NET WITHDRAWALS (wds - cancels)':>35}: {total_wd_wl - total_cancel_wl:>15,.2f}")
         print(f"{'EXTRA WITHDRAWALS (not in WL)':>35}: {total_not_wl:>15,.2f}")
 
-        # ── 3. FTD count comparison ─────────────────────────────────────────
+        # ── 3. FTD analysis ────────────────────────────────────────────────────
         print("\n" + "="*60)
-        print(f"FTD COUNT COMPARISON  ({START} to {END})")
+        print(f"FTD ANALYSIS  ({START} to {END})")
         print("="*60)
 
-        # Our current query (all causali)
-        q3a = text(f"""
-            SELECT COUNT(DISTINCT t.idutente) AS ftds_all_causali
-            FROM {FIRST_DEP_VIEW} t
-            WHERE t.dataprimodeposito >= '{START}'
-              AND t.dataprimodeposito <= '{END}'
-              AND t.dataprimodeposito IS NOT NULL
-              AND t.idutente NOT IN (
-                  SELECT userid FROM {USERS_VIEW} WHERE testuser = 1
-              )
-        """)
-        # With whitelist filter
-        q3b = text(f"""
-            SELECT COUNT(DISTINCT t.idutente) AS ftds_whitelist_only
-            FROM {FIRST_DEP_VIEW} t
-            WHERE t.dataprimodeposito >= '{START}'
-              AND t.dataprimodeposito <= '{END}'
-              AND t.dataprimodeposito IS NOT NULL
-              AND t.causale IN ({WHITELIST_STR})
-              AND t.idutente NOT IN (
-                  SELECT userid FROM {USERS_VIEW} WHERE testuser = 1
-              )
-        """)
-        # Count per causale (to understand breakdown)
-        q3c = text(f"""
-            SELECT
-                t.causale,
-                c.Causale AS reason_name,
-                COUNT(DISTINCT t.idutente) AS unique_users,
-                CASE WHEN t.causale IN ({WHITELIST_STR}) THEN 'YES' ELSE '*** NO ***' END AS in_whitelist
-            FROM {FIRST_DEP_VIEW} t
-            LEFT JOIN Dwh.Causali c ON t.causale = c.IDCausale
-            WHERE t.dataprimodeposito >= '{START}'
-              AND t.dataprimodeposito <= '{END}'
-              AND t.dataprimodeposito IS NOT NULL
-              AND t.idutente NOT IN (
-                  SELECT userid FROM {USERS_VIEW} WHERE testuser = 1
-              )
-            GROUP BY t.causale, c.Causale,
-                     CASE WHEN t.causale IN ({WHITELIST_STR}) THEN 'YES' ELSE '*** NO ***' END
-            ORDER BY unique_users DESC
+        # First: list columns in Stats.Transazioni_DepositiUtente
+        print("\n--- Columns in Stats.Transazioni_DepositiUtente ---")
+        try:
+            col_q = text("""
+                SELECT COLUMN_NAME, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'Stats'
+                  AND TABLE_NAME   = 'Transazioni_DepositiUtente'
+                ORDER BY ORDINAL_POSITION
+            """)
+            cols = conn.execute(col_q).fetchall()
+            for c in cols:
+                print(f"  {c[0]}  ({c[1]})")
+        except Exception as e:
+            print(f"  Column list failed: {e}")
+
+        # Method A: current pipeline approach — MIN per user, count users in period
+        q_ftd_current = text(f"""
+            SELECT COUNT(*) AS ftds
+            FROM (
+                SELECT t.idutente, MIN(t.dataprimodeposito) AS first_dep
+                FROM {FIRST_DEP_VIEW} t
+                WHERE t.dataprimodeposito IS NOT NULL
+                  AND t.idutente NOT IN (
+                      SELECT userid FROM {USERS_VIEW} WHERE testuser = 1
+                  )
+                GROUP BY t.idutente
+            ) sub
+            WHERE sub.first_dep >= '{START}'
+              AND sub.first_dep <= '{END}'
         """)
 
-        try:
-            ftds_all = conn.execute(q3a).fetchone()[0]
-            print(f"FTDs (all causali, current behaviour):   {ftds_all:,}")
-        except Exception as e:
-            print(f"FTD all-causali query failed: {e}")
-            print("  (column may be named differently — check Stats.Transazioni_DepositiUtente schema)")
-            ftds_all = None
+        # Method B: FTDs derived from view_transactions with our whitelist
+        # (users whose first-ever whitelisted deposit is in the period)
+        q_ftd_vt = text(f"""
+            SELECT COUNT(*) AS ftds
+            FROM (
+                SELECT t.UserID, MIN(CAST(t.Date AS DATE)) AS first_dep
+                FROM {VIEW} t
+                WHERE t.TransactionAmountTypeID = 1
+                  AND t.TransactionManagementStatusID = 3
+                  AND t.ReasonID IN ({WHITELIST_STR})
+                  AND t.UserID NOT IN (
+                      SELECT userid FROM {USERS_VIEW} WHERE testuser = 1
+                  )
+                GROUP BY t.UserID
+            ) sub
+            WHERE sub.first_dep >= '{START}'
+              AND sub.first_dep <= '{END}'
+        """)
+
+        print(f"\nTarget (client's figure):                    13,133")
 
         try:
-            ftds_wl = conn.execute(q3b).fetchone()[0]
-            print(f"FTDs (whitelist causali only):            {ftds_wl:,}")
+            ftds_current = conn.execute(q_ftd_current).fetchone()[0]
+            print(f"Method A — current (MIN per user, Transazioni_DepositiUtente): {ftds_current:,}")
         except Exception as e:
-            print(f"FTD whitelist query failed: {e}")
-            ftds_wl = None
+            print(f"Method A failed: {e}")
+            ftds_current = None
 
-        print(f"\nTarget (client's figure): 13,133")
-        if ftds_all: print(f"Current dashboard shows:  {ftds_all:,}")
-        if ftds_wl:  print(f"With causale filter:      {ftds_wl:,}")
-
-        print(f"\nFTD breakdown by causale:")
-        print(f"{'Causale':>10}  {'Users':>8}  {'In WL?':>10}  Name")
-        print("-"*60)
         try:
-            for r in conn.execute(q3c).fetchall():
-                print(f"{r[0]:>10}  {r[2]:>8,}  {r[3]:>10}  {r[1] or '?'}")
+            ftds_vt = conn.execute(q_ftd_vt).fetchone()[0]
+            print(f"Method B — view_transactions with whitelist ReasonIDs:         {ftds_vt:,}")
         except Exception as e:
-            print(f"  FTD breakdown query failed: {e}")
-            print("  (column names may differ — check schema)")
+            print(f"Method B failed: {e}")
+            ftds_vt = None
+
+        # Method C: same as A but excluding users whose ONLY deposits were bonus types
+        # (ReasonIDs 64, 65, 143 = bonus issued/reversed — if in Transazioni_DepositiUtente)
+        print(f"\nNote: if Method B is closer to 13,133, switch FTD source to view_transactions")
 
     print("\n[diagnose] Done.")
 
