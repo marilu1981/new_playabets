@@ -38,27 +38,37 @@ _BOOTSTRAP_ADMINS: set[str] = {
 }
 
 
+import logging as _logging
+_log = _logging.getLogger("playabets.admin_db")
+
+
 def _connect() -> sqlite3.Connection:
     db_path = str(Path(ADMIN_DB_PATH).resolve())
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
+    # timeout=30: wait up to 30s for stale SMB/NFS locks to clear between revisions.
+    # journal_mode=DELETE: WAL mode is unreliable on Azure File Share (network FS).
+    conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
+    conn.execute("PRAGMA journal_mode=DELETE")
     conn.row_factory = sqlite3.Row
     return conn
 
 
 def _init_db() -> None:
-    with _connect() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS user_permissions (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_email    TEXT    NOT NULL UNIQUE,
-                role          TEXT    NOT NULL DEFAULT 'viewer',
-                allowed_pages TEXT    NOT NULL DEFAULT '*',
-                created_at    TEXT    NOT NULL,
-                updated_at    TEXT    NOT NULL
-            )
-        """)
-        conn.commit()
+    try:
+        with _connect() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_permissions (
+                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_email    TEXT    NOT NULL UNIQUE,
+                    role          TEXT    NOT NULL DEFAULT 'viewer',
+                    allowed_pages TEXT    NOT NULL DEFAULT '*',
+                    created_at    TEXT    NOT NULL,
+                    updated_at    TEXT    NOT NULL
+                )
+            """)
+            conn.commit()
+    except sqlite3.OperationalError as exc:
+        _log.warning("admin_db init failed (%s) — admin features degraded until DB is accessible", exc)
 
 
 _init_db()
