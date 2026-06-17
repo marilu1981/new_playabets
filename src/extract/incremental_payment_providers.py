@@ -2,9 +2,8 @@
 incremental_payment_providers.py
 ----------------------------------
 Pulls daily deposit/withdrawal totals grouped by payment provider
-from Stats.Transazioni (fast raw table) joined with Dwh.Causali for
-provider names.  Stats.Transazioni is ~26K rows/day vs view_transactions
-~4M/day, so even large windows complete quickly without chunking.
+from Dwh_en.view_transactions (same source as the main KPI pipeline)
+joined with Dwh.Causali for provider names.
 
 Output: one parquet per run in data/raw/payment_providers/ with columns:
     date, reasonid, causale_name, group_name, total_amount, tx_count
@@ -24,15 +23,15 @@ from sqlalchemy import text
 from src.app_config import raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-CHUNK_DAYS = 30  # days per query chunk — Stats.Transazioni is fast, 30d is safe
+CHUNK_DAYS = 7  # view_transactions is large — keep chunks small
 
 WATERMARK_KEY = "payment_providers"
 WATERMARK_DB  = Path.home() / "watermarks_payment_providers.db"
 OUT_DIR       = raw_dir("payment_providers")
 
 # Must match incremental_transactions_simple.py exactly.
-DEPOSIT_REASON_IDS = "249,250,830,835,839,843,851,853,855,857,859,861,863,865,867,869,871,877,939"
-WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
+DEPOSIT_REASON_IDS           = "249,250,830,835,839,843,851,853,855,857,859,861,863,865,867,869,871,877,939"
+WITHDRAWAL_REASON_IDS        = "251,252,253,254,831,833,837,841,845,847,849,873,875"
 CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
 
@@ -75,42 +74,45 @@ def main() -> None:
     upper_dt = datetime.fromisoformat(we) if we else datetime.now(UTC).replace(tzinfo=None)
     print(f"[payment_providers] window: {lower_dt} → {upper_dt}  (chunk={chunk_days}d)")
 
-    # Uses Stats.Transazioni — fast raw table (~26K rows/day vs view_transactions ~4M/day)
-    # JOIN to Dwh.Causali to get provider names.
-    # ReasonID whitelists MUST match incremental_transactions_simple.py to keep
-    # provider figures consistent with the KPI deposits/withdrawals totals.
+    # Uses Dwh_en.view_transactions — same source as the main KPI pipeline.
+    # This ensures the provider totals reconcile exactly with the headline
+    # deposits/withdrawals figures. Stats.Transazioni included all accounting
+    # legs (player + house + settlement) causing ~4x inflation.
     query = text(f"""
         SELECT
-            CAST(t."Data" AS DATE)  AS date,
-            t."IDCausale"           AS reasonid,
-            c.Causale               AS causale_name,
+            CAST(t.Date AS DATE)  AS date,
+            t.ReasonID            AS reasonid,
+            c.Causale             AS causale_name,
             CASE
-                WHEN t."IDCausale" IN ({DEPOSIT_REASON_IDS})
+                WHEN t.ReasonID IN ({DEPOSIT_REASON_IDS})
                      THEN 'Deposit'
-                WHEN t."IDCausale" IN ({CANCEL_WITHDRAWAL_REASON_IDS})
+                WHEN t.ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS})
                      THEN 'CancelWithdrawal'
                 ELSE 'Withdrawal'
-            END                     AS group_name,
-            SUM(ABS(t."Importo"))   AS total_amount,
-            COUNT(*)                AS tx_count
-        FROM "Stats"."Transazioni" t
-        JOIN Dwh.Causali c ON t."IDCausale" = c.IDCausale
-        WHERE t."Data" >= :lower AND t."Data" < :upper
-          AND t."IDCausale" IN (
+            END                   AS group_name,
+            SUM(ABS(t.Amount))    AS total_amount,
+            COUNT(*)              AS tx_count
+        FROM Dwh_en.view_transactions t
+        JOIN Dwh.Causali c ON t.ReasonID = c.IDCausale
+        WHERE t.Date >= :lower AND t.Date < :upper
+          AND t.ReasonID IN (
               {DEPOSIT_REASON_IDS},
               {WITHDRAWAL_REASON_IDS},
               {CANCEL_WITHDRAWAL_REASON_IDS}
           )
-          AND t."IDStatoGestioneTransazione" = 3
-        GROUP BY CAST(t."Data" AS DATE), t."IDCausale", c.Causale,
+          AND t.TransactionManagementStatusID = 3
+          AND t.UserID NOT IN (
+              SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
+          )
+        GROUP BY CAST(t.Date AS DATE), t.ReasonID, c.Causale,
                  CASE
-                     WHEN t."IDCausale" IN ({DEPOSIT_REASON_IDS})
+                     WHEN t.ReasonID IN ({DEPOSIT_REASON_IDS})
                           THEN 'Deposit'
-                     WHEN t."IDCausale" IN ({CANCEL_WITHDRAWAL_REASON_IDS})
+                     WHEN t.ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS})
                           THEN 'CancelWithdrawal'
                      ELSE 'Withdrawal'
                  END
-        ORDER BY date, t."IDCausale"
+        ORDER BY date, t.ReasonID
     """)
 
     engine  = build_engine()
