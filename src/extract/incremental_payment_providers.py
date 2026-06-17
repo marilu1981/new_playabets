@@ -102,9 +102,6 @@ def main() -> None:
               {CANCEL_WITHDRAWAL_REASON_IDS}
           )
           AND t."IDStatoGestioneTransazione" = 3
-          AND t."IDUtente" NOT IN (
-              SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
-          )
         GROUP BY CAST(t."Data" AS DATE), t."IDCausale", c.Causale,
                  CASE
                      WHEN t."IDCausale" IN ({DEPOSIT_REASON_IDS})
