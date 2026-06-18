@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import DataTable from "@/components/DataTable";
-import { Crown, Users, Wallet, Gift } from "lucide-react";
-import { cachedFetch } from "@/lib/apiCache";
+import { Crown, Upload, Users, Wallet, Gift } from "lucide-react";
+import { cachedFetch, invalidateCache } from "@/lib/apiCache";
 import { formatFull, formatNumber } from "@/lib/formatters";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
@@ -51,6 +51,37 @@ export default function VipPage() {
   const [summary, setSummary] = useState<VipSummary | null>(null);
   const [rows, setRows] = useState<VipRow[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  type UploadStatus = { ok: boolean; added: number; updated: number; unchanged: number; total_in_roster: number; filename: string } | null;
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<UploadStatus>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleUpload(file: File) {
+    setUploading(true);
+    setUploadResult(null);
+    setUploadError(null);
+    const formData = new FormData();
+    formData.append("file", file);
+    const apiKey = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    try {
+      const res = await fetch(`${API_BASE_URL}/vip/upload`, {
+        method: "POST",
+        headers: apiKey ? { "X-API-Key": apiKey } : {},
+        body: formData,
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.detail ?? `HTTP ${res.status}`);
+      setUploadResult(json);
+      invalidateCache();
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   const query = useMemo(() => {
     const params = new URLSearchParams({
@@ -112,6 +143,49 @@ export default function VipPage() {
       subtitle="Lifecycle roster, account-manager ownership, and VIP activity"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
     >
+      {/* VIP CSV Upload */}
+      <div className="rounded-xl p-5 mb-4" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Upload size={15} className="text-gray-400" />
+            Update VIP Roster
+          </div>
+          <label
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${uploading ? "opacity-50 pointer-events-none" : "hover:opacity-90"}`}
+            style={{ background: "#7ab800", color: "#fff" }}
+          >
+            {uploading ? "Uploading…" : "Choose CSV"}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+              }}
+            />
+          </label>
+          <span className="text-xs text-gray-400">Columns: User ID, Account Manager, VIP Lifecycle Stage, Onboard Date, Offboard Date</span>
+
+          {uploadResult && (
+            <div className="flex items-center gap-3 text-xs rounded-md px-3 py-2" style={{ background: "#f0f7e6", border: "1px solid #c6e49a" }}>
+              <span className="font-semibold text-green-800">{uploadResult.filename}</span>
+              <span className="text-green-700">+{uploadResult.added} added</span>
+              <span className="text-amber-700">{uploadResult.updated} updated</span>
+              <span className="text-gray-500">{uploadResult.unchanged} unchanged</span>
+              <span className="text-gray-500">· {uploadResult.total_in_roster.toLocaleString()} total in roster</span>
+            </div>
+          )}
+          {uploadError && (
+            <div className="text-xs rounded-md px-3 py-2 text-red-700" style={{ background: "#fef2f2", border: "1px solid #fca5a5" }}>
+              {uploadError}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="flex flex-wrap items-end gap-3 mb-4">
           <div className="flex flex-col gap-1">

@@ -6,9 +6,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Optional
 
+import io
 import pandas as pd
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 
 from src.kpis.io_utils import normalize_cols
 from backend.core.cache import (
@@ -18,6 +19,7 @@ from backend.core.cache import (
     SOCIOTOPO_PATH,
     VIP_LIST_PATH,
     VIP_ROSTER_PATH,
+    _PARQUET_CACHE,
     load_parquet_cached,
     load_daily_df,
 )
@@ -276,6 +278,104 @@ def vip_summary(
             "account_manager": bool(account_manager),
             "stage": bool(stage),
         },
+    }
+
+
+@router.post("/vip/upload")
+async def vip_upload(file: UploadFile = File(...)):
+    """
+    Merge an uploaded VIP CSV into the roster.
+
+    Stint identity key: (userid, account_manager, vip_lifecycle_stage, onboard_date).
+    - Exact match on all 5 columns → unchanged (skipped).
+    - Key match but different offboard_date → updated.
+    - No key match → added as a new stint.
+
+    Returns counts for added / updated / unchanged rows.
+    """
+    if not (file.filename or "").lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are accepted")
+
+    content = await file.read()
+    try:
+        incoming_raw = pd.read_csv(io.BytesIO(content))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not parse CSV: {exc}")
+
+    incoming = _ensure_vip_roster_shape(incoming_raw)
+    if incoming.empty:
+        raise HTTPException(status_code=400, detail="CSV contained no valid VIP rows after normalisation")
+
+    KEY_COLS = ["userid", "account_manager", "vip_lifecycle_stage", "onboard_date"]
+
+    existing = _load_vip_roster()
+
+    if existing.empty:
+        merged = incoming.copy()
+        n_added = len(merged)
+        n_updated = 0
+        n_unchanged = 0
+    else:
+        def _row_key(df: pd.DataFrame) -> list[tuple]:
+            return list(df[KEY_COLS].astype(str).apply(tuple, axis=1))
+
+        existing_keys = _row_key(existing)
+        existing_key_index: dict[tuple, int] = {k: i for i, k in enumerate(existing_keys)}
+
+        updated = existing.copy()
+        new_rows: list[pd.Series] = []
+        n_added = n_updated = n_unchanged = 0
+
+        for _, inc_row in incoming.iterrows():
+            key = tuple(str(inc_row[c]) for c in KEY_COLS)
+            if key not in existing_key_index:
+                new_rows.append(inc_row)
+                n_added += 1
+            else:
+                ex_i = existing_key_index[key]
+                ex_off = updated.at[ex_i, "offboard_date"]
+                inc_off = inc_row["offboard_date"]
+                ex_current = bool(updated.at[ex_i, "is_current"])
+                inc_current = bool(inc_row["is_current"])
+
+                both_null = pd.isna(ex_off) and pd.isna(inc_off)
+                same_offboard = both_null or (
+                    not pd.isna(ex_off) and not pd.isna(inc_off) and ex_off == inc_off
+                )
+
+                if same_offboard and ex_current == inc_current:
+                    n_unchanged += 1
+                else:
+                    updated.at[ex_i, "offboard_date"] = inc_off
+                    updated.at[ex_i, "is_current"] = inc_current
+                    updated.at[ex_i, "is_date_error"] = bool(inc_row["is_date_error"])
+                    n_updated += 1
+
+        if new_rows:
+            merged = pd.concat(
+                [updated, pd.DataFrame(new_rows)], ignore_index=True
+            )
+        else:
+            merged = updated
+
+    merged = merged.sort_values(
+        ["account_manager", "vip_lifecycle_stage", "userid", "onboard_date"], kind="stable"
+    ).reset_index(drop=True)
+
+    VIP_ROSTER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_parquet(VIP_ROSTER_PATH, index=False)
+
+    # Evict cache entry so the next read reloads from the new file
+    _PARQUET_CACHE.pop("vip_roster", None)
+
+    return {
+        "ok": True,
+        "filename": file.filename,
+        "rows_in_file": len(incoming),
+        "added": n_added,
+        "updated": n_updated,
+        "unchanged": n_unchanged,
+        "total_in_roster": len(merged),
     }
 
 
