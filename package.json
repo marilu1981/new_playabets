@@ -2,7 +2,7 @@
   "dependencies": {
     "minimatch": "^10.2.2",
     "qs": "^6.15.2",
-    "tar": "^7.5.11",
+    "tar": "^7.5.16",
     "vite": "^8.0.8",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
