@@ -56,6 +56,7 @@ def _ensure_vip_roster_shape(df: pd.DataFrame) -> pd.DataFrame:
     roster, mapping = normalize_cols(df)
     rename: dict[str, str] = {}
     for key, target in {
+        # underscore / no-separator variants (from parquet / internal use)
         "userid": "userid",
         "user_id": "userid",
         "accountmanager": "account_manager",
@@ -70,6 +71,12 @@ def _ensure_vip_roster_shape(df: pd.DataFrame) -> pd.DataFrame:
         "is_current": "is_current",
         "isdateerror": "is_date_error",
         "is_date_error": "is_date_error",
+        # space-separated variants (raw CSV column headers)
+        "user id": "userid",
+        "account manager": "account_manager",
+        "vip lifecycle stage": "vip_lifecycle_stage",
+        "onboard date": "onboard_date",
+        "offboard date": "offboard_date",
     }.items():
         col = mapping.get(key)
         if col:
