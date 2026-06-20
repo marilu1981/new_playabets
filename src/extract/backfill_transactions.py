@@ -85,9 +85,9 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
 
     dep_q = text(f"""
         SELECT
-            SUM(ABS(Amount))        AS deposits,
-            COUNT(DISTINCT UserID)  AS unique_depositors,
-            COUNT(*)                AS deposit_count
+            SUM(ABS(CAST(Amount AS FLOAT)))  AS deposits,
+            COUNT(DISTINCT UserID)           AS unique_depositors,
+            COUNT(*)                         AS deposit_count
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
@@ -97,8 +97,8 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     wd_q = text(f"""
         SELECT
             SUM(CASE
-                WHEN ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS}) THEN -ABS(Amount)
-                ELSE ABS(Amount)
+                WHEN ReasonID IN ({CANCEL_WITHDRAWAL_REASON_IDS}) THEN -ABS(CAST(Amount AS FLOAT))
+                ELSE ABS(CAST(Amount AS FLOAT))
             END)            AS withdrawals,
             COUNT(*)        AS withdrawal_count
         FROM {VIEW_NAME}
@@ -110,11 +110,12 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     # Bonus transactions from ReasonGroup 8 (Bonus):
     # 54=Withdraw Bonus Promotion (redeemed), 64=Promotional Bonus (issued),
     # 65=Reverse Bonus Promotion (subtract), 143=Casino Promotion Bonus (issued)
+    # CAST to FLOAT to avoid DECIMAL precision overflow when SUM spans many rows
     bonus_q = text(f"""
         SELECT
-            SUM(CASE WHEN ReasonID = 54  THEN ABS(Amount) ELSE 0 END) AS bonus_redeemed,
-            SUM(CASE WHEN ReasonID IN (64,143) THEN ABS(Amount) ELSE 0 END) AS bonus_issued,
-            SUM(CASE WHEN ReasonID = 65  THEN ABS(Amount) ELSE 0 END) AS bonus_reversed
+            SUM(CASE WHEN ReasonID = 54      THEN ABS(CAST(Amount AS FLOAT)) ELSE 0.0 END) AS bonus_redeemed,
+            SUM(CASE WHEN ReasonID IN (64,143) THEN ABS(CAST(Amount AS FLOAT)) ELSE 0.0 END) AS bonus_issued,
+            SUM(CASE WHEN ReasonID = 65      THEN ABS(CAST(Amount AS FLOAT)) ELSE 0.0 END) AS bonus_reversed
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
