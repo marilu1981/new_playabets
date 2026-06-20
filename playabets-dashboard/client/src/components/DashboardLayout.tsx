@@ -25,6 +25,7 @@ import {
   LogOut,
   ShieldAlert,
   Settings,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +108,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { path: "/crm", label: "CRM Dashboard", icon: Users },
       { path: "/vip", label: "VIP Portfolio", icon: ShieldAlert },
       { path: "/product", label: "Product Dashboard", icon: BarChart2 },
+      { path: "/acquisition", label: "Acquisition", icon: Megaphone },
     ],
   },
   {

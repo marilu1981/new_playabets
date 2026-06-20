@@ -48,7 +48,7 @@ from backend.core.cache import (
     ACTIVES_MONTHLY_PATH,
     CASINO_DAILY_PATH,
 )
-from backend.routers import kpis, users, sportsbook, transactions, bonus, casino, product, admin
+from backend.routers import kpis, users, sportsbook, transactions, bonus, casino, product, admin, acquisition
 
 import pandas as pd
 
@@ -129,6 +129,7 @@ app.include_router(bonus.router)
 app.include_router(casino.router)
 app.include_router(product.router)
 app.include_router(admin.router)
+app.include_router(acquisition.router)
 
 
 # ---------------------------------------------------------------------------

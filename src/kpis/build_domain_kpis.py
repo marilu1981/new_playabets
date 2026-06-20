@@ -509,6 +509,22 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] VIP roster: error - {e}")
 
+    # Affiliate summary — built from RavenTrack parquet extracts
+    try:
+        from .affiliate_kpis import compute_affiliate_summary
+        aff_dir = RAW / "affiliates"
+        aff_files = sorted(aff_dir.glob("affiliates_*.parquet")) if aff_dir.exists() else []
+        if aff_files:
+            aff_raw = pd.concat([pd.read_parquet(f) for f in aff_files], ignore_index=True)
+            aff_summary = compute_affiliate_summary(aff_raw)
+            aff_out = SERVING / "affiliate_summary.parquet"
+            aff_summary.to_parquet(aff_out, index=False)
+            print(f"[domain_kpis] Affiliate summary: {len(aff_summary)} affiliates -> {aff_out}")
+        else:
+            print("[domain_kpis] Affiliates: no raw files (run src.extract.raventrack_affiliates first)")
+    except Exception as e:
+        print(f"[domain_kpis] Affiliates: error - {e}")
+
     print("[domain_kpis] Done.")
 
 

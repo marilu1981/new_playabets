@@ -24,6 +24,7 @@ const BonusPage        = lazy(() => import("./pages/Bonus"));
 const CrmPage          = lazy(() => import("./pages/Crm"));
 const VipPage          = lazy(() => import("./pages/Vip"));
 const ProductPage      = lazy(() => import("./pages/Product"));
+const AcquisitionPage  = lazy(() => import("./pages/Acquisition"));
 const AdminPage        = lazy(() => import("./pages/Admin"));
 const NotFound         = lazy(() => import("./pages/NotFound"));
 
@@ -61,6 +62,7 @@ function Router() {
         <Route path="/crm"          component={CrmPage} />
         <Route path="/vip"          component={VipPage} />
         <Route path="/product"      component={ProductPage} />
+        <Route path="/acquisition"  component={AcquisitionPage} />
         <Route path="/admin"        component={AdminPage} />
         <Route path="/404"          component={NotFound} />
         <Route                      component={NotFound} />
