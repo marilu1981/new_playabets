@@ -71,14 +71,17 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     s = _safe(str(day) + " 00:00:00")
     e = _safe(str(day + timedelta(days=1)) + " 00:00:00")
 
-    # 873 and 875 excluded from both lists — they are system/reversal transactions
-    # that the client excludes from both deposits and withdrawals.
-    # 248 also excluded until confirmed by Playabets team.
+    # Confirmed via Dwh_en.view_Reasons (ReasonGroupID):
+    #   Group 2 = Deposit: 248,249,250,830,835,...,873,875,877,939
+    #   Group 3 = Withdrawals: 251-254,831,833,837,841,845,847,849
+    #   Group 3 Cancel Withdrawals: 838,842,846,848,850
+    # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits.
+    # 248 (Deposit Bank Transfer) is also Group 2. All confirmed from view_Reasons.
     DEPOSIT_REASON_IDS = (
-        "249,250,830,835,839,843,851,853,855,857,859,"
-        "861,863,865,867,869,871,877,939"
+        "248,249,250,830,835,839,843,851,853,855,857,859,"
+        "861,863,865,867,869,871,873,875,877,939"
     )
-    # 873 and 875 removed — excluded entirely (not deposits, not withdrawals).
+    # 873 and 875 removed — they are deposits (Group 2), not withdrawals.
     WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
     CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
