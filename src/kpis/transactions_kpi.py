@@ -99,15 +99,8 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
     deposits = transactions[dep_mask]
     withdrawals = transactions[wd_mask]
 
-    # Only count accepted (completed) transactions for deposits and withdrawals.
-    # Pending withdrawals in particular can lag days before settlement; including
-    # them deflates net cash vs the client's GlobalGamingReport which counts only
-    # completed movements.
-    accepted_deposits    = deposits[deposits["status_bucket"] == "accepted"]
-    accepted_withdrawals = withdrawals[withdrawals["status_bucket"] == "accepted"]
-
     dep_daily = (
-        accepted_deposits.dropna(subset=["tx_date"])
+        deposits.dropna(subset=["tx_date"])
         .groupby("tx_date")
         .agg(
             deposits=("amount_abs", "sum"),
@@ -118,7 +111,7 @@ def compute_transactions_daily(transactions: pd.DataFrame) -> pd.DataFrame:
     )
 
     wd_daily = (
-        accepted_withdrawals.dropna(subset=["tx_date"])
+        withdrawals.dropna(subset=["tx_date"])
         .groupby("tx_date")["amount_abs"]
         .sum()
         .rename("withdrawals")

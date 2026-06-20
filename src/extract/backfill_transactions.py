@@ -71,22 +71,26 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     s = _safe(str(day) + " 00:00:00")
     e = _safe(str(day + timedelta(days=1)) + " 00:00:00")
 
+    # Deposit reason codes confirmed by Playabets team (includes 248, 873, 875).
+    # 873 and 875 moved from withdrawal list to deposit list — they represent
+    # player deposits regardless of TransactionAmountTypeID.
+    # TypeID filter removed from deposit query so TypeID=2 deposit reasons are captured.
     DEPOSIT_REASON_IDS = (
-        "249,250,830,835,839,843,851,853,855,857,859,"
-        "861,863,865,867,869,871,877,939"
+        "248,249,250,830,835,839,843,851,853,855,857,859,"
+        "861,863,865,867,869,871,873,875,877,939"
     )
-    WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
+    # 873 and 875 removed — they are deposits, not withdrawals.
+    WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
     CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
     dep_q = text(f"""
         SELECT
-            SUM(Amount)             AS deposits,
+            SUM(ABS(Amount))        AS deposits,
             COUNT(DISTINCT UserID)  AS unique_depositors,
             COUNT(*)                AS deposit_count
         FROM {VIEW_NAME}
         WHERE Date >= '{s}'
           AND Date <  '{e}'
-          AND TransactionAmountTypeID = 1
           AND TransactionManagementStatusID = 3
           AND ReasonID IN ({DEPOSIT_REASON_IDS})
     """)
