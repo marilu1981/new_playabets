@@ -666,7 +666,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setLiveSummaryMetrics({
           overview: [
             { metric: "Registrations", current: c.registrations, previous: p.registrations, ytd: y.registrations },
-            { metric: "FTDs", current: c.ftds, previous: p.ftds, ytd: y.ftds },
+            { metric: "FTDs", current: c.ftd_new_depositors ?? c.ftds, previous: p.ftd_new_depositors ?? p.ftds, ytd: y.ftd_new_depositors ?? y.ftds },
             { metric: "FTD Conversion", current: c.ftd_conv_rate, previous: p.ftd_conv_rate, ytd: y.ftd_conv_rate, isPercent: true },
             { metric: "Active Players (Sports)", current: c.actives_sports, previous: p.actives_sports, ytd: y.actives_sports },
             { metric: "Active Players (Casino)", current: c.actives_casino, previous: p.actives_casino, ytd: y.actives_casino },

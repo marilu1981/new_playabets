@@ -283,7 +283,7 @@ export default function Home() {
   const fallbackMonth = { month: "-", registrations: 0, ftds: 0, vftds: 0, topFtds: 0 };
   const lastMonth = acqSeries[acqSeries.length - 1] ?? fallbackMonth;
   const kpiRegistrations = liveRangeKpis?.registrations ?? lastMonth.registrations;
-  const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
+  const kpiFtds = (liveRangeKpis?.ftd_new_depositors ?? liveRangeKpis?.ftds) ?? lastMonth.ftds;
   const periodConvRate =
     kpiRegistrations > 0 && liveFtdRegMonth != null
       ? Number(((liveFtdRegMonth / kpiRegistrations) * 100).toFixed(1))
