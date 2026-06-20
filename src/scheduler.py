@@ -63,6 +63,7 @@ EXTRACT_MODULES = [
     "src.extract.incremental_casino",
     "src.extract.incremental_taxes",              # always run — independent of transactions pipeline
     "src.extract.incremental_payment_providers",  # always run — independent of transactions pipeline
+    "src.extract.raventrack_affiliates",          # RavenTrack affiliate + player reporting
 ]
 if ENABLE_TRANSACTIONS:
     EXTRACT_MODULES.insert(2, "src.extract.incremental_transactions_simple")
