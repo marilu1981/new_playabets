@@ -194,7 +194,7 @@ def _summary_period(start: date, end: date) -> dict:
     bonus_converted = _s(tx, "bonus_redeemed")
     ngr = real_money_ggr_display - (bonus_converted if bonus_converted > 0 else bonus_spent)
     total_turnover = sports_turnover + casino_total_stake + lotto_stake  # sports + casino + lotto
-    real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
+    real_money_turnover = sports_turnover_real + _s(casino, "casino_stake") + horse_racing_stake + lotto_stake
     bonus_money_turnover = sports_turnover_bonus + _s(casino, "casino_bonus_stake")
     hold_pct = round(total_ggr / total_turnover * 100, 1) if total_turnover > 0 else 0.0
 

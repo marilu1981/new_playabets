@@ -118,7 +118,7 @@ def kpis(
     lotto_ggr_main   = _s(casino, "lotto_ggr")
     lotto_stake_main = _s(casino, "lotto_stake")
     turnover = sportsbook_turnover + casino_turnover + lotto_stake_main    # incl lotto
-    real_money_turnover = sportsbook_turnover_real + _s(casino, "casino_stake") + horse_racing_stake
+    real_money_turnover = sportsbook_turnover_real + _s(casino, "casino_stake") + horse_racing_stake + lotto_stake_main
     bonus_money_turnover = sportsbook_turnover_bonus + _s(casino, "casino_bonus_stake")
     winnings = sportsbook_winnings + casino_winnings
     taxes_paid = _get_taxes_paid(start, end)
