@@ -6,20 +6,37 @@ at https://affiliates.playabets.co.za and saves daily aggregate Parquet
 files for use by build_domain_kpis.py.
 
 Required env vars:
-    RAVENTRACK_AFFILIATE_TOKEN  — Bearer token for affiliate activity endpoint
-    RAVENTRACK_PLAYER_TOKEN     — Bearer token for player reporting endpoint
+    RAVENTRACK_AFFILIATE_TOKEN  — Bearer token with affiliate-list ability
+    RAVENTRACK_PLAYER_TOKEN     — Bearer token with player-reporting ability
+    RAVENTRACK_VENDOR_ID        — Playabets vendor/operator ID in RavenTrack
+                                  (ask Max — needed for player reporting endpoint)
 
 Optional env vars:
     RT_BACKFILL_START   — Start date, e.g. "2026-05-01" (default: 90 days ago)
     RT_BACKFILL_END     — End date, e.g. "2026-05-31" (default: yesterday)
-    RT_PAGE_SIZE        — Results per page (default: 500)
+    RT_PAGE_SIZE        — Results per page: 50,100,150,200,250 (default: 100)
+    RT_CURRENCY         — ISO 4217 currency code (default: ZAR)
 
-Endpoint status (2026-06-20):
-    GET /network/api/affiliate/search  — confirmed path, pending token scope fix
-    GET /network/api/player/search     — path to be confirmed by Max (RavenTrack)
+Confirmed endpoints (from Postman collection dce86e95):
+    GET /network/api/affiliate/search
+        params: created_at_from, created_at_to, paginate, per_page, page, detailed
+        token:  RAVENTRACK_AFFILIATE_TOKEN  (needs 'Affiliate List' ability)
+        status: 403 — token scope not yet granted in RavenTrack admin
+
+    GET /network/api/reporting/player
+        params: date_range=custom, start_date, end_date, currency, grouping,
+                vendor, paginate, per_page, page, new_players_only
+        token:  RAVENTRACK_PLAYER_TOKEN  (token authenticates, needs vendor ID)
+        grouping options: player | player_by_day | player_by_month
+        status: 500/timeout — vendor ID required, ask Max for Playabets vendor ID
+
+Token abilities to request from Max in RavenTrack admin:
+    Affiliate token → 'Affiliate List' ability
+    Player token    → 'Player Activity By Date Range' ability
 
 Run:
-    python -m src.extract.raventrack_affiliates
+    RAVENTRACK_AFFILIATE_TOKEN=... RAVENTRACK_PLAYER_TOKEN=... RAVENTRACK_VENDOR_ID=... \\
+        python -m src.extract.raventrack_affiliates
 """
 from __future__ import annotations
 
@@ -33,10 +50,12 @@ import pandas as pd
 
 from src.app_config import RAW_ROOT
 
-BASE_URL = os.environ.get("RAVENTRACK_BASE_URL", "https://affiliates.playabets.co.za")
+BASE_URL        = os.environ.get("RAVENTRACK_BASE_URL", "https://affiliates.playabets.co.za")
 AFFILIATE_TOKEN = os.environ.get("RAVENTRACK_AFFILIATE_TOKEN", "")
 PLAYER_TOKEN    = os.environ.get("RAVENTRACK_PLAYER_TOKEN", "")
-PAGE_SIZE       = int(os.environ.get("RT_PAGE_SIZE", "500"))
+VENDOR_ID       = os.environ.get("RAVENTRACK_VENDOR_ID", "")   # Playabets operator ID — ask Max
+CURRENCY        = os.environ.get("RT_CURRENCY", "ZAR")
+PAGE_SIZE       = int(os.environ.get("RT_PAGE_SIZE", "100"))   # valid: 50,100,150,200,250
 
 _yesterday   = date.today() - timedelta(days=1)
 _90_days_ago = date.today() - timedelta(days=90)
@@ -45,19 +64,9 @@ BACKFILL_END   = date.fromisoformat(os.environ.get("RT_BACKFILL_END",   str(_yes
 
 OUT_DIR = RAW_ROOT / "affiliates"
 
-# ---------------------------------------------------------------------------
-# Endpoint config — update paths here when Max confirms player endpoint
-# ---------------------------------------------------------------------------
+# Confirmed paths from Postman collection dce86e95
 AFFILIATE_SEARCH_PATH = "/network/api/affiliate/search"
-PLAYER_SEARCH_PATH    = "/network/api/player/search"   # to be confirmed
-
-# Expected affiliate response fields (update once schema is confirmed):
-#   affiliate_id, affiliate_name, clicks, registrations, ftds,
-#   ftd_amount, revenue (GGR), commission, date
-#
-# Expected player response fields (update once schema is confirmed):
-#   player_id, affiliate_id, registration_date, first_deposit_date,
-#   first_deposit_amount, total_deposits, status
+PLAYER_REPORTING_PATH = "/network/api/reporting/player"
 
 
 def _log(msg: str) -> None:
@@ -136,8 +145,9 @@ def fetch_affiliates(date_from: date, date_to: date) -> pd.DataFrame:
 
     _log(f"Fetching affiliates {date_from} → {date_to}")
     params = {
-        "dateFrom": str(date_from),
-        "dateTo":   str(date_to),
+        "created_at_from": str(date_from),
+        "created_at_to":   str(date_to),
+        "detailed":        "0",
     }
     records = _fetch_paginated(AFFILIATE_TOKEN, AFFILIATE_SEARCH_PATH, params)
     if not records:
@@ -183,17 +193,26 @@ def fetch_affiliates(date_from: date, date_to: date) -> pd.DataFrame:
 
 
 def fetch_players(date_from: date, date_to: date) -> pd.DataFrame:
-    """Pull player-level data for the given date range."""
+    """Pull player-level activity data for the given date range."""
     if not PLAYER_TOKEN:
         _log("RAVENTRACK_PLAYER_TOKEN not set — skipping player fetch")
         return pd.DataFrame()
 
-    _log(f"Fetching players {date_from} → {date_to}")
+    if not VENDOR_ID:
+        _log("RAVENTRACK_VENDOR_ID not set — skipping player fetch")
+        _log("  Ask Max (RavenTrack) for the Playabets operator/vendor ID")
+        return pd.DataFrame()
+
+    _log(f"Fetching players {date_from} → {date_to} (vendor={VENDOR_ID}, currency={CURRENCY})")
     params = {
-        "dateFrom": str(date_from),
-        "dateTo":   str(date_to),
+        "date_range": "custom",
+        "start_date": str(date_from),
+        "end_date":   str(date_to),
+        "currency":   CURRENCY,
+        "grouping":   "player",
+        "vendor":     VENDOR_ID,
     }
-    records = _fetch_paginated(PLAYER_TOKEN, PLAYER_SEARCH_PATH, params)
+    records = _fetch_paginated(PLAYER_TOKEN, PLAYER_REPORTING_PATH, params)
     if not records:
         return pd.DataFrame()
 
