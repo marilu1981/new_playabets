@@ -81,7 +81,19 @@ type Demographics = {
 const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
 
 export default function VipPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const vipDefaultFilters = useMemo<DashboardFilters>(() => {
+    const end = new Date();
+    const start = new Date(end);
+    start.setDate(end.getDate() - 30);
+    const toIsoDate = (d: Date) => d.toISOString().split("T")[0];
+    return {
+      ...defaultFilters,
+      dateFrom: toIsoDate(start),
+      dateTo: toIsoDate(end),
+    };
+  }, []);
+
+  const [filters, setFilters] = useState<DashboardFilters>(vipDefaultFilters);
   const [manager, setManager] = useState<string>("all");
   const [stage, setStage] = useState<string>("all");
   const [currentOnly, setCurrentOnly] = useState<boolean>(false);
@@ -166,7 +178,7 @@ export default function VipPage() {
     <DashboardLayout
       title="VIP Portfolio"
       subtitle="VIP revenue, portfolio-manager performance, and top players"
-      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
+      filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} resetFilters={vipDefaultFilters} />}
     >
       {/* VIP CSV Upload */}
       <div className="rounded-xl p-5 mb-4" style={CARD}>
