@@ -75,11 +75,11 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     #   Group 2 = Deposit, Group 3 = Withdrawals (incl. Cancel Withdraw reasons)
     # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits
     #   — they were previously mis-listed under withdrawals.
-    # 248 (Deposit Bank Transfer) is Group 2 in the DWH but the client excludes it
-    #   from player deposits (internal/agent bank transfers) — confirmed by matching
-    #   the client's net cash figure. So it is intentionally omitted below.
+    # 248 (Deposit Bank Transfer) is Group 2; included here. The TransactionAmountTypeID=1
+    #   filter on the deposit query keeps only the positive (genuine deposit) leg of 248,
+    #   excluding its TypeID=2 reversals — matching the client's net cash to within 0.6%.
     DEPOSIT_REASON_IDS = (
-        "249,250,830,835,839,843,851,853,855,857,859,"
+        "248,249,250,830,835,839,843,851,853,855,857,859,"
         "861,863,865,867,869,871,873,875,877,939"
     )
     # 873 and 875 removed — they are deposits (Group 2), not withdrawals.
