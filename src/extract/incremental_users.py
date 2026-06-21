@@ -52,6 +52,7 @@ SELECT_COLUMNS = [
     "u.country AS country",
     "u.city AS city",
     "u.zipcode AS zipcode",
+    "u.birthdate AS birthdate",
     "u.creationdate AS creationdate",
     "u.dateversion AS dateversion",
     "u.detaildateversion AS detaildateversion",
