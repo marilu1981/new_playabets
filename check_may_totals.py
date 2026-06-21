@@ -7,7 +7,7 @@ engine = build_engine()
 with engine.connect() as conn:
     print("=== May 2026 per-ReasonID totals (TransactionManagementStatusID=3, Accepted) ===")
     r = conn.execute(text("""
-        SELECT t.ReasonID, rr.ReasonGroup, rr.Reason,
+        SELECT t.ReasonID, rr.ReasonGroupID, rr.ReasonGroup, rr.Reason,
                t.TransactionAmountTypeID,
                SUM(ABS(CAST(t.Amount AS FLOAT))) AS total,
                COUNT(*) AS cnt
@@ -17,17 +17,17 @@ with engine.connect() as conn:
           AND t.Date <  '2026-06-01 00:00:00'
           AND t.TransactionManagementStatusID = 3
           AND rr.ReasonGroupID IN (2,3)
-        GROUP BY t.ReasonID, rr.ReasonGroup, rr.Reason, t.TransactionAmountTypeID
+        GROUP BY t.ReasonID, rr.ReasonGroupID, rr.ReasonGroup, rr.Reason, t.TransactionAmountTypeID
         ORDER BY rr.ReasonGroupID, t.ReasonID
     """))
     dep_total = 0.0
     wd_total = 0.0
     for row in r:
-        rid, grp, reason, tid, total, cnt = row
+        rid, grpid, grp, reason, tid, total, cnt = row
         print(f"  {rid:>5} | {grp:>12} | TypeID={tid} | {total:>18,.2f} | {cnt:>7} | {reason}")
-        if grp == "Deposit":
+        if grpid == 2:
             dep_total += total
-        elif grp == "Withdrawals":
+        elif grpid == 3:
             wd_total += total
     print(f"\n  ALL Group2 Deposits total:    {dep_total:>18,.2f}")
     print(f"  ALL Group3 Withdrawals total: {wd_total:>18,.2f}")
