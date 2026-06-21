@@ -19,6 +19,7 @@ from backend.core.cache import (
     RFM_USERS_PATH,
     load_parquet_cached,
     load_betslips_raw,
+    load_casino_raw,
 )
 from backend.core.helpers import _filter_range
 
@@ -228,6 +229,61 @@ def _aggregate_betslips_for_users(
     stake = float(df[stake_col].sum()) if stake_col and stake_col in df.columns else 0.0
     winnings = float(df[winnings_col].sum()) if winnings_col and winnings_col in df.columns else 0.0
     return {"stake": stake, "winnings": winnings, "ggr": stake - winnings, "betslips": len(df)}
+
+
+def _per_user_wagering(start: date, end: date, allowed_ids: set[str]) -> pd.DataFrame:
+    """
+    Per-user sports + casino wagering for a userid set over a period (by placement date).
+
+    Returns a DataFrame indexed by userid with columns:
+      sports_stake, sports_winnings, sports_bets,
+      casino_stake, casino_winnings, casino_bets
+    Missing sides are filled with 0. Used to attach revenue to the uploaded VIP roster.
+    """
+    def _agg(df: pd.DataFrame, label: str) -> pd.DataFrame:
+        empty = pd.DataFrame(columns=["userid", f"{label}_stake", f"{label}_winnings", f"{label}_bets"])
+        if df.empty:
+            return empty
+        df, col = normalize_cols(df)
+        placement = col.get("placementdate") or col.get("placedate") or col.get("betdate") or col.get("date")
+        user_col = col.get("userid")
+        stake_col = col.get("stake")
+        win_col = col.get("winnings") or col.get("userwinnings")
+        if not placement or not user_col:
+            return empty
+        df["_date"] = to_dt(df[placement]).dt.date
+        df = _filter_range(df, start, end)
+        df = df[df[user_col].astype(str).isin(allowed_ids)]
+        if df.empty:
+            return empty
+        df["_uid"] = pd.to_numeric(df[user_col], errors="coerce").astype("Int64")
+        df["_stake"] = pd.to_numeric(df[stake_col], errors="coerce").fillna(0.0) if stake_col else 0.0
+        df["_win"] = pd.to_numeric(df[win_col], errors="coerce").fillna(0.0) if win_col else 0.0
+        grp = df.groupby("_uid").agg(
+            **{
+                f"{label}_stake": ("_stake", "sum"),
+                f"{label}_winnings": ("_win", "sum"),
+                f"{label}_bets": ("_uid", "size"),
+            }
+        ).reset_index().rename(columns={"_uid": "userid"})
+        return grp
+
+    sports = _agg(load_betslips_raw(), "sports")
+    casino = _agg(load_casino_raw(), "casino")
+
+    if sports.empty and casino.empty:
+        return pd.DataFrame(columns=[
+            "userid", "sports_stake", "sports_winnings", "sports_bets",
+            "casino_stake", "casino_winnings", "casino_bets",
+        ])
+
+    merged = sports.merge(casino, on="userid", how="outer")
+    for c in ["sports_stake", "sports_winnings", "sports_bets", "casino_stake", "casino_winnings", "casino_bets"]:
+        if c not in merged.columns:
+            merged[c] = 0
+        merged[c] = merged[c].fillna(0)
+    merged["userid"] = pd.to_numeric(merged["userid"], errors="coerce").astype("Int64")
+    return merged
 
 
 def _filtered_registration_counts(

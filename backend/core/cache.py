@@ -40,6 +40,7 @@ _RAW = _first_existing_path(
 )
 USERS_RAW = _first_existing_path(_RAW / "users", _RAW / "Users")
 BETSLIPS_RAW = _first_existing_path(_RAW / "betslips", _RAW / "BetSlips")
+CASINO_RAW = _first_existing_path(_RAW / "casino", _RAW / "Casino")
 
 DATA_PATH        = _SERVING / "daily_kpis.parquet"
 DAILY_KPIS_PATH  = DATA_PATH  # alias used in sportsbook router (mirrors original app.py bug)
@@ -156,3 +157,45 @@ def load_betslips_raw() -> pd.DataFrame:
         return _PARQUET_CACHE[key]["df"].copy()
 
     return load_parquet_cached(base, "betslips_raw_file")
+
+
+def load_casino_raw() -> pd.DataFrame:
+    """Load raw casino increments (per-user, per-date rows). Mirrors load_betslips_raw."""
+    base = CASINO_RAW
+    if not base.exists():
+        return pd.DataFrame()
+
+    if base.is_dir():
+        inc_files = sorted(base.glob("casino_increment_*.parquet"))
+        latest_files = sorted(base.glob("casino_latest*.parquet"))
+        full_file = base / "casino_full.parquet"
+
+        if full_file.exists() and inc_files:
+            files = [full_file] + inc_files
+            key = "casino_raw_full_plus_inc"
+        elif inc_files:
+            files = inc_files
+            key = "casino_raw_increment"
+        elif latest_files:
+            files = [latest_files[-1]]
+            key = "casino_raw_latest"
+        elif full_file.exists():
+            files = [full_file]
+            key = "casino_raw_full"
+        else:
+            files = sorted(base.glob("*.parquet"))
+            if not files:
+                return pd.DataFrame()
+            key = "casino_raw_any"
+
+        fingerprint = _raw_files_fingerprint(files)
+        hit = _PARQUET_CACHE.get(key)
+        if hit is None or hit.get("fingerprint") != fingerprint:
+            if len(files) == 1:
+                df = pd.read_parquet(files[0])
+            else:
+                df = pd.concat((pd.read_parquet(f) for f in files), ignore_index=True)
+            _PARQUET_CACHE[key] = {"fingerprint": fingerprint, "df": df}
+        return _PARQUET_CACHE[key]["df"].copy()
+
+    return load_parquet_cached(base, "casino_raw_file")

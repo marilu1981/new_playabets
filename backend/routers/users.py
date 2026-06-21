@@ -3,7 +3,7 @@ routers/users.py — User status, self-exclusions, and RFM endpoints.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Optional
 
 import io
@@ -29,6 +29,7 @@ from backend.core.filters import (
     _load_latest_users,
     _load_users_for_filters,
     _apply_user_filters,
+    _per_user_wagering,
 )
 
 router = APIRouter()
@@ -387,22 +388,23 @@ async def vip_upload(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------------------------
-# VIP revenue analytics — joins the VIP roster to rfm_users (per-player 30-day
-# revenue snapshot) so we can surface VIP turnover, GGR, top players, per-manager
-# contribution and product share. rfm_users is a rolling-30-day snapshot keyed by
-# userid, not a period-filtered table, so revenue figures are "last 30 days".
+# VIP revenue analytics — the VIP universe comes from the uploaded roster
+# (vip_roster.parquet). Revenue is computed from RAW betslips + casino wagering
+# for those userids over the selected period (actual stakes/winnings), NOT from
+# the rfm_users rolling snapshot. This gives correct turnover/GGR/hold per VIP.
 # ---------------------------------------------------------------------------
 def _join_vip_revenue(
     account_manager: Optional[str],
     stage: Optional[str],
+    start: Optional[date],
     end: Optional[date],
     current_only: bool = True,
 ) -> pd.DataFrame:
     """
-    Return one row per current VIP user joined to their rfm_users revenue.
+    Return one row per current VIP user with period revenue from betslips+casino.
 
     Columns: userid, account_manager, vip_lifecycle_stage, turnover, ggr,
-             sports_stake, casino_stake, bets, segment
+             sports_stake, casino_stake, casino_ggr, bets
     """
     roster = _load_vip_roster()
     if roster.empty:
@@ -423,30 +425,28 @@ def _join_vip_revenue(
         subset=["userid"], keep="last"
     )
 
-    rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
-    keep = [c for c in [
-        "userid", "monetary_30d", "ggr_30d", "settled_stake_30d",
-        "casino_stake_30d", "casino_ggr_30d", "bets_30d", "casino_bets_30d", "segment",
-    ] if c in rfm.columns]
-    if not rfm.empty and "userid" in rfm.columns:
-        rfm = rfm[keep].copy()
-        rfm["userid"] = pd.to_numeric(rfm["userid"], errors="coerce").astype("Int64")
-        merged = roster.merge(rfm, on="userid", how="left")
-    else:
-        merged = roster.copy()
-        for c in keep:
-            if c != "userid":
-                merged[c] = 0.0
+    # Period for wagering: default to a 30-day window ending at `end` if start absent.
+    period_end = end or date.today()
+    period_start = start or (period_end - timedelta(days=30))
 
-    merged["turnover"]     = pd.to_numeric(merged.get("monetary_30d", 0), errors="coerce").fillna(0.0)
-    merged["ggr"]          = pd.to_numeric(merged.get("ggr_30d", 0), errors="coerce").fillna(0.0)
-    merged["sports_stake"] = pd.to_numeric(merged.get("settled_stake_30d", 0), errors="coerce").fillna(0.0)
-    merged["casino_stake"] = pd.to_numeric(merged.get("casino_stake_30d", 0), errors="coerce").fillna(0.0)
-    merged["casino_ggr"]   = pd.to_numeric(merged.get("casino_ggr_30d", 0), errors="coerce").fillna(0.0)
-    merged["bets"] = (
-        pd.to_numeric(merged.get("bets_30d", 0), errors="coerce").fillna(0).astype(int)
-        + pd.to_numeric(merged.get("casino_bets_30d", 0), errors="coerce").fillna(0).astype(int)
-    )
+    vip_ids = set(roster["userid"].dropna().astype("Int64").astype(str))
+    wagering = _per_user_wagering(period_start, period_end, vip_ids)
+
+    if wagering.empty:
+        merged = roster.copy()
+        for c in ["sports_stake", "sports_winnings", "sports_bets",
+                  "casino_stake", "casino_winnings", "casino_bets"]:
+            merged[c] = 0.0
+    else:
+        merged = roster.merge(wagering, on="userid", how="left")
+        for c in ["sports_stake", "sports_winnings", "sports_bets",
+                  "casino_stake", "casino_winnings", "casino_bets"]:
+            merged[c] = pd.to_numeric(merged.get(c, 0), errors="coerce").fillna(0.0)
+
+    merged["turnover"]   = merged["sports_stake"] + merged["casino_stake"]
+    merged["casino_ggr"] = merged["casino_stake"] - merged["casino_winnings"]
+    merged["ggr"]        = (merged["sports_stake"] - merged["sports_winnings"]) + merged["casino_ggr"]
+    merged["bets"]       = (merged["sports_bets"] + merged["casino_bets"]).astype(int)
     return merged
 
 
@@ -458,7 +458,7 @@ def vip_revenue(
     stage: Optional[str] = Query(None),
 ):
     """Period-active VIP revenue totals (revenue = rolling 30-day from rfm_users)."""
-    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
     if df.empty:
         return {"has_data": False}
 
@@ -487,7 +487,7 @@ def vip_revenue(
         "total_players": total_players,
         "sports_share": round(sports_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
         "casino_share": round(casino_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
-        "revenue_basis": "rolling_30d",
+        "revenue_basis": "period",
     }
 
 
@@ -499,7 +499,7 @@ def vip_by_manager(
     stage: Optional[str] = Query(None),
 ):
     """Per-account-manager VIP rollup."""
-    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
     if df.empty:
         return {"managers": [], "has_data": False}
 
@@ -533,7 +533,7 @@ def vip_top_players(
     limit: int = Query(20, ge=1, le=200),
 ):
     """Top VIPs ranked by turnover (rolling 30-day)."""
-    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
     if df.empty:
         return {"players": [], "has_data": False}
 
@@ -559,7 +559,7 @@ def vip_product_share(
     stage: Optional[str] = Query(None),
 ):
     """Aggregate sports vs casino split across all current VIPs."""
-    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
     if df.empty:
         return {"has_data": False, "products": []}
 

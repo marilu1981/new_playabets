@@ -245,13 +245,14 @@ export default function VipPage() {
         <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "—"} subtitle="VIPs ÷ total players" icon={<Percent size={18} />} accent="teal" loading={loading} />
         <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "—"} subtitle="VIP GGR ÷ days" icon={<TrendingUp size={18} />} accent="green" loading={loading} />
         <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "—"} subtitle="GGR ÷ VIP count" icon={<DollarSign size={18} />} accent="gold" loading={loading} />
-        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Rolling 30-day" icon={<Wallet size={18} />} accent="teal" loading={loading} />
-        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Rolling 30-day" icon={<DollarSign size={18} />} accent="green" loading={loading} />
+        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Selected period" icon={<Wallet size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Selected period" icon={<DollarSign size={18} />} accent="green" loading={loading} />
       </div>
 
       <p className="text-[11px] text-gray-400 mb-4">
-        VIP revenue figures (turnover, GGR, APD, top players) are a rolling 30-day snapshot per player.
-        "VIP tier" uses lifecycle stage (Hosted / Unhosted / Time-Out / Self Excluded).
+        VIP revenue figures (turnover, GGR, APD, top players) are computed from actual betslip and
+        casino wagering for the selected period. "VIP tier" uses lifecycle stage
+        (Hosted / Unhosted / Time-Out / Self Excluded).
       </p>
 
       {/* By stage + Product share */}
@@ -398,7 +399,7 @@ export default function VipPage() {
       {/* Top 20 Players */}
       <div className="rounded-xl p-5" style={CARD}>
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Top 20 VIPs by Turnover</h3>
-        <p className="text-xs text-gray-500 mb-3">Rolling 30-day turnover</p>
+        <p className="text-xs text-gray-500 mb-3">Turnover for selected period</p>
         <DataTable<TopPlayer & { rank: number }>
           compact
           emptyMessage={loading ? "Loading…" : "No player data."}
