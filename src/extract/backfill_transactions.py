@@ -72,13 +72,12 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     e = _safe(str(day + timedelta(days=1)) + " 00:00:00")
 
     # Confirmed via Dwh_en.view_Reasons (ReasonGroupID):
-    #   Group 2 = Deposit: 248,249,250,830,835,...,873,875,877,939
-    #   Group 3 = Withdrawals: 251-254,831,833,837,841,845,847,849
-    #   Group 3 Cancel Withdrawals: 838,842,846,848,850
-    # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits.
-    # 248 (Deposit Bank Transfer) is also Group 2. All confirmed from view_Reasons.
-    # 248 (Deposit Bank Transfer) excluded — client does not count it as a player
-    # deposit (likely internal/agent bank transfers). Confirmed by net cash overshoot.
+    #   Group 2 = Deposit, Group 3 = Withdrawals (incl. Cancel Withdraw reasons)
+    # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits
+    #   — they were previously mis-listed under withdrawals.
+    # 248 (Deposit Bank Transfer) is Group 2 in the DWH but the client excludes it
+    #   from player deposits (internal/agent bank transfers) — confirmed by matching
+    #   the client's net cash figure. So it is intentionally omitted below.
     DEPOSIT_REASON_IDS = (
         "249,250,830,835,839,843,851,853,855,857,859,"
         "861,863,865,867,869,871,873,875,877,939"
