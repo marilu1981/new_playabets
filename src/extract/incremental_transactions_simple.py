@@ -99,15 +99,18 @@ def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
     return _safe_date(utc_start), _safe_date(utc_end)
 
 
-# 873=FnbEWallet Deposit and 875=InstantMoney Deposit are excluded from deposits
-# as they are offset transactions that belong in the withdrawals bucket.
+# Reason codes MUST stay in sync with backfill_transactions.py.
+# Confirmed via Dwh_en.view_Reasons (ReasonGroupID): Group 2 = Deposit, Group 3 = Withdrawals.
+# 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits.
+# 248 (Deposit Bank Transfer) included; the TransactionAmountTypeID=1 filter on the
+# deposit query keeps only its positive leg — matches client net cash to within 0.6%.
 DEPOSIT_REASON_IDS = (
-    "249,250,830,835,839,843,851,853,855,857,859,"
-    "861,863,865,867,869,871,877,939"
+    "248,249,250,830,835,839,843,851,853,855,857,859,"
+    "861,863,865,867,869,871,873,875,877,939"
 )
 
-# Actual withdrawals (positive amounts).
-WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849,873,875"
+# Actual withdrawals (positive amounts). 873/875 removed — they are deposits.
+WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
 
 # Cancel withdrawals are stored as positive values in the DB but represent
 # reversed/cancelled withdrawals — subtract them from the withdrawal total.
