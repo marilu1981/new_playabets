@@ -111,6 +111,7 @@ export default function VipPage() {
   const [productShare, setProductShare] = useState<ProductShare | null>(null);
   const [demographics, setDemographics] = useState<Demographics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   type UploadStatus = { ok: boolean; added: number; updated: number; unchanged: number; total_in_roster: number; filename: string } | null;
   const [uploading, setUploading] = useState(false);
@@ -151,14 +152,22 @@ export default function VipPage() {
     return params.toString();
   }, [filters.dateFrom, filters.dateTo, manager, stage, currentOnly]);
 
+  const [debouncedQuery, setDebouncedQuery] = useState<string>(query);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 350);
+    return () => clearTimeout(t);
+  }, [query]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setLoading(true);
+      const firstPaint = summary === null && revenue === null;
+      if (firstPaint) setLoading(true);
+      else setRefreshing(true);
       try {
         const [summaryRes, revenueRes] = await Promise.allSettled([
-          withTimeout(fetchJson<VipSummary>(`/vip/summary?${query}`), 12000),
-          withTimeout(fetchJson<VipRevenue>(`/vip/revenue?${query}`), 12000),
+          withTimeout(fetchJson<VipSummary>(`/vip/summary?${debouncedQuery}`), 12000),
+          withTimeout(fetchJson<VipRevenue>(`/vip/revenue?${debouncedQuery}`), 12000),
         ]);
         if (cancelled) return;
         setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
@@ -169,19 +178,19 @@ export default function VipPage() {
         setDemographics({ has_data: false, age_bands: [], countries: [], gender_available: false });
 
         // Load detail sections asynchronously so they never block first paint.
-        withTimeout(fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${query}`), 15000)
+        withTimeout(fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${debouncedQuery}`), 15000)
           .then((d) => { if (!cancelled) setManagers(d?.managers ?? []); })
           .catch(() => { if (!cancelled) setManagers([]); });
 
-        withTimeout(fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${query}&limit=20`), 15000)
+        withTimeout(fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${debouncedQuery}&limit=20`), 15000)
           .then((d) => { if (!cancelled) setTopPlayers(d?.players ?? []); })
           .catch(() => { if (!cancelled) setTopPlayers([]); });
 
-        withTimeout(fetchJson<ProductShare>(`/vip/product-share?${query}`), 15000)
+        withTimeout(fetchJson<ProductShare>(`/vip/product-share?${debouncedQuery}`), 15000)
           .then((d) => { if (!cancelled) setProductShare(d ?? null); })
           .catch(() => { if (!cancelled) setProductShare(null); });
 
-        withTimeout(fetchJson<Demographics>(`/vip/demographics?${query}`), 15000)
+        withTimeout(fetchJson<Demographics>(`/vip/demographics?${debouncedQuery}`), 15000)
           .then((d) => {
             if (!cancelled) setDemographics(d ?? null);
           })
@@ -197,12 +206,15 @@ export default function VipPage() {
         setProductShare(null);
         setDemographics(null);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     }
     load().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [query]);
+  }, [debouncedQuery]);
 
   const managerOptions = summary?.account_managers ?? [];
   const stageOptions = summary?.stages ?? [];
@@ -301,6 +313,9 @@ export default function VipPage() {
         casino wagering for the selected period. "VIP tier" uses lifecycle stage
         (Hosted / Unhosted / Time-Out / Self Excluded).
       </p>
+      {refreshing && (
+        <p className="text-[11px] text-amber-600 mb-4">Updating VIP data for new filters…</p>
+      )}
 
       {/* By stage + Product share */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
