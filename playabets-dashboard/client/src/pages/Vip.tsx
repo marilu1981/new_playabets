@@ -3,14 +3,19 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import DataTable from "@/components/DataTable";
-import { Crown, Upload, Users, Wallet, Gift } from "lucide-react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { Crown, Upload, Users, Wallet, Gift, Percent, TrendingUp, DollarSign } from "lucide-react";
 import { cachedFetch, invalidateCache } from "@/lib/apiCache";
-import { formatFull, formatNumber } from "@/lib/formatters";
+import { formatFull, formatNumber, formatCompact } from "@/lib/formatters";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
   return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
+
+const CARD = { background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" } as const;
+const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", borderRadius: 8, fontSize: 11 } as const;
+const fmtZar = (v: number) => `R ${formatFull(Math.round(v))}`;
 
 type VipSummary = {
   has_data: boolean;
@@ -28,20 +33,45 @@ type VipSummary = {
   stages: string[];
 };
 
-type VipRow = {
+type VipRevenue = {
+  has_data: boolean;
+  vip_count?: number;
+  active_vips?: number;
+  total_turnover?: number;
+  total_ggr?: number;
+  apd?: number;
+  avg_revenue_per_vip?: number;
+  vip_conversion_rate?: number;
+  total_players?: number;
+  sports_share?: number;
+  casino_share?: number;
+};
+
+type ManagerRow = {
+  account_manager: string;
+  vip_count: number;
+  turnover: number;
+  ggr: number;
+  avg_revenue_per_vip: number;
+  sports_share: number;
+  casino_share: number;
+};
+
+type TopPlayer = {
   user_id: string | null;
-  name?: string | null;
-  surname?: string | null;
   account_manager: string;
   vip_lifecycle_stage: string;
-  country?: string | null;
-  userstatus?: string | null;
-  balance?: number | null;
-  onboard_date?: string | null;
-  offboard_date?: string | null;
-  is_current?: boolean;
-  is_date_error?: boolean;
+  turnover: number;
+  ggr: number;
+  bets: number;
 };
+
+type ProductShare = {
+  has_data: boolean;
+  products: Array<{ product: string; stake: number; ggr: number }>;
+};
+
+const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
 
 export default function VipPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
@@ -49,7 +79,10 @@ export default function VipPage() {
   const [stage, setStage] = useState<string>("all");
   const [currentOnly, setCurrentOnly] = useState<boolean>(false);
   const [summary, setSummary] = useState<VipSummary | null>(null);
-  const [rows, setRows] = useState<VipRow[]>([]);
+  const [revenue, setRevenue] = useState<VipRevenue | null>(null);
+  const [managers, setManagers] = useState<ManagerRow[]>([]);
+  const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
+  const [productShare, setProductShare] = useState<ProductShare | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   type UploadStatus = { ok: boolean; added: number; updated: number; unchanged: number; total_in_roster: number; filename: string } | null;
@@ -84,10 +117,7 @@ export default function VipPage() {
   }
 
   const query = useMemo(() => {
-    const params = new URLSearchParams({
-      start: filters.dateFrom,
-      end: filters.dateTo,
-    });
+    const params = new URLSearchParams({ start: filters.dateFrom, end: filters.dateTo });
     if (manager !== "all") params.set("account_manager", manager);
     if (stage !== "all") params.set("stage", stage);
     if (currentOnly) params.set("current_only", "true");
@@ -96,55 +126,40 @@ export default function VipPage() {
 
   useEffect(() => {
     let cancelled = false;
-
     async function load() {
       setLoading(true);
-      const [summaryRes, listRes] = await Promise.allSettled([
+      const [summaryRes, revRes, mgrRes, topRes, prodRes] = await Promise.allSettled([
         fetchJson<VipSummary>(`/vip/summary?${query}`),
-        fetchJson<{ rows: VipRow[] }>(`/vip/list?${query}&limit=500`),
+        fetchJson<VipRevenue>(`/vip/revenue?${query}`),
+        fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${query}`),
+        fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${query}&limit=20`),
+        fetchJson<ProductShare>(`/vip/product-share?${query}`),
       ]);
-
       if (cancelled) return;
-
-      if (summaryRes.status === "fulfilled") {
-        setSummary(summaryRes.value);
-      } else {
-        setSummary(null);
-      }
-
-      if (listRes.status === "fulfilled") {
-        setRows(listRes.value.rows ?? []);
-      } else {
-        setRows([]);
-      }
-
+      setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
+      setRevenue(revRes.status === "fulfilled" ? revRes.value : null);
+      setManagers(mgrRes.status === "fulfilled" ? (mgrRes.value.managers ?? []) : []);
+      setTopPlayers(topRes.status === "fulfilled" ? (topRes.value.players ?? []) : []);
+      setProductShare(prodRes.status === "fulfilled" ? prodRes.value : null);
       setLoading(false);
     }
-
-    load().catch(() => {
-      if (!cancelled) {
-        setSummary(null);
-        setRows([]);
-        setLoading(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    load().catch(() => { if (!cancelled) { setLoading(false); } });
+    return () => { cancelled = true; };
   }, [query]);
 
   const managerOptions = summary?.account_managers ?? [];
   const stageOptions = summary?.stages ?? [];
+  const rev = revenue?.has_data ? revenue : null;
+  const productPieData = (productShare?.products ?? []).map((p) => ({ name: p.product, value: p.stake }));
 
   return (
     <DashboardLayout
       title="VIP Portfolio"
-      subtitle="Lifecycle roster, account-manager ownership, and VIP activity"
+      subtitle="VIP revenue, portfolio-manager performance, and top players"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
     >
       {/* VIP CSV Upload */}
-      <div className="rounded-xl p-5 mb-4" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      <div className="rounded-xl p-5 mb-4" style={CARD}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
             <Upload size={15} className="text-gray-400" />
@@ -161,14 +176,10 @@ export default function VipPage() {
               accept=".csv"
               className="hidden"
               disabled={uploading}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleUpload(f);
-              }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
             />
           </label>
           <span className="text-xs text-gray-400">Columns: User ID, Account Manager, VIP Lifecycle Stage, Onboard Date, Offboard Date</span>
-
           {uploadResult && (
             <div className="flex items-center gap-3 text-xs rounded-md px-3 py-2" style={{ background: "#f0f7e6", border: "1px solid #c6e49a" }}>
               <span className="font-semibold text-green-800">{uploadResult.filename}</span>
@@ -186,26 +197,19 @@ export default function VipPage() {
         </div>
       </div>
 
-      <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      {/* Filters + lifecycle summary cards */}
+      <div className="rounded-xl p-5 mb-4" style={CARD}>
         <div className="flex flex-wrap items-end gap-3 mb-4">
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Account Manager</label>
-            <select
-              value={manager}
-              onChange={(e) => setManager(e.target.value)}
-              className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm"
-            >
+            <select value={manager} onChange={(e) => setManager(e.target.value)} className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm">
               <option value="all">All managers</option>
               {managerOptions.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Lifecycle Stage</label>
-            <select
-              value={stage}
-              onChange={(e) => setStage(e.target.value)}
-              className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm"
-            >
+            <select value={stage} onChange={(e) => setStage(e.target.value)} className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm">
               <option value="all">All stages</option>
               {stageOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -226,8 +230,23 @@ export default function VipPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
+      {/* VIP Revenue KPI row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+        <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "—"} subtitle="VIPs ÷ total players" icon={<Percent size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "—"} subtitle="VIP GGR ÷ days" icon={<TrendingUp size={18} />} accent="green" loading={loading} />
+        <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "—"} subtitle="GGR ÷ VIP count" icon={<DollarSign size={18} />} accent="gold" loading={loading} />
+        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Rolling 30-day" icon={<Wallet size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Rolling 30-day" icon={<DollarSign size={18} />} accent="green" loading={loading} />
+      </div>
+
+      <p className="text-[11px] text-gray-400 mb-4">
+        VIP revenue figures (turnover, GGR, APD, top players) are a rolling 30-day snapshot per player.
+        "VIP tier" uses lifecycle stage (Hosted / Unhosted / Time-Out / Self Excluded).
+      </p>
+
+      {/* By stage + Product share */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
+        <div className="rounded-xl p-5" style={CARD}>
           <h3 className="text-sm font-semibold text-gray-800 mb-3">By lifecycle stage</h3>
           <div className="space-y-3">
             {(summary?.by_stage ?? []).map((row) => {
@@ -250,38 +269,86 @@ export default function VipPage() {
           </div>
         </div>
 
-        <div className="rounded-xl p-5 xl:col-span-2" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">VIP roster</h3>
-          <DataTable<VipRow>
-            compact
-            className="border-gray-200"
-            emptyMessage={loading ? "Loading VIP roster..." : "No VIP rows found for selected filters."}
-            columns={[
-              { key: "user_id", header: "User ID", mono: true },
-              {
-                key: "full_name",
-                header: "Name",
-                render: (row) => {
-                  const full = `${row.name ?? ""} ${row.surname ?? ""}`.trim();
-                  return full || "—";
-                },
-              },
-              { key: "account_manager", header: "Account Manager" },
-              { key: "vip_lifecycle_stage", header: "Stage" },
-              { key: "country", header: "Country" },
-              { key: "onboard_date", header: "Onboard", render: (row) => row.onboard_date ?? "—" },
-              { key: "offboard_date", header: "Offboard", render: (row) => row.offboard_date ?? "—" },
-              { key: "userstatus", header: "Status", render: (row) => row.userstatus ?? "—" },
-              {
-                key: "balance",
-                header: "Balance",
-                align: "right",
-                render: (row) => row.balance == null ? "—" : formatFull(row.balance),
-              },
-            ]}
-            data={rows}
-          />
+        <div className="rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">VIP Product Share</h3>
+          <p className="text-xs text-gray-500 mb-3">Sports vs Casino turnover</p>
+          {productPieData.length > 0 && productPieData.some((p) => p.value > 0) ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie data={productPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" nameKey="name" paddingAngle={2}>
+                  {productPieData.map((p) => <Cell key={p.name} fill={PRODUCT_COLORS[p.name] ?? "#999"} />)}
+                </Pie>
+                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => fmtZar(v)} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-xs text-gray-400 py-10 text-center">{loading ? "Loading…" : "No product data."}</div>
+          )}
         </div>
+
+        <div className="rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-3">Revenue split</h3>
+          {rev ? (
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Sports share</span>
+                <span className="font-medium text-gray-900">{rev.sports_share?.toFixed(1)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${rev.sports_share ?? 0}%`, background: PRODUCT_COLORS.Sports }} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Casino share</span>
+                <span className="font-medium text-gray-900">{rev.casino_share?.toFixed(1)}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${rev.casino_share ?? 0}%`, background: PRODUCT_COLORS.Casino }} />
+              </div>
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400">{loading ? "Loading…" : "No revenue data."}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Portfolio Manager table */}
+      <div className="rounded-xl p-5 mb-4" style={CARD}>
+        <h3 className="text-sm font-semibold text-gray-800 mb-3">Portfolio Manager Performance</h3>
+        <DataTable<ManagerRow>
+          compact
+          emptyMessage={loading ? "Loading…" : "No manager data."}
+          columns={[
+            { key: "account_manager", header: "Manager" },
+            { key: "vip_count", header: "VIPs", align: "right", render: (r) => formatFull(r.vip_count) },
+            { key: "turnover", header: "Turnover", align: "right", render: (r) => fmtZar(r.turnover) },
+            { key: "ggr", header: "GGR", align: "right", render: (r) => fmtZar(r.ggr) },
+            { key: "avg_revenue_per_vip", header: "Avg Rev / VIP", align: "right", render: (r) => fmtZar(r.avg_revenue_per_vip) },
+            { key: "sports_share", header: "Sports %", align: "right", render: (r) => `${r.sports_share.toFixed(0)}%` },
+            { key: "casino_share", header: "Casino %", align: "right", render: (r) => `${r.casino_share.toFixed(0)}%` },
+          ]}
+          data={managers}
+        />
+      </div>
+
+      {/* Top 20 Players */}
+      <div className="rounded-xl p-5" style={CARD}>
+        <h3 className="text-sm font-semibold text-gray-800 mb-1">Top 20 VIPs by Turnover</h3>
+        <p className="text-xs text-gray-500 mb-3">Rolling 30-day turnover</p>
+        <DataTable<TopPlayer & { rank: number }>
+          compact
+          emptyMessage={loading ? "Loading…" : "No player data."}
+          columns={[
+            { key: "rank", header: "#", render: (r) => String(r.rank) },
+            { key: "user_id", header: "User ID", mono: true, render: (r) => r.user_id ?? "—" },
+            { key: "account_manager", header: "Manager" },
+            { key: "vip_lifecycle_stage", header: "Stage" },
+            { key: "turnover", header: "Turnover", align: "right", render: (r) => fmtZar(r.turnover) },
+            { key: "ggr", header: "GGR", align: "right", render: (r) => fmtZar(r.ggr) },
+            { key: "bets", header: "Bets", align: "right", render: (r) => formatCompact(r.bets) },
+          ]}
+          data={topPlayers.map((p, i) => ({ ...p, rank: i + 1 }))}
+        />
       </div>
     </DashboardLayout>
   );

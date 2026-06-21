@@ -386,6 +386,196 @@ async def vip_upload(file: UploadFile = File(...)):
     }
 
 
+# ---------------------------------------------------------------------------
+# VIP revenue analytics — joins the VIP roster to rfm_users (per-player 30-day
+# revenue snapshot) so we can surface VIP turnover, GGR, top players, per-manager
+# contribution and product share. rfm_users is a rolling-30-day snapshot keyed by
+# userid, not a period-filtered table, so revenue figures are "last 30 days".
+# ---------------------------------------------------------------------------
+def _join_vip_revenue(
+    account_manager: Optional[str],
+    stage: Optional[str],
+    end: Optional[date],
+    current_only: bool = True,
+) -> pd.DataFrame:
+    """
+    Return one row per current VIP user joined to their rfm_users revenue.
+
+    Columns: userid, account_manager, vip_lifecycle_stage, turnover, ggr,
+             sports_stake, casino_stake, bets, segment
+    """
+    roster = _load_vip_roster()
+    if roster.empty:
+        return pd.DataFrame()
+
+    roster = _apply_vip_filters(roster, account_manager, stage)
+    # Keep valid, current stints (one active row per user) as the VIP universe.
+    as_of = end or date.today()
+    if current_only:
+        roster = roster[_vip_active_as_of_mask(roster, as_of)]
+    else:
+        roster = roster[_vip_overlap_mask(roster, None, None)]
+    if roster.empty:
+        return pd.DataFrame()
+
+    # One row per user — latest stint wins.
+    roster = roster.sort_values(["userid", "onboard_date"]).drop_duplicates(
+        subset=["userid"], keep="last"
+    )
+
+    rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+    keep = [c for c in [
+        "userid", "monetary_30d", "ggr_30d", "settled_stake_30d",
+        "casino_stake_30d", "casino_ggr_30d", "bets_30d", "casino_bets_30d", "segment",
+    ] if c in rfm.columns]
+    if not rfm.empty and "userid" in rfm.columns:
+        rfm = rfm[keep].copy()
+        rfm["userid"] = pd.to_numeric(rfm["userid"], errors="coerce").astype("Int64")
+        merged = roster.merge(rfm, on="userid", how="left")
+    else:
+        merged = roster.copy()
+        for c in keep:
+            if c != "userid":
+                merged[c] = 0.0
+
+    merged["turnover"]     = pd.to_numeric(merged.get("monetary_30d", 0), errors="coerce").fillna(0.0)
+    merged["ggr"]          = pd.to_numeric(merged.get("ggr_30d", 0), errors="coerce").fillna(0.0)
+    merged["sports_stake"] = pd.to_numeric(merged.get("settled_stake_30d", 0), errors="coerce").fillna(0.0)
+    merged["casino_stake"] = pd.to_numeric(merged.get("casino_stake_30d", 0), errors="coerce").fillna(0.0)
+    merged["casino_ggr"]   = pd.to_numeric(merged.get("casino_ggr_30d", 0), errors="coerce").fillna(0.0)
+    merged["bets"] = (
+        pd.to_numeric(merged.get("bets_30d", 0), errors="coerce").fillna(0).astype(int)
+        + pd.to_numeric(merged.get("casino_bets_30d", 0), errors="coerce").fillna(0).astype(int)
+    )
+    return merged
+
+
+@router.get("/vip/revenue")
+def vip_revenue(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """Period-active VIP revenue totals (revenue = rolling 30-day from rfm_users)."""
+    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    if df.empty:
+        return {"has_data": False}
+
+    vip_count   = int(df["userid"].dropna().nunique())
+    total_turn  = float(df["turnover"].sum())
+    total_ggr   = float(df["ggr"].sum())
+    sports_st   = float(df["sports_stake"].sum())
+    casino_st   = float(df["casino_stake"].sum())
+    days = ((end - start).days + 1) if (start and end) else 30
+    days = max(days, 1)
+
+    # VIP conversion rate = VIPs / total players (rfm_users row count is player base)
+    rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+    total_players = int(rfm["userid"].dropna().nunique()) if not rfm.empty and "userid" in rfm.columns else 0
+
+    stake_base = sports_st + casino_st
+    return {
+        "has_data": True,
+        "vip_count": vip_count,
+        "active_vips": vip_count,  # df is already current-only
+        "total_turnover": round(total_turn, 2),
+        "total_ggr": round(total_ggr, 2),
+        "apd": round(total_ggr / days, 2),
+        "avg_revenue_per_vip": round(total_ggr / vip_count, 2) if vip_count > 0 else 0.0,
+        "vip_conversion_rate": round(vip_count / total_players * 100, 2) if total_players > 0 else 0.0,
+        "total_players": total_players,
+        "sports_share": round(sports_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
+        "casino_share": round(casino_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
+        "revenue_basis": "rolling_30d",
+    }
+
+
+@router.get("/vip/by-manager")
+def vip_by_manager(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """Per-account-manager VIP rollup."""
+    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    if df.empty:
+        return {"managers": [], "has_data": False}
+
+    rows = []
+    for mgr, g in df.groupby("account_manager"):
+        vip_count = int(g["userid"].dropna().nunique())
+        turn = float(g["turnover"].sum())
+        ggr = float(g["ggr"].sum())
+        sports = float(g["sports_stake"].sum())
+        casino = float(g["casino_stake"].sum())
+        base = sports + casino
+        rows.append({
+            "account_manager": str(mgr),
+            "vip_count": vip_count,
+            "turnover": round(turn, 2),
+            "ggr": round(ggr, 2),
+            "avg_revenue_per_vip": round(ggr / vip_count, 2) if vip_count > 0 else 0.0,
+            "sports_share": round(sports / base * 100, 1) if base > 0 else 0.0,
+            "casino_share": round(casino / base * 100, 1) if base > 0 else 0.0,
+        })
+    rows.sort(key=lambda r: r["ggr"], reverse=True)
+    return {"managers": rows, "has_data": True}
+
+
+@router.get("/vip/top-players")
+def vip_top_players(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+    limit: int = Query(20, ge=1, le=200),
+):
+    """Top VIPs ranked by turnover (rolling 30-day)."""
+    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    if df.empty:
+        return {"players": [], "has_data": False}
+
+    d = df.sort_values("turnover", ascending=False).head(limit)
+    players = []
+    for _, r in d.iterrows():
+        players.append({
+            "user_id": str(int(r["userid"])) if pd.notna(r["userid"]) else None,
+            "account_manager": str(r.get("account_manager", "")),
+            "vip_lifecycle_stage": str(r.get("vip_lifecycle_stage", "")),
+            "turnover": round(float(r["turnover"]), 2),
+            "ggr": round(float(r["ggr"]), 2),
+            "bets": int(r["bets"]),
+        })
+    return {"players": players, "has_data": True}
+
+
+@router.get("/vip/product-share")
+def vip_product_share(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """Aggregate sports vs casino split across all current VIPs."""
+    df = _join_vip_revenue(account_manager, stage, end, current_only=True)
+    if df.empty:
+        return {"has_data": False, "products": []}
+
+    sports_stake = float(df["sports_stake"].sum())
+    casino_stake = float(df["casino_stake"].sum())
+    sports_ggr   = float(df["ggr"].sum()) - float(df["casino_ggr"].sum())
+    casino_ggr   = float(df["casino_ggr"].sum())
+    return {
+        "has_data": True,
+        "products": [
+            {"product": "Sports", "stake": round(sports_stake, 2), "ggr": round(sports_ggr, 2)},
+            {"product": "Casino", "stake": round(casino_stake, 2), "ggr": round(casino_ggr, 2)},
+        ],
+    }
+
+
 @router.get("/users/status-breakdown")
 def users_status_breakdown(
     territory: Optional[str] = Query(None),
