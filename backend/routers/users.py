@@ -145,20 +145,20 @@ def _vip_active_as_of_mask(df: pd.DataFrame, as_of: date) -> pd.Series:
 def _load_vip_user_details() -> pd.DataFrame:
     users = _load_latest_users()
     if users.empty:
-        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance"])
+        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance", "birthdate"])
 
     details, mapping = normalize_cols(users)
     rename: dict[str, str] = {}
-    for key in ["userid", "name", "surname", "country", "userstatus", "balance"]:
+    for key in ["userid", "name", "surname", "country", "userstatus", "balance", "birthdate"]:
         col = mapping.get(key)
         if col:
             rename[col] = key
     details = details.rename(columns=rename)
     if "userid" not in details.columns:
-        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance"])
+        return pd.DataFrame(columns=["userid", "name", "surname", "country", "userstatus", "balance", "birthdate"])
 
     details["userid"] = pd.to_numeric(details["userid"], errors="coerce").astype("Int64")
-    keep = [c for c in ["userid", "name", "surname", "country", "userstatus", "balance"] if c in details.columns]
+    keep = [c for c in ["userid", "name", "surname", "country", "userstatus", "balance", "birthdate"] if c in details.columns]
     details = details[keep].dropna(subset=["userid"]).drop_duplicates(subset=["userid"], keep="last")
     return details
 
@@ -573,6 +573,61 @@ def vip_product_share(
             {"product": "Sports", "stake": round(sports_stake, 2), "ggr": round(sports_ggr, 2)},
             {"product": "Casino", "stake": round(casino_stake, 2), "ggr": round(casino_ggr, 2)},
         ],
+    }
+
+
+@router.get("/vip/demographics")
+def vip_demographics(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """
+    VIP demographics: age-band and country distribution for current VIPs.
+    Age derived from view_Users.BirthDate. Gender is not available in the DWH.
+    """
+    roster = _load_vip_roster()
+    if roster.empty:
+        return {"has_data": False, "age_bands": [], "countries": []}
+
+    roster = _apply_vip_filters(roster, account_manager, stage)
+    as_of = end or date.today()
+    roster = roster[_vip_active_as_of_mask(roster, as_of)]
+    if roster.empty:
+        return {"has_data": False, "age_bands": [], "countries": []}
+
+    roster = roster.sort_values(["userid", "onboard_date"]).drop_duplicates(subset=["userid"], keep="last")
+
+    details = _load_vip_user_details()
+    if details.empty:
+        return {"has_data": False, "age_bands": [], "countries": []}
+    d = roster.merge(details, on="userid", how="left")
+
+    # ── Age bands from birthdate ──────────────────────────────────────────────
+    age_bands: list[dict] = []
+    if "birthdate" in d.columns:
+        bdate = pd.to_datetime(d["birthdate"], errors="coerce")
+        today = pd.Timestamp(as_of)
+        age = ((today - bdate).dt.days / 365.25)
+        bins = [0, 25, 35, 45, 55, 200]
+        labels = ["18-24", "25-34", "35-44", "45-54", "55+"]
+        age_cat = pd.cut(age.dropna(), bins=bins, labels=labels, right=False)
+        counts = age_cat.value_counts().reindex(labels, fill_value=0)
+        age_bands = [{"band": str(b), "count": int(c)} for b, c in counts.items()]
+
+    # ── Country distribution ──────────────────────────────────────────────────
+    countries: list[dict] = []
+    if "country" in d.columns:
+        cc = d["country"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
+        c_counts = cc.value_counts().head(10)
+        countries = [{"country": str(k), "count": int(v)} for k, v in c_counts.items()]
+
+    return {
+        "has_data": True,
+        "age_bands": age_bands,
+        "countries": countries,
+        "gender_available": False,
     }
 
 

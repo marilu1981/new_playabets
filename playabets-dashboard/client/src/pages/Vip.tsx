@@ -71,6 +71,13 @@ type ProductShare = {
   products: Array<{ product: string; stake: number; ggr: number }>;
 };
 
+type Demographics = {
+  has_data: boolean;
+  age_bands: Array<{ band: string; count: number }>;
+  countries: Array<{ country: string; count: number }>;
+  gender_available?: boolean;
+};
+
 const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
 
 export default function VipPage() {
@@ -83,6 +90,7 @@ export default function VipPage() {
   const [managers, setManagers] = useState<ManagerRow[]>([]);
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [productShare, setProductShare] = useState<ProductShare | null>(null);
+  const [demographics, setDemographics] = useState<Demographics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   type UploadStatus = { ok: boolean; added: number; updated: number; unchanged: number; total_in_roster: number; filename: string } | null;
@@ -128,12 +136,13 @@ export default function VipPage() {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const [summaryRes, revRes, mgrRes, topRes, prodRes] = await Promise.allSettled([
+      const [summaryRes, revRes, mgrRes, topRes, prodRes, demoRes] = await Promise.allSettled([
         fetchJson<VipSummary>(`/vip/summary?${query}`),
         fetchJson<VipRevenue>(`/vip/revenue?${query}`),
         fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${query}`),
         fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${query}&limit=20`),
         fetchJson<ProductShare>(`/vip/product-share?${query}`),
+        fetchJson<Demographics>(`/vip/demographics?${query}`),
       ]);
       if (cancelled) return;
       setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
@@ -141,6 +150,7 @@ export default function VipPage() {
       setManagers(mgrRes.status === "fulfilled" ? (mgrRes.value.managers ?? []) : []);
       setTopPlayers(topRes.status === "fulfilled" ? (topRes.value.players ?? []) : []);
       setProductShare(prodRes.status === "fulfilled" ? prodRes.value : null);
+      setDemographics(demoRes.status === "fulfilled" ? demoRes.value : null);
       setLoading(false);
     }
     load().catch(() => { if (!cancelled) { setLoading(false); } });
@@ -309,6 +319,60 @@ export default function VipPage() {
           ) : (
             <div className="text-xs text-gray-400">{loading ? "Loading…" : "No revenue data."}</div>
           )}
+        </div>
+      </div>
+
+      {/* VIP Demographics */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">VIP Age Distribution</h3>
+          <p className="text-xs text-gray-500 mb-3">Active VIPs by age band (from date of birth)</p>
+          <div className="space-y-3">
+            {(demographics?.age_bands ?? []).map((row) => {
+              const total = (demographics?.age_bands ?? []).reduce((s, r) => s + r.count, 0);
+              const pct = total > 0 ? (row.count / total) * 100 : 0;
+              return (
+                <div key={row.band}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-600">{row.band}</span>
+                    <span className="font-medium text-gray-800">{formatNumber(row.count)} ({pct.toFixed(0)}%)</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#7ab800" }} />
+                  </div>
+                </div>
+              );
+            })}
+            {(!demographics?.age_bands || demographics.age_bands.length === 0) && (
+              <div className="text-xs text-gray-400">{loading ? "Loading…" : "No age data available."}</div>
+            )}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3">Gender breakdown is not available in the source data.</p>
+        </div>
+
+        <div className="rounded-xl p-5" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">VIP by Country</h3>
+          <p className="text-xs text-gray-500 mb-3">Top countries by active VIP count</p>
+          <div className="space-y-3">
+            {(demographics?.countries ?? []).map((row) => {
+              const total = (demographics?.countries ?? []).reduce((s, r) => s + r.count, 0);
+              const pct = total > 0 ? (row.count / total) * 100 : 0;
+              return (
+                <div key={row.country}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="text-gray-600">{row.country}</span>
+                    <span className="font-medium text-gray-800">{formatNumber(row.count)}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#0d8f8f" }} />
+                  </div>
+                </div>
+              );
+            })}
+            {(!demographics?.countries || demographics.countries.length === 0) && (
+              <div className="text-xs text-gray-400">{loading ? "Loading…" : "No country data available."}</div>
+            )}
+          </div>
         </div>
       </div>
 
