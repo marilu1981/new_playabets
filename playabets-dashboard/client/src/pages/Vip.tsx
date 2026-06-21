@@ -172,7 +172,16 @@ export default function VipPage() {
         setManagers(data.managers?.managers ?? []);
         setTopPlayers(data.top_players?.players ?? []);
         setProductShare(data.product_share ?? null);
-        setDemographics(data.demographics ?? null);
+        setDemographics(data.demographics ?? { has_data: false, age_bands: [], countries: [], gender_available: false });
+
+        // Load demographics separately so slow user-detail joins never block the page.
+        withTimeout(fetchJson<Demographics>(`/vip/demographics?${query}`), 15000)
+          .then((d) => {
+            if (!cancelled) setDemographics(d ?? null);
+          })
+          .catch(() => {
+            if (!cancelled) setDemographics((prev) => prev ?? { has_data: false, age_bands: [], countries: [], gender_available: false });
+          });
       } catch {
         if (cancelled) return;
         setSummary(null);

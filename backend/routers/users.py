@@ -663,6 +663,7 @@ def vip_overview(
     end: Optional[date] = Query(None),
     account_manager: Optional[str] = Query(None),
     stage: Optional[str] = Query(None),
+    include_demographics: bool = Query(False),
 ):
     """
     Consolidated VIP endpoint for UI loading stability.
@@ -676,6 +677,7 @@ def vip_overview(
         str(end) if end else "",
         account_manager or "",
         stage or "",
+        bool(include_demographics),
         int(roster_mtime),
     )
     ov_cached = _VIP_OVERVIEW_CACHE.get(ov_key)
@@ -764,27 +766,28 @@ def vip_overview(
         ],
     }
 
-    details = _load_vip_user_details()
     age_bands: list[dict] = []
     countries: list[dict] = []
-    if not details.empty:
-        dd = df[["userid"]].drop_duplicates().merge(details, on="userid", how="left")
-        if "birthdate" in dd.columns:
-            bdate = pd.to_datetime(dd["birthdate"], errors="coerce")
-            today = pd.Timestamp(end or date.today())
-            age = ((today - bdate).dt.days / 365.25)
-            bins = [0, 25, 35, 45, 55, 200]
-            labels = ["18-24", "25-34", "35-44", "45-54", "55+"]
-            age_cat = pd.cut(age.dropna(), bins=bins, labels=labels, right=False)
-            counts = age_cat.value_counts().reindex(labels, fill_value=0)
-            age_bands = [{"band": str(b), "count": int(c)} for b, c in counts.items()]
-        if "country" in dd.columns:
-            cc = dd["country"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
-            c_counts = cc.value_counts().head(10)
-            countries = [{"country": str(k), "count": int(v)} for k, v in c_counts.items()]
+    if include_demographics:
+        details = _load_vip_user_details()
+        if not details.empty:
+            dd = df[["userid"]].drop_duplicates().merge(details, on="userid", how="left")
+            if "birthdate" in dd.columns:
+                bdate = pd.to_datetime(dd["birthdate"], errors="coerce")
+                today = pd.Timestamp(end or date.today())
+                age = ((today - bdate).dt.days / 365.25)
+                bins = [0, 25, 35, 45, 55, 200]
+                labels = ["18-24", "25-34", "35-44", "45-54", "55+"]
+                age_cat = pd.cut(age.dropna(), bins=bins, labels=labels, right=False)
+                counts = age_cat.value_counts().reindex(labels, fill_value=0)
+                age_bands = [{"band": str(b), "count": int(c)} for b, c in counts.items()]
+            if "country" in dd.columns:
+                cc = dd["country"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
+                c_counts = cc.value_counts().head(10)
+                countries = [{"country": str(k), "count": int(v)} for k, v in c_counts.items()]
 
     demographics = {
-        "has_data": True,
+        "has_data": bool(include_demographics),
         "age_bands": age_bands,
         "countries": countries,
         "gender_available": False,
