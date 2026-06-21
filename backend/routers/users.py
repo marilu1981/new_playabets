@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from typing import Optional
 
 import io
+import time
 import pandas as pd
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
@@ -33,6 +34,15 @@ from backend.core.filters import (
 )
 
 router = APIRouter()
+
+# Short-lived caches for heavy VIP computations.
+_VIP_CACHE_TTL_SECONDS = 180
+_VIP_JOIN_CACHE: dict[tuple, tuple[float, pd.DataFrame]] = {}
+_VIP_OVERVIEW_CACHE: dict[tuple, tuple[float, dict]] = {}
+
+
+def _vip_cache_fresh(ts: float) -> bool:
+    return (time.time() - ts) <= _VIP_CACHE_TTL_SECONDS
 
 
 def _normalize_vip_stage(series: pd.Series) -> pd.Series:
@@ -375,6 +385,8 @@ async def vip_upload(file: UploadFile = File(...)):
 
     # Evict cache entry so the next read reloads from the new file
     _PARQUET_CACHE.pop("vip_roster", None)
+    _VIP_JOIN_CACHE.clear()
+    _VIP_OVERVIEW_CACHE.clear()
 
     return {
         "ok": True,
@@ -406,6 +418,19 @@ def _join_vip_revenue(
     Columns: userid, account_manager, vip_lifecycle_stage, turnover, ggr,
              sports_stake, casino_stake, casino_ggr, bets
     """
+    roster_mtime = VIP_ROSTER_PATH.stat().st_mtime if VIP_ROSTER_PATH.exists() else 0.0
+    cache_key = (
+        account_manager or "",
+        stage or "",
+        str(start) if start else "",
+        str(end) if end else "",
+        bool(current_only),
+        int(roster_mtime),
+    )
+    cached = _VIP_JOIN_CACHE.get(cache_key)
+    if cached and _vip_cache_fresh(cached[0]):
+        return cached[1].copy()
+
     roster = _load_vip_roster()
     if roster.empty:
         return pd.DataFrame()
@@ -447,6 +472,7 @@ def _join_vip_revenue(
     merged["casino_ggr"] = merged["casino_stake"] - merged["casino_winnings"]
     merged["ggr"]        = (merged["sports_stake"] - merged["sports_winnings"]) + merged["casino_ggr"]
     merged["bets"]       = (merged["sports_bets"] + merged["casino_bets"]).astype(int)
+    _VIP_JOIN_CACHE[cache_key] = (time.time(), merged.copy())
     return merged
 
 
@@ -644,11 +670,23 @@ def vip_overview(
     Computes all VIP sections in one request so the frontend isn't blocked by
     multiple heavy calls against raw wagering files.
     """
+    roster_mtime = VIP_ROSTER_PATH.stat().st_mtime if VIP_ROSTER_PATH.exists() else 0.0
+    ov_key = (
+        str(start) if start else "",
+        str(end) if end else "",
+        account_manager or "",
+        stage or "",
+        int(roster_mtime),
+    )
+    ov_cached = _VIP_OVERVIEW_CACHE.get(ov_key)
+    if ov_cached and _vip_cache_fresh(ov_cached[0]):
+        return ov_cached[1]
+
     summary = vip_summary(start=start, end=end, account_manager=account_manager, stage=stage)
 
     df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
     if df.empty:
-        return {
+        out = {
             "summary": summary,
             "revenue": {"has_data": False},
             "managers": {"managers": [], "has_data": False},
@@ -656,6 +694,8 @@ def vip_overview(
             "product_share": {"has_data": False, "products": []},
             "demographics": {"has_data": False, "age_bands": [], "countries": [], "gender_available": False},
         }
+        _VIP_OVERVIEW_CACHE[ov_key] = (time.time(), out)
+        return out
 
     vip_count = int(df["userid"].dropna().nunique())
     total_turn = float(df["turnover"].sum())
@@ -750,7 +790,7 @@ def vip_overview(
         "gender_available": False,
     }
 
-    return {
+    out = {
         "summary": summary,
         "revenue": revenue,
         "managers": {"managers": mgr_rows, "has_data": True},
@@ -758,6 +798,8 @@ def vip_overview(
         "product_share": product_share,
         "demographics": demographics,
     }
+    _VIP_OVERVIEW_CACHE[ov_key] = (time.time(), out)
+    return out
 
 
 @router.get("/users/status-breakdown")
