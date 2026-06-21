@@ -85,15 +85,6 @@ type Demographics = {
   gender_available?: boolean;
 };
 
-type VipOverview = {
-  summary: VipSummary;
-  revenue: VipRevenue;
-  managers: { managers: ManagerRow[]; has_data?: boolean };
-  top_players: { players: TopPlayer[]; has_data?: boolean };
-  product_share: ProductShare;
-  demographics: Demographics;
-};
-
 const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
 
 export default function VipPage() {
@@ -165,16 +156,31 @@ export default function VipPage() {
     async function load() {
       setLoading(true);
       try {
-        const data = await withTimeout(fetchJson<VipOverview>(`/vip/overview?${query}`), 20000);
+        const [summaryRes, revenueRes] = await Promise.allSettled([
+          withTimeout(fetchJson<VipSummary>(`/vip/summary?${query}`), 12000),
+          withTimeout(fetchJson<VipRevenue>(`/vip/revenue?${query}`), 12000),
+        ]);
         if (cancelled) return;
-        setSummary(data.summary ?? null);
-        setRevenue(data.revenue ?? null);
-        setManagers(data.managers?.managers ?? []);
-        setTopPlayers(data.top_players?.players ?? []);
-        setProductShare(data.product_share ?? null);
-        setDemographics(data.demographics ?? { has_data: false, age_bands: [], countries: [], gender_available: false });
+        setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
+        setRevenue(revenueRes.status === "fulfilled" ? revenueRes.value : null);
+        setManagers([]);
+        setTopPlayers([]);
+        setProductShare(null);
+        setDemographics({ has_data: false, age_bands: [], countries: [], gender_available: false });
 
-        // Load demographics separately so slow user-detail joins never block the page.
+        // Load detail sections asynchronously so they never block first paint.
+        withTimeout(fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${query}`), 15000)
+          .then((d) => { if (!cancelled) setManagers(d?.managers ?? []); })
+          .catch(() => { if (!cancelled) setManagers([]); });
+
+        withTimeout(fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${query}&limit=20`), 15000)
+          .then((d) => { if (!cancelled) setTopPlayers(d?.players ?? []); })
+          .catch(() => { if (!cancelled) setTopPlayers([]); });
+
+        withTimeout(fetchJson<ProductShare>(`/vip/product-share?${query}`), 15000)
+          .then((d) => { if (!cancelled) setProductShare(d ?? null); })
+          .catch(() => { if (!cancelled) setProductShare(null); });
+
         withTimeout(fetchJson<Demographics>(`/vip/demographics?${query}`), 15000)
           .then((d) => {
             if (!cancelled) setDemographics(d ?? null);
