@@ -14,7 +14,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
-import MockOverlay from "@/components/MockOverlay";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, ComposedChart, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -83,7 +82,6 @@ export default function Home() {
     liveRangeKpis,
     hasTransactionsData,
     liveSegmentDistribution,
-    hasSegmentData,
     liveTodayKpis,
     liveSummaryMetrics,
     liveNgr,
@@ -100,7 +98,6 @@ export default function Home() {
   } = useHomeData({ filters, setFilters });
 
   const showPendingOverlay = dataMode !== "live";
-  const segmentPending = !hasSegmentData;
 
   const fallbackYear = useMemo(() => {
     const parsedYear = Number.parseInt(filters.dateTo.slice(0, 4), 10);
@@ -283,7 +280,7 @@ export default function Home() {
   const fallbackMonth = { month: "-", registrations: 0, ftds: 0, vftds: 0, topFtds: 0 };
   const lastMonth = acqSeries[acqSeries.length - 1] ?? fallbackMonth;
   const kpiRegistrations = liveRangeKpis?.registrations ?? lastMonth.registrations;
-  const kpiFtds = (liveRangeKpis?.ftd_new_depositors ?? liveRangeKpis?.ftds) ?? lastMonth.ftds;
+  const kpiFtds = liveRangeKpis?.ftds ?? lastMonth.ftds;
   const periodConvRate =
     kpiRegistrations > 0 && liveFtdRegMonth != null
       ? Number(((liveFtdRegMonth / kpiRegistrations) * 100).toFixed(1))
@@ -616,61 +613,6 @@ export default function Home() {
           </ResponsiveContainer>
         </div>
       )}
-
-      {/* ── SEGMENT DISTRIBUTION ─────────────────────────────────────────── */}
-      <div className="mb-4">
-        <div className="relative rounded-xl p-5" style={CARD_BG}>
-          <MockOverlay active={segmentPending} label="RFM Pending" description="RFM segment snapshot pending" />
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-900" style={FONT_SERIF}>Segment Distribution — Actives</h3>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400">{segmentPending ? "Pending RFM" : "RFM snapshot"}</p>
-            <p className="text-xs text-gray-500">RFM analysis categorises players into: VIP · Active · New · Cooling · Lapsed · Dormant</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <ResponsiveContainer width={160} height={160}>
-              <PieChart>
-                <Pie data={segmentDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="count" nameKey="segment" paddingAngle={2}>
-                  {segmentDistribution.map((s, i) => <Cell key={i} fill={s.color} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => formatCompact(v)} contentStyle={TT_STYLE} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex-1 space-y-2.5">
-              {segmentDistribution.map((s) => (
-                <div key={s.segment} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
-                    <span className="text-xs text-gray-700 font-medium">{s.segment}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-mono text-gray-800" style={FONT_MONO}>{formatCompact(s.count)}</span>
-                    <span className="text-xs text-gray-400 ml-1">({s.pct}%)</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Segment stat tiles */}
-          {segmentDistribution.length > 0 && (() => {
-            const tileOrder = ["VIP", "Active", "New", "Cooling"];
-            const tiles = tileOrder
-              .map((label) => segmentDistribution.find((s) => s.segment === label))
-              .filter(Boolean);
-            return tiles.length > 0 ? (
-              <div className="grid grid-cols-4 gap-2 mt-4">
-                {tiles.map((s) => s && (
-                  <div key={s.segment} className="rounded-lg p-2.5" style={{ background: "#f5f9f5", border: "1px solid #dde8dd", borderTop: `2px solid #7ab800` }}>
-                    <div className="text-[8px] font-bold uppercase tracking-widest text-gray-400 mb-1">{s.segment}</div>
-                    <div className="text-sm font-bold text-gray-900 leading-tight" style={FONT_MONO}>{formatCompact(s.count)}</div>
-                    <div className="text-[9px] text-gray-400 mt-0.5">{s.pct}% of total</div>
-                  </div>
-                ))}
-              </div>
-            ) : null;
-          })()}
-        </div>
-      </div>
-
 
       {renderSummaryMetricsTable()}
 
