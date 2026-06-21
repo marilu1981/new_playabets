@@ -9,6 +9,7 @@ from typing import Optional
 import pandas as pd
 
 from fastapi import APIRouter, Query
+from sqlalchemy import text
 
 from src.app_config import ENABLE_TRANSACTIONS
 from backend.core.cache import (
@@ -21,6 +22,7 @@ from backend.core.helpers import (
     _i,
     _load_transactions_df,
 )
+from src.extract.db_utils import build_engine
 
 router = APIRouter()
 
@@ -96,41 +98,68 @@ def transactions_providers(
     start: date = Query(...),
     end: date = Query(...),
 ):
-    """Deposit and withdrawal totals grouped by payment provider."""
-    if not _PP_DAILY_PATH.exists():
-        return {"providers": [], "has_data": False}
+    """Detailed provider/reason breakdown plus totals for the Transactions page."""
+    if not ENABLE_TRANSACTIONS:
+        return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
 
-    df = load_parquet_cached(_PP_DAILY_PATH, "payment_providers_daily")
-    if df.empty:
-        return {"providers": [], "has_data": False}
+    engine = build_engine()
+    query = text(
+        """
+        SELECT
+            COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal') AS provider,
+            COALESCE(rr.Reason, 'Unknown') AS reason,
+            CAST(t.TransactionAmountTypeID AS INT) AS amount_type_id,
+            COUNT(*) AS transactions,
+            SUM(CAST(t.Amount AS FLOAT)) AS amount
+        FROM Dwh_en.view_transactions t
+        LEFT JOIN Dwh_en.view_Reasons rr ON t.ReasonID = rr.ReasonID
+        WHERE t.Date >= :start_dt
+          AND t.Date < DATEADD(day, 1, :end_dt)
+          AND t.TransactionManagementStatusID = 3
+        GROUP BY
+            COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal'),
+            COALESCE(rr.Reason, 'Unknown'),
+            CAST(t.TransactionAmountTypeID AS INT)
+        ORDER BY provider, reason, amount_type_id
+        """
+    )
 
-    df["_d"] = pd.to_datetime(df["date"], errors="coerce").dt.date
-    df = df[(df["_d"] >= start) & (df["_d"] <= end)]
-    if df.empty:
-        return {"providers": [], "has_data": False}
+    with engine.connect() as conn:
+        detail = pd.read_sql(query, conn, params={"start_dt": start, "end_dt": end})
 
-    agg = (df.groupby("provider")
-           .agg(
-               deposits=("deposits", "sum"),
-               withdrawals=("withdrawals", "sum"),
-               net=("net", "sum"),
-               deposit_count=("deposit_count", "sum"),
-               withdrawal_count=("withdrawal_count", "sum"),
-           )
-           .reset_index()
-           .sort_values("deposits", ascending=False))
+    if detail.empty:
+        return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
 
-    providers = [
+    detail["transactions"] = detail["transactions"].astype(int)
+    detail["amount"] = detail["amount"].astype(float)
+    rows = [
         {
             "provider": str(r["provider"]),
-            "deposits": round(float(r["deposits"]), 2),
-            "withdrawals": round(float(r["withdrawals"]), 2),
-            "net": round(float(r["net"]), 2),
-            "deposit_count": int(r["deposit_count"]),
-            "withdrawal_count": int(r["withdrawal_count"]),
+            "reason": str(r["reason"]),
+            "transactions": int(r["transactions"]),
+            "amount": round(float(r["amount"]), 2),
+            "amount_type_id": int(r["amount_type_id"]),
         }
-        for _, r in agg.iterrows()
-        if r["deposits"] > 0 or r["withdrawals"] > 0
+        for _, r in detail.iterrows()
     ]
 
-    return {"providers": providers, "has_data": bool(providers)}
+    providers = []
+    for provider, g in detail.groupby("provider"):
+        providers.append({
+            "provider": str(provider),
+            "deposits": round(float(g.loc[g["amount"] > 0, "amount"].sum()), 2),
+            "withdrawals": round(float(g.loc[g["amount"] < 0, "amount"].sum()), 2),
+            "net": round(float(g["amount"].sum()), 2),
+            "deposit_count": int(g.loc[g["amount"] > 0, "transactions"].sum()),
+            "withdrawal_count": int(g.loc[g["amount"] < 0, "transactions"].sum()),
+        })
+    providers = sorted(providers, key=lambda r: r["deposits"], reverse=True)
+
+    totals = {
+        "transactions": int(detail["transactions"].sum()),
+        "positive_amount": round(float(detail.loc[detail["amount"] > 0, "amount"].sum()), 2),
+        "negative_amount": round(float(detail.loc[detail["amount"] < 0, "amount"].sum()), 2),
+        "total_amount": round(float(detail["amount"].sum()), 2),
+    }
+
+    return {"has_data": True, "rows": rows, "providers": providers, "totals": totals}
