@@ -13,6 +13,13 @@ async function fetchJson<T>(path: string): Promise<T> {
   return cachedFetch<T>(`${API_BASE_URL}${path}`);
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs = 20000): Promise<T> {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Request timed out")), timeoutMs)),
+  ]);
+}
+
 const CARD = { background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" } as const;
 const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", borderRadius: 8, fontSize: 11 } as const;
 const fmtZar = (v: number) => `R ${formatFull(Math.round(v))}`;
@@ -76,6 +83,15 @@ type Demographics = {
   age_bands: Array<{ band: string; count: number }>;
   countries: Array<{ country: string; count: number }>;
   gender_available?: boolean;
+};
+
+type VipOverview = {
+  summary: VipSummary;
+  revenue: VipRevenue;
+  managers: { managers: ManagerRow[]; has_data?: boolean };
+  top_players: { players: TopPlayer[]; has_data?: boolean };
+  product_share: ProductShare;
+  demographics: Demographics;
 };
 
 const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
@@ -148,24 +164,28 @@ export default function VipPage() {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const [summaryRes, revRes, mgrRes, topRes, prodRes, demoRes] = await Promise.allSettled([
-        fetchJson<VipSummary>(`/vip/summary?${query}`),
-        fetchJson<VipRevenue>(`/vip/revenue?${query}`),
-        fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${query}`),
-        fetchJson<{ players: TopPlayer[] }>(`/vip/top-players?${query}&limit=20`),
-        fetchJson<ProductShare>(`/vip/product-share?${query}`),
-        fetchJson<Demographics>(`/vip/demographics?${query}`),
-      ]);
-      if (cancelled) return;
-      setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
-      setRevenue(revRes.status === "fulfilled" ? revRes.value : null);
-      setManagers(mgrRes.status === "fulfilled" ? (mgrRes.value.managers ?? []) : []);
-      setTopPlayers(topRes.status === "fulfilled" ? (topRes.value.players ?? []) : []);
-      setProductShare(prodRes.status === "fulfilled" ? prodRes.value : null);
-      setDemographics(demoRes.status === "fulfilled" ? demoRes.value : null);
-      setLoading(false);
+      try {
+        const data = await withTimeout(fetchJson<VipOverview>(`/vip/overview?${query}`), 20000);
+        if (cancelled) return;
+        setSummary(data.summary ?? null);
+        setRevenue(data.revenue ?? null);
+        setManagers(data.managers?.managers ?? []);
+        setTopPlayers(data.top_players?.players ?? []);
+        setProductShare(data.product_share ?? null);
+        setDemographics(data.demographics ?? null);
+      } catch {
+        if (cancelled) return;
+        setSummary(null);
+        setRevenue(null);
+        setManagers([]);
+        setTopPlayers([]);
+        setProductShare(null);
+        setDemographics(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    load().catch(() => { if (!cancelled) { setLoading(false); } });
+    load().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [query]);
 

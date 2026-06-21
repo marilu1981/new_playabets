@@ -631,6 +631,135 @@ def vip_demographics(
     }
 
 
+@router.get("/vip/overview")
+def vip_overview(
+    start: Optional[date] = Query(None),
+    end: Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """
+    Consolidated VIP endpoint for UI loading stability.
+
+    Computes all VIP sections in one request so the frontend isn't blocked by
+    multiple heavy calls against raw wagering files.
+    """
+    summary = vip_summary(start=start, end=end, account_manager=account_manager, stage=stage)
+
+    df = _join_vip_revenue(account_manager, stage, start, end, current_only=True)
+    if df.empty:
+        return {
+            "summary": summary,
+            "revenue": {"has_data": False},
+            "managers": {"managers": [], "has_data": False},
+            "top_players": {"players": [], "has_data": False},
+            "product_share": {"has_data": False, "products": []},
+            "demographics": {"has_data": False, "age_bands": [], "countries": [], "gender_available": False},
+        }
+
+    vip_count = int(df["userid"].dropna().nunique())
+    total_turn = float(df["turnover"].sum())
+    total_ggr = float(df["ggr"].sum())
+    sports_st = float(df["sports_stake"].sum())
+    casino_st = float(df["casino_stake"].sum())
+    days = ((end - start).days + 1) if (start and end) else 30
+    days = max(days, 1)
+
+    rfm = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
+    total_players = int(rfm["userid"].dropna().nunique()) if not rfm.empty and "userid" in rfm.columns else 0
+    stake_base = sports_st + casino_st
+    revenue = {
+        "has_data": True,
+        "vip_count": vip_count,
+        "active_vips": vip_count,
+        "total_turnover": round(total_turn, 2),
+        "total_ggr": round(total_ggr, 2),
+        "apd": round(total_ggr / days, 2),
+        "avg_revenue_per_vip": round(total_ggr / vip_count, 2) if vip_count > 0 else 0.0,
+        "vip_conversion_rate": round(vip_count / total_players * 100, 2) if total_players > 0 else 0.0,
+        "total_players": total_players,
+        "sports_share": round(sports_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
+        "casino_share": round(casino_st / stake_base * 100, 1) if stake_base > 0 else 0.0,
+        "revenue_basis": "period",
+    }
+
+    mgr_rows = []
+    for mgr, g in df.groupby("account_manager"):
+        m_vip = int(g["userid"].dropna().nunique())
+        m_turn = float(g["turnover"].sum())
+        m_ggr = float(g["ggr"].sum())
+        m_sports = float(g["sports_stake"].sum())
+        m_casino = float(g["casino_stake"].sum())
+        m_base = m_sports + m_casino
+        mgr_rows.append({
+            "account_manager": str(mgr),
+            "vip_count": m_vip,
+            "turnover": round(m_turn, 2),
+            "ggr": round(m_ggr, 2),
+            "avg_revenue_per_vip": round(m_ggr / m_vip, 2) if m_vip > 0 else 0.0,
+            "sports_share": round(m_sports / m_base * 100, 1) if m_base > 0 else 0.0,
+            "casino_share": round(m_casino / m_base * 100, 1) if m_base > 0 else 0.0,
+        })
+    mgr_rows.sort(key=lambda r: r["ggr"], reverse=True)
+
+    top_df = df.sort_values("turnover", ascending=False).head(20)
+    players = []
+    for _, r in top_df.iterrows():
+        players.append({
+            "user_id": str(int(r["userid"])) if pd.notna(r["userid"]) else None,
+            "account_manager": str(r.get("account_manager", "")),
+            "vip_lifecycle_stage": str(r.get("vip_lifecycle_stage", "")),
+            "turnover": round(float(r["turnover"]), 2),
+            "ggr": round(float(r["ggr"]), 2),
+            "bets": int(r["bets"]),
+        })
+
+    sports_ggr = float(df["ggr"].sum()) - float(df["casino_ggr"].sum())
+    casino_ggr = float(df["casino_ggr"].sum())
+    product_share = {
+        "has_data": True,
+        "products": [
+            {"product": "Sports", "stake": round(sports_st, 2), "ggr": round(sports_ggr, 2)},
+            {"product": "Casino", "stake": round(casino_st, 2), "ggr": round(casino_ggr, 2)},
+        ],
+    }
+
+    details = _load_vip_user_details()
+    age_bands: list[dict] = []
+    countries: list[dict] = []
+    if not details.empty:
+        dd = df[["userid"]].drop_duplicates().merge(details, on="userid", how="left")
+        if "birthdate" in dd.columns:
+            bdate = pd.to_datetime(dd["birthdate"], errors="coerce")
+            today = pd.Timestamp(end or date.today())
+            age = ((today - bdate).dt.days / 365.25)
+            bins = [0, 25, 35, 45, 55, 200]
+            labels = ["18-24", "25-34", "35-44", "45-54", "55+"]
+            age_cat = pd.cut(age.dropna(), bins=bins, labels=labels, right=False)
+            counts = age_cat.value_counts().reindex(labels, fill_value=0)
+            age_bands = [{"band": str(b), "count": int(c)} for b, c in counts.items()]
+        if "country" in dd.columns:
+            cc = dd["country"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
+            c_counts = cc.value_counts().head(10)
+            countries = [{"country": str(k), "count": int(v)} for k, v in c_counts.items()]
+
+    demographics = {
+        "has_data": True,
+        "age_bands": age_bands,
+        "countries": countries,
+        "gender_available": False,
+    }
+
+    return {
+        "summary": summary,
+        "revenue": revenue,
+        "managers": {"managers": mgr_rows, "has_data": True},
+        "top_players": {"players": players, "has_data": True},
+        "product_share": product_share,
+        "demographics": demographics,
+    }
+
+
 @router.get("/users/status-breakdown")
 def users_status_breakdown(
     territory: Optional[str] = Query(None),
