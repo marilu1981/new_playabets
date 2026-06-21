@@ -495,17 +495,23 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] Payment providers: error - {e}")
 
-    # VIP roster — built from client-provided vip_list.csv (committed to repo)
+    # VIP roster — seed ONCE from the committed vip_list.csv. After that, the
+    # frontend CSV upload (POST /vip/upload) is the source of truth and writes
+    # vip_roster.parquet directly. Do NOT rebuild here if the serving file
+    # already exists, or the scheduler would overwrite uploaded VIP data.
     try:
-        vip_df = build_vip_roster()
-        if not vip_df.empty:
-            vip_out = SERVING / "vip_roster.parquet"
-            vip_df.to_parquet(vip_out, index=False)
-            n_err = int(vip_df["is_date_error"].sum())
-            print(f"[domain_kpis] VIP roster: {len(vip_df)} stints, {vip_df['userid'].nunique()} users -> {vip_out}"
-                  + (f" ({n_err} date errors flagged)" if n_err else ""))
+        vip_out = SERVING / "vip_roster.parquet"
+        if vip_out.exists():
+            print(f"[domain_kpis] VIP roster: serving file exists — preserving uploaded data (set via /vip/upload)")
         else:
-            print("[domain_kpis] VIP roster: vip_list.csv not found — skipping")
+            vip_df = build_vip_roster()
+            if not vip_df.empty:
+                vip_df.to_parquet(vip_out, index=False)
+                n_err = int(vip_df["is_date_error"].sum())
+                print(f"[domain_kpis] VIP roster seeded from vip_list.csv: {len(vip_df)} stints, {vip_df['userid'].nunique()} users -> {vip_out}"
+                      + (f" ({n_err} date errors flagged)" if n_err else ""))
+            else:
+                print("[domain_kpis] VIP roster: vip_list.csv not found — skipping")
     except Exception as e:
         print(f"[domain_kpis] VIP roster: error - {e}")
 
