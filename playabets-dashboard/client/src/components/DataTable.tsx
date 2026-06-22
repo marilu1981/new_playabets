@@ -1,6 +1,7 @@
 /**
  * PLAYA BETS — DataTable Component
- * Reusable table with Savanna Gold styling
+ * Reusable table with Savanna Gold styling.
+ * Use `light` prop when the table sits inside a white/light card.
  */
 
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ interface DataTableProps<T> {
   className?: string;
   emptyMessage?: string;
   compact?: boolean;
+  /** Use light mode (dark text) when embedded in a white/light card */
+  light?: boolean;
 }
 
 export default function DataTable<T extends Record<string, unknown>>({
@@ -27,12 +30,16 @@ export default function DataTable<T extends Record<string, unknown>>({
   className,
   emptyMessage = "No data available",
   compact = false,
+  light = false,
 }: DataTableProps<T>) {
   return (
-    <div className={cn("overflow-x-auto rounded-lg", className)} style={{ border: "1px solid oklch(1 0 0 / 6%)" }}>
+    <div
+      className={cn("overflow-x-auto rounded-lg", className)}
+      style={{ border: `1px solid ${light ? "#e5e7eb" : "oklch(1 0 0 / 6%)"}` }}
+    >
       <table className="w-full text-sm">
         <thead>
-          <tr style={{ borderBottom: "1px solid oklch(1 0 0 / 8%)", background: "oklch(0.16 0.04 155)" }}>
+          <tr style={{ borderBottom: `1px solid ${light ? "#d1d5db" : "oklch(1 0 0 / 8%)"}`, background: "oklch(0.16 0.04 155)" }}>
             {columns.map((col) => (
               <th
                 key={String(col.key)}
@@ -52,7 +59,7 @@ export default function DataTable<T extends Record<string, unknown>>({
             <tr>
               <td
                 colSpan={columns.length}
-                className="text-center text-white/30 py-8 text-sm"
+                className={cn("text-center py-8 text-sm", light ? "text-gray-400" : "text-white/30")}
               >
                 {emptyMessage}
               </td>
@@ -61,19 +68,18 @@ export default function DataTable<T extends Record<string, unknown>>({
             data.map((row, i) => (
               <tr
                 key={i}
-                className="transition-colors hover:bg-white/3"
-                style={{ borderBottom: i < data.length - 1 ? "1px solid oklch(1 0 0 / 5%)" : "none" }}
+                className={cn("transition-colors", light ? "hover:bg-gray-50" : "hover:bg-white/3")}
+                style={{ borderBottom: i < data.length - 1 ? `1px solid ${light ? "#f3f4f6" : "oklch(1 0 0 / 5%)"}` : "none" }}
               >
                 {columns.map((col) => (
                   <td
                     key={String(col.key)}
                     className={cn(
-                      "text-white/75",
+                      light ? "text-gray-700" : "text-white/75",
                       compact ? "px-3 py-2" : "px-4 py-3",
                       col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : "text-left",
                       col.mono && "font-mono text-xs"
                     )}
-                    style={{}}
                   >
                     {col.render
                       ? col.render(row)

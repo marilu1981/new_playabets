@@ -443,6 +443,7 @@ export default function VipPage() {
       <div className="rounded-xl p-5 mb-4" style={CARD}>
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Portfolio Manager Performance</h3>
         <DataTable<ManagerRow>
+          light
           compact
           emptyMessage={loading ? "Loading…" : "No manager data."}
           columns={[
@@ -463,6 +464,7 @@ export default function VipPage() {
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Top 20 VIPs by Turnover</h3>
         <p className="text-xs text-gray-500 mb-3">Turnover for selected period</p>
         <DataTable<TopPlayer & { rank: number }>
+          light
           compact
           emptyMessage={loading ? "Loading…" : "No player data."}
           columns={[
