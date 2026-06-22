@@ -114,7 +114,7 @@ def kpis(
     allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
 
     df = _filter_range(load_daily_df(), start, end)
-    tx = load_parquet_cached(TX_DAILY_PATH, "tx_daily")
+    tx = _load_transactions_df(start, end)
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
     casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
