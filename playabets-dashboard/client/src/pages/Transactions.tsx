@@ -118,6 +118,10 @@ export default function TransactionsPage() {
 
   const dash = loading ? "…" : "—";
   const pending = !kpis?.has_data;
+  const totalsTransactions = kpis?.has_data ? kpis.tx_count : (providerTotals?.transactions ?? null);
+  const totalsPositiveAmount = kpis?.has_data ? kpis.deposits : (providerTotals?.positive_amount ?? null);
+  const totalsNegativeAmount = kpis?.has_data ? -Math.abs(kpis.withdrawals) : (providerTotals?.negative_amount ?? null);
+  const totalsNetAmount = kpis?.has_data ? kpis.net_deposits : (providerTotals?.total_amount ?? null);
 
   return (
     <DashboardLayout title="Transactions" subtitle="Deposits, withdrawals, and financial flows"
@@ -227,19 +231,19 @@ export default function TransactionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-500">Transactions</div>
-            <div className="text-2xl font-light text-sky-500 mt-1">{providerTotals ? providerTotals.transactions.toLocaleString() : "—"}</div>
+            <div className="text-2xl font-light text-sky-500 mt-1">{totalsTransactions !== null ? totalsTransactions.toLocaleString() : "—"}</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Positive amount</div>
-            <div className="text-2xl font-light text-emerald-600 mt-1">{providerTotals ? formatFull(providerTotals.positive_amount) : "—"} ZAR</div>
+            <div className="text-2xl font-light text-emerald-600 mt-1">{totalsPositiveAmount !== null ? formatFull(totalsPositiveAmount) : "—"} ZAR</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-red-500">Negative amount</div>
-            <div className="text-2xl font-light text-red-500 mt-1">{providerTotals ? `-${formatFull(Math.abs(providerTotals.negative_amount))}` : "—"} ZAR</div>
+            <div className="text-2xl font-light text-red-500 mt-1">{totalsNegativeAmount !== null ? `-${formatFull(Math.abs(totalsNegativeAmount))}` : "—"} ZAR</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-500">Total amount</div>
-            <div className="text-2xl font-light text-sky-500 mt-1">{providerTotals ? formatFull(providerTotals.total_amount) : "—"} ZAR</div>
+            <div className="text-2xl font-light text-sky-500 mt-1">{totalsNetAmount !== null ? formatFull(totalsNetAmount) : "—"} ZAR</div>
           </div>
         </div>
 
