@@ -42,6 +42,7 @@ from backend.core.helpers import (
     _get_churn_pct,
     _get_monthly_depositors,
     _get_total_actives,
+    _load_transactions_df,
     _summary_period,
 )
 from backend.core.filters import (
