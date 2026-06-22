@@ -55,7 +55,7 @@ docker push acrplayabetsprod01.azurecr.io/playabets-api:latest
 docker push acrplayabetsprod01.azurecr.io/playabets-api:vXX
 az containerapp update --name playabets-api --resource-group rg-dashboard-vpn --image acrplayabetsprod01.azurecr.io/playabets-api:vXX
 ```
-Current version: **v14**
+Current version: **v15**
 
 ### Frontend (any client/ change)
 Push to `main` → Vercel auto-deploys. No manual action needed.
