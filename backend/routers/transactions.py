@@ -4,6 +4,7 @@ routers/transactions.py — Transaction KPI, trend, and provider endpoints.
 from __future__ import annotations
 
 from datetime import date
+import time
 from typing import Optional
 
 import pandas as pd
@@ -27,6 +28,23 @@ from backend.core.helpers import (
 router = APIRouter()
 
 _PP_DAILY_PATH = _SERVING / "payment_providers_daily.parquet"
+_PROVIDER_CACHE: dict[tuple, tuple[float, dict]] = {}
+_PROVIDER_SQL_CACHE_TTL_SECONDS = 120
+
+
+def _provider_files_fingerprint() -> tuple[tuple[str, int, int], ...]:
+    base = _RAW / "payment_providers"
+    if not base.exists():
+        return ()
+    files = sorted(base.glob("providers_*.parquet"))
+    if not files:
+        return ()
+    return tuple((f.name, int(f.stat().st_mtime), int(f.stat().st_size)) for f in files)
+
+
+def _provider_cache_fresh(ts: float, raw_based: bool) -> bool:
+    ttl = 30 * 60 if raw_based else _PROVIDER_SQL_CACHE_TTL_SECONDS
+    return (time.time() - ts) <= ttl
 
 
 def _load_payment_provider_detail(start: date, end: date) -> pd.DataFrame:
@@ -123,6 +141,12 @@ def transactions_providers(
     if not ENABLE_TRANSACTIONS:
         return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
 
+    raw_fingerprint = _provider_files_fingerprint()
+    cache_key: tuple = (str(start), str(end), raw_fingerprint if raw_fingerprint else "db")
+    cached = _PROVIDER_CACHE.get(cache_key)
+    if cached and _provider_cache_fresh(cached[0], bool(raw_fingerprint)):
+        return cached[1]
+
     detail = _load_payment_provider_detail(start, end)
     if not detail.empty:
         detail = detail.copy()
@@ -218,4 +242,9 @@ def transactions_providers(
         "total_amount": round(float(detail["amount"].sum()), 2),
     }
 
-    return {"has_data": True, "rows": rows, "providers": providers, "totals": totals}
+    response = {"has_data": True, "rows": rows, "providers": providers, "totals": totals}
+    _PROVIDER_CACHE[cache_key] = (time.time(), response)
+    if len(_PROVIDER_CACHE) > 64:
+        _PROVIDER_CACHE.clear()
+        _PROVIDER_CACHE[cache_key] = (time.time(), response)
+    return response

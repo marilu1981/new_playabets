@@ -52,26 +52,61 @@ export default function TransactionsPage() {
   const [providerRows, setProviderRows] = useState<ProviderDetailRow[]>([]);
   const [providerTotals, setProviderTotals] = useState<ProviderTotals | null>(null);
   const [loading, setLoading]    = useState(true);
+  const [detailLoading, setDetailLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
-    Promise.allSettled([
-      fetchJson<TxKpis>(`/transactions/kpis?${query}`),
-      fetchJson<{ has_data: boolean; deposits: TrendPoint[]; withdrawals: TrendPoint[] }>(`/transactions/trend?${query}`),
-      fetchJson<{ has_data: boolean; rows: ProviderDetailRow[]; totals: ProviderTotals }>(`/transactions/providers?${query}`),
-    ]).then(([kpisRes, trendRes, provRes]) => {
+    let cancelled = false;
+
+    async function load() {
+      const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
+      setLoading(true);
+      setDetailLoading(true);
+      setKpis(null);
+      setDepTrend([]);
+      setWdTrend([]);
+      setProviderRows([]);
+      setProviderTotals(null);
+
+      const [kpisRes, trendRes] = await Promise.allSettled([
+        fetchJson<TxKpis>(`/transactions/kpis?${query}`),
+        fetchJson<{ has_data: boolean; deposits: TrendPoint[]; withdrawals: TrendPoint[] }>(`/transactions/trend?${query}`),
+      ]);
+
+      if (cancelled) return;
+
       if (kpisRes.status === "fulfilled") setKpis(kpisRes.value);
       if (trendRes.status === "fulfilled" && trendRes.value.has_data) {
         setDepTrend(trendRes.value.deposits ?? []);
         setWdTrend(trendRes.value.withdrawals ?? []);
       }
-      if (provRes.status === "fulfilled" && provRes.value.has_data) {
-        setProviderRows(provRes.value.rows ?? []);
-        setProviderTotals(provRes.value.totals ?? null);
-      }
       setLoading(false);
+
+      withTimeout(fetchJson<{ has_data: boolean; rows: ProviderDetailRow[]; totals: ProviderTotals }>(`/transactions/providers?${query}`), 15000)
+        .then((provRes) => {
+          if (cancelled || !provRes?.has_data) return;
+          setProviderRows(provRes.rows ?? []);
+          setProviderTotals(provRes.totals ?? null);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setProviderRows([]);
+          setProviderTotals(null);
+        })
+        .finally(() => {
+          if (!cancelled) setDetailLoading(false);
+        });
+    }
+
+    load().catch(() => {
+      if (!cancelled) {
+        setLoading(false);
+        setDetailLoading(false);
+      }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [filters.dateFrom, filters.dateTo]);
 
   const trendData = depTrend.map((d, i) => ({
@@ -240,7 +275,7 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="h-24 flex items-center justify-center text-xs text-gray-400">
-            {loading ? "Loading…" : "No transaction detail data available for this period"}
+            {detailLoading ? "Loading…" : "No transaction detail data available for this period"}
           </div>
         )}
       </div>
