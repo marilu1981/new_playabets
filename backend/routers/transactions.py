@@ -10,7 +10,6 @@ from typing import Optional
 import pandas as pd
 
 from fastapi import APIRouter, Query
-from sqlalchemy import text
 
 from src.app_config import ENABLE_TRANSACTIONS
 from backend.core.cache import (
@@ -203,87 +202,11 @@ def transactions_providers(
     if cached and _provider_cache_fresh(cached[0], source == "file"):
         return cached[1]
 
-    try:
-        from src.extract.db_utils import build_engine
-        engine = build_engine()
-        query = text(
-            """
-            SELECT
-                COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal') AS provider,
-                COALESCE(rr.Reason, 'Unknown') AS reason,
-                CAST(t.TransactionAmountTypeID AS INT) AS amount_type_id,
-                COUNT(*) AS transactions,
-                SUM(CAST(t.Amount AS FLOAT)) AS amount
-            FROM Dwh_en.view_transactions t
-            LEFT JOIN Dwh_en.view_Reasons rr ON t.ReasonID = rr.ReasonID
-            WHERE t.Date >= :start_dt
-              AND t.Date < DATEADD(day, 1, :end_dt)
-              AND t.TransactionManagementStatusID = 3
-            GROUP BY
-                COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal'),
-                COALESCE(rr.Reason, 'Unknown'),
-                CAST(t.TransactionAmountTypeID AS INT)
-            ORDER BY provider, reason, amount_type_id
-            """
-        )
+    # Use the pre-computed serving file (payment_providers_daily.parquet).
+    # The Container App has no DWH connection — file is the only source.
+    by_file = _from_provider_daily(start, end)
+    if by_file is not None:
+        _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
+        return by_file
 
-        with engine.connect() as conn:
-            detail = pd.read_sql(query, conn, params={"start_dt": start, "end_dt": end})
-    except RuntimeError as exc:
-        by_file = _from_provider_daily(start, end)
-        if by_file is not None:
-            _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
-            if len(_PROVIDER_CACHE) > 64:
-                _PROVIDER_CACHE.clear()
-                _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
-            return by_file
-        return {
-            "has_data": False,
-            "disabled": True,
-            "message": str(exc),
-            "rows": [],
-            "providers": [],
-            "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0},
-        }
-
-    if detail.empty:
-        return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
-
-    detail["transactions"] = detail["transactions"].astype(int)
-    detail["amount"] = detail["amount"].astype(float)
-    rows = [
-        {
-            "provider": str(r["provider"]),
-            "reason": str(r["reason"]),
-            "transactions": int(r["transactions"]),
-            "amount": round(float(r["amount"]), 2),
-            "amount_type_id": int(r["amount_type_id"]),
-        }
-        for _, r in detail.iterrows()
-    ]
-
-    providers = []
-    for provider, g in detail.groupby("provider"):
-        providers.append({
-            "provider": str(provider),
-            "deposits": round(float(g.loc[g["amount"] > 0, "amount"].sum()), 2),
-            "withdrawals": round(float(g.loc[g["amount"] < 0, "amount"].sum()), 2),
-            "net": round(float(g["amount"].sum()), 2),
-            "deposit_count": int(g.loc[g["amount"] > 0, "transactions"].sum()),
-            "withdrawal_count": int(g.loc[g["amount"] < 0, "transactions"].sum()),
-        })
-    providers = sorted(providers, key=lambda r: r["deposits"], reverse=True)
-
-    totals = {
-        "transactions": int(detail["transactions"].sum()),
-        "positive_amount": round(float(detail.loc[detail["amount"] > 0, "amount"].sum()), 2),
-        "negative_amount": round(float(detail.loc[detail["amount"] < 0, "amount"].sum()), 2),
-        "total_amount": round(float(detail["amount"].sum()), 2),
-    }
-
-    response = {"has_data": True, "rows": rows, "providers": providers, "totals": totals}
-    _PROVIDER_CACHE[cache_key] = (time.time(), response)
-    if len(_PROVIDER_CACHE) > 64:
-        _PROVIDER_CACHE.clear()
-        _PROVIDER_CACHE[cache_key] = (time.time(), response)
-    return response
+    return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
