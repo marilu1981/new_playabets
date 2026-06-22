@@ -49,13 +49,13 @@ def _mean_i(df: pd.DataFrame, col: str) -> int:
     return int(round(df[col].mean())) if col in df.columns and len(df) > 0 else 0
 
 
-def _get_taxes_paid(start: date, end: date) -> float:
-    """Return total taxes paid for the period. Caches the combined DataFrame by newest-file mtime."""
+def _load_taxes_df() -> pd.DataFrame:
+    """Load and cache the combined taxes parquet set."""
     if not TAXES_RAW_DIR.exists():
-        return 0.0
+        return pd.DataFrame()
     files = sorted(TAXES_RAW_DIR.glob("taxes_*.parquet"))
     if not files:
-        return 0.0
+        return pd.DataFrame()
     newest_mtime = max(f.stat().st_mtime for f in files)
     cache_key = "_taxes_raw"
     cached = _PARQUET_CACHE.get(cache_key)
@@ -66,6 +66,12 @@ def _get_taxes_paid(start: date, end: date) -> float:
         _PARQUET_CACHE[cache_key] = {"mtime": newest_mtime, "df": df}
     else:
         df = cached["df"]
+    return df
+
+
+def _get_taxes_paid(start: date, end: date, taxes_df: pd.DataFrame | None = None) -> float:
+    """Return total taxes paid for the period."""
+    df = taxes_df if taxes_df is not None else _load_taxes_df()
     if df.empty or "_d" not in df.columns or "taxes_paid" not in df.columns:
         return 0.0
     # Deduplicate by date — cron runs accumulate duplicate records across multiple files
@@ -73,9 +79,9 @@ def _get_taxes_paid(start: date, end: date) -> float:
     return round(float(df[(df["_d"] >= start) & (df["_d"] <= end)]["taxes_paid"].sum()), 2)
 
 
-def _get_churn_pct(end: date) -> float:
+def _get_churn_pct(end: date, churn_df: pd.DataFrame | None = None) -> float:
     """Return churn % for the month ending on `end`."""
-    churn = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
+    churn = churn_df if churn_df is not None else load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
     if churn.empty or "month" not in churn.columns:
         return 0.0
     end_month = end.strftime("%Y-%m")
@@ -83,9 +89,9 @@ def _get_churn_pct(end: date) -> float:
     return float(row["churn_pct"].iloc[0]) if not row.empty else 0.0
 
 
-def _get_monthly_depositors(start: date, end: date) -> int:
+def _get_monthly_depositors(start: date, end: date, dep_df: pd.DataFrame | None = None) -> int:
     """Return period-unique depositors by summing monthly unique counts."""
-    dep = load_parquet_cached(DEPOSITORS_MONTHLY_PATH, "depositors_monthly")
+    dep = dep_df if dep_df is not None else load_parquet_cached(DEPOSITORS_MONTHLY_PATH, "depositors_monthly")
     if dep.empty or "month" not in dep.columns:
         return 0
     start_month = start.strftime("%Y-%m")
@@ -98,9 +104,9 @@ def _get_monthly_depositors(start: date, end: date) -> int:
     return int(filtered["unique_depositors"].sum())
 
 
-def _get_total_actives(start: date, end: date) -> int:
+def _get_total_actives(start: date, end: date, total_act_df: pd.DataFrame | None = None) -> int:
     """Return period-unique total actives (sports + casino combined, no double count)."""
-    total_act = load_parquet_cached(TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly")
+    total_act = total_act_df if total_act_df is not None else load_parquet_cached(TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly")
     if total_act.empty or "month" not in total_act.columns:
         return 0
     start_month = start.strftime("%Y-%m")
@@ -118,13 +124,27 @@ def _load_transactions_df(start: date, end: date) -> pd.DataFrame:
     return _filter_range(load_parquet_cached(TX_DAILY_PATH, "tx_daily"), start, end)
 
 
-def _summary_period(start: date, end: date) -> dict:
+def _summary_period(
+    start: date,
+    end: date,
+    *,
+    df: pd.DataFrame | None = None,
+    casino: pd.DataFrame | None = None,
+    ftd: pd.DataFrame | None = None,
+    bonus: pd.DataFrame | None = None,
+    tx: pd.DataFrame | None = None,
+    actives_monthly: pd.DataFrame | None = None,
+    churn_monthly: pd.DataFrame | None = None,
+    depositors_monthly: pd.DataFrame | None = None,
+    total_actives_monthly: pd.DataFrame | None = None,
+    taxes_df: pd.DataFrame | None = None,
+) -> dict:
     """Aggregate all summary-table metrics for a given date range."""
-    df = _filter_range(load_daily_df(), start, end)
-    casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
-    ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
-    bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
-    tx = _load_transactions_df(start, end)
+    df = _filter_range(df if df is not None else load_daily_df(), start, end)
+    casino = _filter_range(casino if casino is not None else load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
+    ftd = _filter_range(ftd if ftd is not None else load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
+    bonus = _filter_range(bonus if bonus is not None else load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
+    tx = _filter_range(tx if tx is not None else _load_transactions_df(start, end), start, end)
 
     regs = _i(df, "registrations")
     ftds = _i(ftd, "ftds")
@@ -177,7 +197,7 @@ def _summary_period(start: date, end: date) -> dict:
     casino_display_ggr = casino_total_ggr  # Casino page shows casino only (no lotto)
 
     # Taxes paid — must be computed before total_ggr (client formula: GGR = Real+Bonus GGR - Taxes)
-    taxes_paid = _get_taxes_paid(start, end)
+    taxes_paid = _get_taxes_paid(start, end, taxes_df=taxes_df)
 
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)
     casino_bonus_ggr_sp = _s(casino, "casino_bonus_ggr")
@@ -201,7 +221,7 @@ def _summary_period(start: date, end: date) -> dict:
     # Actives: period-total unique users from actives_monthly.parquet.
     # Approximation: sum monthly uniques for months overlapping the date range.
     # (Slight overcount for multi-month periods where users are active in multiple months.)
-    actives_monthly = load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
+    actives_monthly = actives_monthly if actives_monthly is not None else load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
     actives_sports = 0
     actives_casino = 0
     if not actives_monthly.empty and "month" in actives_monthly.columns:
@@ -220,7 +240,7 @@ def _summary_period(start: date, end: date) -> dict:
         actives_casino = _mean_i(casino, "casino_actives")
 
     # Churn: % of prev-month actives who didn't bet this month
-    churn_monthly = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
+    churn_monthly = churn_monthly if churn_monthly is not None else load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
     churn_pct = 0.0
     if not churn_monthly.empty and "month" in churn_monthly.columns:
         end_month = end.strftime("%Y-%m")
@@ -259,7 +279,7 @@ def _summary_period(start: date, end: date) -> dict:
         "deposits": round(deposits, 2),
         "churn_pct": churn_pct,
         "taxes_paid": round(taxes_paid, 2),
-        "period_unique_depositors": _get_monthly_depositors(start, end),
+        "period_unique_depositors": _get_monthly_depositors(start, end, dep_df=depositors_monthly),
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,

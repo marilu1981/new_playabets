@@ -3,8 +3,8 @@ routers/kpis.py — KPI endpoints and time-series endpoints.
 """
 from __future__ import annotations
 
-import os
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Literal
 
 import pandas as pd
@@ -23,7 +23,12 @@ from backend.core.cache import (
     BONUS_DAILY_PATH,
     CASINO_DAILY_PATH,
     ACTIVES_MONTHLY_PATH,
+    CHURN_MONTHLY_PATH,
+    DEPOSITORS_MONTHLY_PATH,
+    TOTAL_ACTIVES_MONTHLY_PATH,
+    TX_DAILY_PATH,
     SELFEXCLUSIONS_PATH,
+    TAXES_RAW_DIR,
     load_parquet_cached,
     load_daily_df,
 )
@@ -32,11 +37,11 @@ from backend.core.helpers import (
     _s,
     _i,
     _mean_i,
+    _load_taxes_df,
     _get_taxes_paid,
     _get_churn_pct,
     _get_monthly_depositors,
     _get_total_actives,
-    _load_transactions_df,
     _summary_period,
 )
 from backend.core.filters import (
@@ -51,6 +56,50 @@ from backend.core.filters import (
 router = APIRouter()
 
 _SAST = timezone(timedelta(hours=2))
+_SUMMARY_CACHE: dict[tuple, dict] = {}
+
+
+def _path_mtime(path: Path) -> int:
+    return int(path.stat().st_mtime) if path.exists() else 0
+
+
+def _taxes_fingerprint() -> tuple[int, int]:
+    if not TAXES_RAW_DIR.exists():
+        return (0, 0)
+    files = sorted(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+    if not files:
+        return (0, 0)
+    return (len(files), max(_path_mtime(f) for f in files))
+
+
+def _summary_cache_key(
+    start: date,
+    end: date,
+    previous_start: date,
+    previous_end: date,
+    ytd_start: date,
+) -> tuple:
+    return (
+        start.isoformat(),
+        end.isoformat(),
+        previous_start.isoformat(),
+        previous_end.isoformat(),
+        ytd_start.isoformat(),
+        _path_mtime(DATA_PATH),
+        _path_mtime(CASINO_DAILY_PATH),
+        _path_mtime(FTD_DAILY_PATH),
+        _path_mtime(FTD_REG_MONTH_DAILY_PATH),
+        _path_mtime(FTD_NEW_DEP_DAILY_PATH),
+        _path_mtime(BONUS_DAILY_PATH),
+        _path_mtime(ACTIVES_MONTHLY_PATH),
+        _path_mtime(CHURN_MONTHLY_PATH),
+        _path_mtime(DEPOSITORS_MONTHLY_PATH),
+        _path_mtime(TOTAL_ACTIVES_MONTHLY_PATH),
+        _path_mtime(TX_DAILY_PATH),
+        _path_mtime(RFM_USERS_PATH),
+        _path_mtime(SELFEXCLUSIONS_PATH),
+        *_taxes_fingerprint(),
+    )
 
 
 @router.get("/kpis")
@@ -65,7 +114,7 @@ def kpis(
     allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
 
     df = _filter_range(load_daily_df(), start, end)
-    tx = _load_transactions_df(start, end)
+    tx = load_parquet_cached(TX_DAILY_PATH, "tx_daily")
     bonus = _filter_range(load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily"), start, end)
     ftd = _filter_range(load_parquet_cached(FTD_DAILY_PATH, "ftd_daily"), start, end)
     casino = _filter_range(load_parquet_cached(CASINO_DAILY_PATH, "casino_daily"), start, end)
@@ -304,9 +353,65 @@ def kpis_summary(
     if ytd_start is None:
         ytd_start = date(end.year, 1, 1)
 
-    current = _summary_period(start, end)
-    previous = _summary_period(previous_start, previous_end)
-    ytd = _summary_period(ytd_start, end)
+    cache_key = _summary_cache_key(start, end, previous_start, previous_end, ytd_start)
+    cached = _SUMMARY_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    # Preload shared frames once so the three summary periods don't re-read the same parquet sets.
+    df = load_daily_df()
+    casino = load_parquet_cached(CASINO_DAILY_PATH, "casino_daily")
+    ftd = load_parquet_cached(FTD_DAILY_PATH, "ftd_daily")
+    bonus = load_parquet_cached(BONUS_DAILY_PATH, "bonus_daily")
+    tx = load_parquet_cached(TX_DAILY_PATH, "tx_daily")
+    actives_monthly = load_parquet_cached(ACTIVES_MONTHLY_PATH, "actives_monthly")
+    churn_monthly = load_parquet_cached(CHURN_MONTHLY_PATH, "churn_monthly")
+    depositors_monthly = load_parquet_cached(DEPOSITORS_MONTHLY_PATH, "depositors_monthly")
+    total_actives_monthly = load_parquet_cached(TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly")
+    taxes_df = _load_taxes_df()
+
+    current = _summary_period(
+        start,
+        end,
+        df=df,
+        casino=casino,
+        ftd=ftd,
+        bonus=bonus,
+        tx=tx,
+        actives_monthly=actives_monthly,
+        churn_monthly=churn_monthly,
+        depositors_monthly=depositors_monthly,
+        total_actives_monthly=total_actives_monthly,
+        taxes_df=taxes_df,
+    )
+    previous = _summary_period(
+        previous_start,
+        previous_end,
+        df=df,
+        casino=casino,
+        ftd=ftd,
+        bonus=bonus,
+        tx=tx,
+        actives_monthly=actives_monthly,
+        churn_monthly=churn_monthly,
+        depositors_monthly=depositors_monthly,
+        total_actives_monthly=total_actives_monthly,
+        taxes_df=taxes_df,
+    )
+    ytd = _summary_period(
+        ytd_start,
+        end,
+        df=df,
+        casino=casino,
+        ftd=ftd,
+        bonus=bonus,
+        tx=tx,
+        actives_monthly=actives_monthly,
+        churn_monthly=churn_monthly,
+        depositors_monthly=depositors_monthly,
+        total_actives_monthly=total_actives_monthly,
+        taxes_df=taxes_df,
+    )
 
     # RFM snapshot (latest)
     rfm_df = load_parquet_cached(RFM_USERS_PATH, "rfm_users")
@@ -327,7 +432,7 @@ def kpis_summary(
         ex_df = load_parquet_cached(SELFEXCLUSIONS_PATH, "selfexclusions")
         self_ex_total = len(ex_df)
 
-    return {
+    response = {
         "current": current,
         "previous": previous,
         "ytd": ytd,
@@ -339,6 +444,11 @@ def kpis_summary(
             "ytd": {"start": str(ytd_start), "end": str(end)},
         },
     }
+
+    if len(_SUMMARY_CACHE) >= 32:
+        _SUMMARY_CACHE.clear()
+    _SUMMARY_CACHE[cache_key] = response
+    return response
 
 
 @router.get("/timeseries/revenue")

@@ -4,7 +4,7 @@
  * All controls share a standard width (140px dropdowns, 130px date inputs).
  * Labels sit in small caps above each control — no inline labels, no abbreviations.
  *
- * Row 1: Date From | Date To | Granularity | Territory | Country | RFM Segment | [Reset]
+ * Row 1: Date From | Date To | Granularity | Territory | Country | [Reset]
  */
 
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
@@ -150,8 +150,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
 
   const hasActiveFilters =
     filters.territory !== "all" ||
-    filters.country !== "all" ||
-    filters.currentSegment !== "all";
+    filters.country !== "all";
 
   return (
     <div className="flex flex-shrink-0" style={BAR_BG}>
@@ -254,25 +253,6 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               <option value="UG">Uganda</option>
               <option value="KE">Kenya</option>
               <option value="ZA">South Africa</option>
-            </select>
-          </Field>
-
-          <Divider />
-
-          <Field label="RFM Segment">
-            <select
-              value={filters.currentSegment}
-              onChange={(e) => set("currentSegment", e.target.value)}
-              className={selectCls}
-              style={SELECT_STYLE}
-            >
-              <option value="all">All Segments</option>
-              <option value="VIP">VIP</option>
-              <option value="Active">Active</option>
-              <option value="New">New</option>
-              <option value="Cooling">Cooling</option>
-              <option value="Lapsed">Lapsed</option>
-              <option value="Dormant">Dormant</option>
             </select>
           </Field>
 

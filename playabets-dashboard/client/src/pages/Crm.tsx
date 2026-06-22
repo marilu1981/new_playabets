@@ -1,13 +1,13 @@
 /**
  * PLAYA BETS — CRM Page
  * Customer relationship management metrics: cohort analysis,
- * retention, Average Deposit Value, LTV, Churn, RFM segments.
+ * retention, Average Deposit Value, LTV, and Churn.
  */
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Users, TrendingUp, DollarSign, Activity, Clock } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
@@ -26,22 +26,12 @@ const COLORS = {
   blue:  "#3b82f6",
 };
 
-const SEGMENT_COLORS: Record<string, string> = {
-  VIP:      COLORS.gold,
-  Active:   COLORS.green,
-  New:      COLORS.teal,
-  Cooling:  COLORS.amber,
-  Lapsed:   COLORS.red,
-  Dormant:  "#9ca3af",
-};
-
 const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", borderRadius: 8, fontSize: 11 };
 const CARD_BG  = { background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" };
 
 export default function CrmPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [cohortData, setCohortData]   = useState<Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }>>([]);
-  const [rfmData, setRfmData]         = useState<Array<{ segment: string; count: number }>>([]);
   const [avgDepositValue, setAvgDepositValue] = useState<number | null>(null);
   const [churnPct, setChurnPct]   = useState<number | null>(null);
   const [arpu, setArpu]           = useState<number | null>(null);
@@ -54,23 +44,6 @@ export default function CrmPage() {
     fetchJson<{ points: Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }> }>(
       `/timeseries/conversion-cohorts?${query}`
     ).then((d) => setCohortData(d.points ?? [])).catch(() => {});
-
-    // RFM segments
-    fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
-      `/rfm/segments?${query}`
-    ).then((d) => {
-      const rows = d.rows ?? [];
-      if (!rows.length) return;
-      const latest = rows[rows.length - 1];
-      setRfmData([
-        { segment: "VIP",     count: Number(latest.rfm_vip     ?? 0) },
-        { segment: "Active",  count: Number(latest.rfm_active  ?? 0) },
-        { segment: "New",     count: Number(latest.rfm_new     ?? 0) },
-        { segment: "Cooling", count: Number(latest.rfm_cooling ?? 0) },
-        { segment: "Lapsed",  count: Number(latest.rfm_lapsed  ?? 0) },
-        { segment: "Dormant", count: Number(latest.rfm_dormant ?? 0) },
-      ].filter((s) => s.count > 0));
-    }).catch(() => {});
 
     // KPIs — churn, total actives, NGR for ARPU
     fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number }>(
@@ -99,8 +72,6 @@ export default function CrmPage() {
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo]);
 
-  const totalRfm = rfmData.reduce((s, r) => s + r.count, 0);
-
   // Cohort summary for period
   const cohortSummary = cohortData.length > 0 ? {
     totalRegs: cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0),
@@ -115,7 +86,7 @@ export default function CrmPage() {
   return (
     <DashboardLayout
       title="CRM Dashboard"
-      subtitle="Cohort analysis, retention, player value and segment distribution"
+      subtitle="Cohort analysis, retention, and player value"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}
     >
       {/* KPI Row */}
@@ -180,7 +151,7 @@ export default function CrmPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 gap-4 mb-4">
         {/* Cohort D7 / D30 Conversion */}
         <div className="rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort — FTD Conversion Rate</h3>
@@ -202,35 +173,6 @@ export default function CrmPage() {
           )}
         </div>
 
-        {/* RFM Segment Distribution */}
-        <div className="rounded-xl p-5" style={CARD_BG}>
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Player Segments (RFM)</h3>
-          <p className="text-xs text-gray-500 mb-4">Latest snapshot — {totalRfm.toLocaleString()} total players</p>
-          {rfmData.length > 0 ? (
-            <div className="flex gap-4">
-              <ResponsiveContainer width="50%" height={200}>
-                <PieChart>
-                  <Pie data={rfmData} cx="50%" cy="50%" innerRadius={45} outerRadius={72} dataKey="count" nameKey="segment" paddingAngle={2}>
-                    {rfmData.map((s) => <Cell key={s.segment} fill={SEGMENT_COLORS[s.segment] ?? COLORS.teal} />)}
-                  </Pie>
-                  <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatCompact(v)} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-col justify-center gap-1.5">
-                {rfmData.map((s) => (
-                  <div key={s.segment} className="flex items-center gap-2 text-xs">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: SEGMENT_COLORS[s.segment] ?? COLORS.teal }} />
-                    <span className="text-gray-600 w-16">{s.segment}</span>
-                    <span className="font-mono font-bold text-gray-800">{s.count.toLocaleString()}</span>
-                    <span className="text-gray-400">({totalRfm > 0 ? ((s.count / totalRfm) * 100).toFixed(1) : 0}%)</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="h-[200px] flex items-center justify-center text-xs text-gray-400">No segment data available</div>
-          )}
-        </div>
       </div>
 
       {/* Cohort Registration + FTD Bar Chart */}
