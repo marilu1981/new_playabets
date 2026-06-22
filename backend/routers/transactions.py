@@ -203,17 +203,40 @@ def transactions_providers(
     if cached and _provider_cache_fresh(cached[0], source == "file"):
         return cached[1]
 
-    by_file = _from_provider_daily(start, end)
-    if by_file is not None:
-        _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
-        if len(_PROVIDER_CACHE) > 64:
-            _PROVIDER_CACHE.clear()
-            _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
-        return by_file
-
     try:
         from src.extract.db_utils import build_engine
+        engine = build_engine()
+        query = text(
+            """
+            SELECT
+                COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal') AS provider,
+                COALESCE(rr.Reason, 'Unknown') AS reason,
+                CAST(t.TransactionAmountTypeID AS INT) AS amount_type_id,
+                COUNT(*) AS transactions,
+                SUM(CAST(t.Amount AS FLOAT)) AS amount
+            FROM Dwh_en.view_transactions t
+            LEFT JOIN Dwh_en.view_Reasons rr ON t.ReasonID = rr.ReasonID
+            WHERE t.Date >= :start_dt
+              AND t.Date < DATEADD(day, 1, :end_dt)
+              AND t.TransactionManagementStatusID = 3
+            GROUP BY
+                COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal'),
+                COALESCE(rr.Reason, 'Unknown'),
+                CAST(t.TransactionAmountTypeID AS INT)
+            ORDER BY provider, reason, amount_type_id
+            """
+        )
+
+        with engine.connect() as conn:
+            detail = pd.read_sql(query, conn, params={"start_dt": start, "end_dt": end})
     except RuntimeError as exc:
+        by_file = _from_provider_daily(start, end)
+        if by_file is not None:
+            _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
+            if len(_PROVIDER_CACHE) > 64:
+                _PROVIDER_CACHE.clear()
+                _PROVIDER_CACHE[cache_key] = (time.time(), by_file)
+            return by_file
         return {
             "has_data": False,
             "disabled": True,
@@ -222,31 +245,6 @@ def transactions_providers(
             "providers": [],
             "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0},
         }
-
-    engine = build_engine()
-    query = text(
-        """
-        SELECT
-            COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal') AS provider,
-            COALESCE(rr.Reason, 'Unknown') AS reason,
-            CAST(t.TransactionAmountTypeID AS INT) AS amount_type_id,
-            COUNT(*) AS transactions,
-            SUM(CAST(t.Amount AS FLOAT)) AS amount
-        FROM Dwh_en.view_transactions t
-        LEFT JOIN Dwh_en.view_Reasons rr ON t.ReasonID = rr.ReasonID
-        WHERE t.Date >= :start_dt
-          AND t.Date < DATEADD(day, 1, :end_dt)
-          AND t.TransactionManagementStatusID = 3
-        GROUP BY
-            COALESCE(NULLIF(LTRIM(RTRIM(CAST(t.ProviderID AS NVARCHAR(100)))), ''), 'Internal'),
-            COALESCE(rr.Reason, 'Unknown'),
-            CAST(t.TransactionAmountTypeID AS INT)
-        ORDER BY provider, reason, amount_type_id
-        """
-    )
-
-    with engine.connect() as conn:
-        detail = pd.read_sql(query, conn, params={"start_dt": start, "end_dt": end})
 
     if detail.empty:
         return {"has_data": False, "rows": [], "providers": [], "totals": {"transactions": 0, "positive_amount": 0.0, "negative_amount": 0.0, "total_amount": 0.0}}
