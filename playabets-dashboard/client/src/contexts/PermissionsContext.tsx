@@ -38,6 +38,9 @@ export function PermissionsProvider({
   value: UserPermissions;
   children: ReactNode;
 }) {
+  // Cache permissions so fallback (if API fails) can restore previous session state
+  localStorage.setItem("cachedPermissions", JSON.stringify(value));
+  
   return (
     <PermissionsContext.Provider value={value}>
       {children}

@@ -36,9 +36,23 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         role: perms.role,
         allowedPages: perms.allowed_pages,
       });
-    } catch {
-      // Admin endpoint unreachable — grant full access as safe fallback
-      setPermissions({ userEmail: email, role: "viewer", allowedPages: ["*"] });
+    } catch (err) {
+      // Admin endpoint unreachable — preserve cached permissions if available.
+      // If first login (no cache), grant full access but keep admin role if
+      // this is an email from bootstrap admins (risk: API failure → temp privilege loss,
+      // but we don't have env vars client-side to check).
+      // For now, fall back to full-access viewer to avoid leaking admin status to network errors.
+      const cached = localStorage.getItem("cachedPermissions");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setPermissions(parsed);
+        } catch {
+          setPermissions({ userEmail: email, role: "viewer", allowedPages: ["*"] });
+        }
+      } else {
+        setPermissions({ userEmail: email, role: "viewer", allowedPages: ["*"] });
+      }
     }
 
     setState("authenticated");
