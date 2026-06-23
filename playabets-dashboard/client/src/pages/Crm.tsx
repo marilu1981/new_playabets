@@ -44,6 +44,9 @@ export default function CrmPage() {
   const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
   const [retentionSummary, setRetentionSummary] = useState<{ avg_d7: number; avg_d30: number; avg_d90: number } | null>(null);
 
+  type PaymentProvider = { provider: string; deposits: number; withdrawals: number; deposit_count: number; withdrawal_count: number; net: number };
+  const [paymentMethods, setPaymentMethods] = useState<PaymentProvider[]>([]);
+
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
 
@@ -91,6 +94,11 @@ export default function CrmPage() {
       else if (dep_unique > 0) setAvgDepositValue(dep / dep_unique);
       else setAvgDepositValue(null);
     }).catch(() => {});
+
+    // Payment methods breakdown
+    fetchJson<{ has_data: boolean; providers: PaymentProvider[] }>(`/transactions/providers?${query}`)
+      .then((d) => { if (d.has_data) setPaymentMethods(d.providers ?? []); })
+      .catch(() => {});
 
     // 7/30/90-day retention by cohort
     fetchJson<{ has_data: boolean; cohorts: RetentionCohort[]; summary: { avg_d7: number; avg_d30: number; avg_d90: number } }>(
@@ -227,6 +235,37 @@ export default function CrmPage() {
               <Bar dataKey="ftds_d30"      name="FTDs D30"      fill={COLORS.green} radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Payment Methods Breakdown */}
+      {paymentMethods.length > 0 && (
+        <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Payment Methods</h3>
+          <p className="text-xs text-gray-500 mb-4">Deposits and withdrawals by payment provider — selected period</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Provider", "Deposits", "Withdrawals", "Net", "Dep Txns", "Wd Txns"].map((h) => (
+                    <th key={h} className={`py-2 pr-4 text-gray-500 font-semibold text-[10px] uppercase tracking-wider ${h === "Provider" ? "text-left" : "text-right"}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paymentMethods.filter(p => p.deposits > 0 || Math.abs(p.withdrawals) > 0).map((p) => (
+                  <tr key={p.provider} className="border-b border-gray-50">
+                    <td className="py-2 pr-4 text-gray-700 font-medium">{p.provider}</td>
+                    <td className="py-2 pr-4 text-right text-gray-700">{p.deposits > 0 ? `R ${formatFull(Math.round(p.deposits))}` : "—"}</td>
+                    <td className="py-2 pr-4 text-right" style={{ color: p.withdrawals < 0 ? "#d94040" : "#6b7280" }}>{p.withdrawals < 0 ? `R ${formatFull(Math.round(Math.abs(p.withdrawals)))}` : "—"}</td>
+                    <td className="py-2 pr-4 text-right font-medium" style={{ color: p.net >= 0 ? COLORS.gold : "#d94040" }}>{`R ${formatFull(Math.round(p.net))}`}</td>
+                    <td className="py-2 pr-4 text-right text-gray-500">{p.deposit_count > 0 ? formatCompact(p.deposit_count) : "—"}</td>
+                    <td className="py-2 pr-4 text-right text-gray-500">{p.withdrawal_count > 0 ? formatCompact(p.withdrawal_count) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
