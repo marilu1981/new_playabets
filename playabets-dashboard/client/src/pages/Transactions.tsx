@@ -11,7 +11,7 @@ import KpiCard from "@/components/KpiCard";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
-import { DollarSign, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, Users } from "lucide-react";
+import { DollarSign, ArrowUpCircle, ArrowDownCircle, Users } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
 
@@ -130,13 +130,11 @@ export default function TransactionsPage() {
 
       {/* KPI Row */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KpiCard title="Total Deposits"   value={kpis?.has_data ? formatFull(kpis.deposits)    : pending ? "Pending" : dash} icon={<ArrowUpCircle size={18} />}   accent="green" loading={loading} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard title="Total Deposits"    value={kpis?.has_data ? formatFull(kpis.deposits)    : pending ? "Pending" : dash} icon={<ArrowUpCircle size={18} />}   accent="green" loading={loading} />
           <KpiCard title="Total Withdrawals" value={kpis?.has_data ? formatFull(kpis.withdrawals) : pending ? "Pending" : dash} icon={<ArrowDownCircle size={18} />} accent="amber" loading={loading} />
-          <KpiCard title="Net Cash"         value={kpis?.has_data ? formatFull(kpis.net_deposits) : pending ? "Pending" : dash} icon={<DollarSign size={18} />}      accent="teal"  loading={loading} />
+          <KpiCard title="Net Cash"          value={kpis?.has_data ? formatFull(kpis.net_deposits) : pending ? "Pending" : dash} icon={<DollarSign size={18} />}     accent="teal"  loading={loading} />
           <KpiCard title="Unique Depositors" value={kpis?.has_data ? kpis.unique_depositors.toLocaleString() : dash} icon={<Users size={18} />}        accent="gold"  loading={loading} />
-          <KpiCard title="Pending Tx"       value={kpis?.has_data ? kpis.tx_count_pending.toLocaleString()   : dash} icon={<Clock size={18} />}         accent="red"   loading={loading} />
-          <KpiCard title="Accepted Tx"      value={kpis?.has_data ? kpis.tx_count_accepted.toLocaleString()  : dash} icon={<CheckCircle size={18} />}    accent="teal"  loading={loading} />
         </div>
       </div>
 
