@@ -16,10 +16,10 @@ const PAGE_LABELS: Record<string, string> = {
   "/betting": "Betting",
   "/transactions": "Transactions",
   "/casino": "Casino",
-  "/bonus": "Bonus",
   "/crm": "CRM",
   "/vip": "VIP",
   "/product": "Product",
+  "/acquisition": "Acquisition",
 };
 
 type EditableUser = AdminUser & { dirty: boolean };

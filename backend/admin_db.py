@@ -24,7 +24,6 @@ DASHBOARD_PATHS: list[str] = [
     "/betting",
     "/transactions",
     "/casino",
-    "/bonus",
     "/crm",
     "/vip",
     "/product",
