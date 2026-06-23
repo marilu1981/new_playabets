@@ -15,6 +15,7 @@ Environment variables required:
 from __future__ import annotations
 
 import argparse
+import os
 import pandas as pd
 from datetime import datetime, UTC
 from sqlalchemy import text
@@ -63,7 +64,7 @@ SELECT_COLUMNS = [
     "promo.Value AS promo_code",
 ]
 
-WATERMARK_DB = WATERMARK_DB_PATH
+WATERMARK_DB = os.environ.get("WATERMARK_DB_PATH", str(WATERMARK_DB_PATH))
 OUT_DIR = raw_dir("users")
 
 
