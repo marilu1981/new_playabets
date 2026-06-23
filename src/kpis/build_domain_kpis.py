@@ -531,6 +531,79 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] Affiliates: error - {e}")
 
+    # VIP revenue by user — pre-aggregated from raw betslips + casino per VIP userid.
+    # Eliminates live raw-file loading on every VIP API request (was 3-4 seconds).
+    try:
+        from src.kpis.io_utils import normalize_cols, read_all_parquets, to_dt
+        vip_roster_path = SERVING / "vip_roster.parquet"
+        if vip_roster_path.exists():
+            vip_ids = set(pd.read_parquet(vip_roster_path)["userid"].astype(str).unique())
+            raw_root = RAW
+
+            def _agg_raw(paths, label: str) -> pd.DataFrame:
+                empty = pd.DataFrame(columns=["userid", f"{label}_stake", f"{label}_winnings", f"{label}_bets"])
+                frames = [pd.read_parquet(p) for p in paths if p.exists()]
+                if not frames:
+                    return empty
+                df = pd.concat(frames, ignore_index=True)
+                df, col = normalize_cols(df)
+                placement = col.get("placementdate") or col.get("placedate") or col.get("betdate") or col.get("date")
+                user_col = col.get("userid")
+                stake_col = col.get("stake")
+                win_col = col.get("winnings") or col.get("userwinnings")
+                if not placement or not user_col:
+                    return empty
+                df["_date"] = to_dt(df[placement]).dt.date
+                df["_uid"] = df[user_col].astype(str)
+                df = df[df["_uid"].isin(vip_ids)]
+                if df.empty:
+                    return empty
+                df["_stake"] = pd.to_numeric(df[stake_col], errors="coerce").fillna(0.0) if stake_col else 0.0
+                df["_win"] = pd.to_numeric(df[win_col], errors="coerce").fillna(0.0) if win_col else 0.0
+                grp = df.groupby(["_uid", "_date"]).agg(
+                    **{f"{label}_stake": ("_stake", "sum"),
+                       f"{label}_winnings": ("_win", "sum"),
+                       f"{label}_bets": ("_stake", "count")}
+                ).reset_index().rename(columns={"_uid": "userid", "_date": "date"})
+                return grp
+
+            # Sports (betslips)
+            betslips_dir = raw_root / "betslips"
+            bs_paths = sorted(betslips_dir.glob("betslips_*.parquet")) if betslips_dir.exists() else []
+            sports_df = _agg_raw(bs_paths, "sports")
+
+            # Casino
+            casino_dir = raw_root / "casino"
+            if not casino_dir.exists():
+                casino_dir = raw_root / "Casino"
+            cs_paths = sorted(casino_dir.glob("casino_*.parquet")) if casino_dir.exists() else []
+            casino_df = _agg_raw(cs_paths, "casino")
+
+            # Merge and save per-user per-day
+            if not sports_df.empty or not casino_df.empty:
+                all_dates = pd.concat([
+                    sports_df[["userid", "date"]] if not sports_df.empty else pd.DataFrame(columns=["userid", "date"]),
+                    casino_df[["userid", "date"]] if not casino_df.empty else pd.DataFrame(columns=["userid", "date"]),
+                ]).drop_duplicates()
+                result = all_dates.copy()
+                if not sports_df.empty:
+                    result = result.merge(sports_df, on=["userid", "date"], how="left")
+                if not casino_df.empty:
+                    result = result.merge(casino_df, on=["userid", "date"], how="left")
+                for col in ["sports_stake", "sports_winnings", "sports_bets", "casino_stake", "casino_winnings", "casino_bets"]:
+                    if col not in result.columns:
+                        result[col] = 0.0
+                    result[col] = result[col].fillna(0.0)
+                out = SERVING / "vip_revenue_daily.parquet"
+                result.to_parquet(out, index=False)
+                print(f"[domain_kpis] VIP revenue daily: {len(result)} rows ({len(vip_ids)} VIP users) -> {out}")
+            else:
+                print("[domain_kpis] VIP revenue daily: no betslip/casino data found")
+        else:
+            print("[domain_kpis] VIP revenue daily: no vip_roster.parquet — skipping")
+    except Exception as e:
+        print(f"[domain_kpis] VIP revenue daily: error - {e}")
+
     print("[domain_kpis] Done.")
 
 

@@ -233,13 +233,34 @@ def _aggregate_betslips_for_users(
 
 def _per_user_wagering(start: date, end: date, allowed_ids: set[str]) -> pd.DataFrame:
     """
-    Per-user sports + casino wagering for a userid set over a period (by placement date).
+    Per-user sports + casino wagering for a userid set over a period.
 
-    Returns a DataFrame indexed by userid with columns:
-      sports_stake, sports_winnings, sports_bets,
-      casino_stake, casino_winnings, casino_bets
-    Missing sides are filled with 0. Used to attach revenue to the uploaded VIP roster.
+    Fast path: reads from vip_revenue_daily.parquet (pre-computed by build_domain_kpis).
+    Slow path: loads all raw betslips + casino (fallback if serving file absent).
     """
+    from backend.core.cache import VIP_REVENUE_DAILY_PATH
+
+    # Fast path — serving file exists (built by pipeline)
+    if VIP_REVENUE_DAILY_PATH.exists():
+        df = load_parquet_cached(VIP_REVENUE_DAILY_PATH, "vip_revenue_daily")
+        df = df[df["userid"].astype(str).isin(allowed_ids)]
+        df["_date"] = pd.to_datetime(df["date"]).dt.date
+        df = _filter_range(df, start, end)
+        for c in ["sports_stake", "sports_winnings", "sports_bets", "casino_stake", "casino_winnings", "casino_bets"]:
+            if c not in df.columns:
+                df[c] = 0.0
+        result = df.groupby("userid").agg(
+            sports_stake=("sports_stake", "sum"),
+            sports_winnings=("sports_winnings", "sum"),
+            sports_bets=("sports_bets", "sum"),
+            casino_stake=("casino_stake", "sum"),
+            casino_winnings=("casino_winnings", "sum"),
+            casino_bets=("casino_bets", "sum"),
+        ).reset_index()
+        result["userid"] = result["userid"].astype(str)
+        return result
+
+    # Slow path — raw betslips + casino (fallback)
     def _agg(df: pd.DataFrame, label: str) -> pd.DataFrame:
         empty = pd.DataFrame(columns=["userid", f"{label}_stake", f"{label}_winnings", f"{label}_bets"])
         if df.empty:
