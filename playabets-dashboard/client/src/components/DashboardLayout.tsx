@@ -123,7 +123,6 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Products",
     items: [
       { path: "/casino", label: "Casino & Games", imgIcon: ICON_CASINO },
-      { path: "/bonus", label: "Bonus & Campaigns", imgIcon: ICON_BOLT },
     ],
   },
 ];
