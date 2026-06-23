@@ -35,33 +35,35 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # One row per user: their globally first deposit date and amount.
-    # Join to Stats.transazioni on the idprimodeposito to get the Importo amount.
-    # Exclude test users.
+    # Step 1: get the earliest deposit date per user (one row per user).
+    # Step 2: join to Stats.transazioni on that specific date to get Importo.
+    # Uses a subquery to avoid correlated subquery per row.
     query = text(
         f"""
+        WITH first_deps AS (
+            SELECT
+                idutente,
+                MIN(dataprimodeposito) AS dataprimodeposito,
+                MIN(idcausale)         AS idcausale
+            FROM {VIEW_NAME}
+            WHERE dataprimodeposito IS NOT NULL
+              AND idutente NOT IN (
+                  SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
+              )
+            GROUP BY idutente
+        )
         SELECT
-            d.idutente,
-            MIN(d.dataprimodeposito) AS dataprimodeposito,
-            SUM(CASE
-                WHEN d.dataprimodeposito = (
-                    SELECT MIN(d2.dataprimodeposito)
-                    FROM {VIEW_NAME} d2
-                    WHERE d2.idutente = d.idutente
-                ) THEN CAST(t.Importo AS FLOAT)
-                ELSE 0
-            END) AS first_deposit_amount
-        FROM {VIEW_NAME} d
+            fd.idutente,
+            fd.dataprimodeposito,
+            COALESCE(SUM(CAST(t.Importo AS FLOAT)), 0) AS first_deposit_amount
+        FROM first_deps fd
         LEFT JOIN Stats.transazioni t
-          ON t.IDUtente = d.idutente
-         AND CAST(t.Data AS DATE) = CAST(d.dataprimodeposito AS DATE)
-         AND t.IDCausale = d.idcausale
+          ON t.IDUtente = fd.idutente
+         AND CAST(t.Data AS DATE) = CAST(fd.dataprimodeposito AS DATE)
+         AND t.IDCausale = fd.idcausale
          AND t.IDTipoImportoTransazione = 1
          AND t.IDStatoGestioneTransazione = 3
-        WHERE d.dataprimodeposito IS NOT NULL
-          AND d.idutente NOT IN (
-              SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
-          )
-        GROUP BY d.idutente
+        GROUP BY fd.idutente, fd.dataprimodeposito
         """
     )
 
