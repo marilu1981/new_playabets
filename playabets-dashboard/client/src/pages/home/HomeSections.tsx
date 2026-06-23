@@ -116,14 +116,15 @@ export function HomePrimaryKpis({
         </h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-5 gap-3 mb-3">
-        <KpiCard title="Registrations" value={formatFull(kpiRegistrations)} subtitle="Selected range" icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="FTDs" value={formatFull(kpiFtds)} subtitle="First-time depositors" icon={<Users size={18} />} accent="gold" loading={isLoading} />
-        <KpiCard title="Sports Actives" value={formatFull(overviewKpis.activesSports)} subtitle="Unique sports users" icon={<Activity size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Casino Actives" value={formatFull(overviewKpis.activesCasino)} subtitle="Unique casino users" icon={<Activity size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Registrations" value={formatFull(kpiRegistrations)} subtitle="Selected range" tooltip="Total new player accounts created during the selected period." icon={<UserPlus size={18} />} accent="teal" loading={isLoading} />
+        <KpiCard title="FTDs" value={formatFull(kpiFtds)} subtitle="First-time depositors" tooltip="First Time Depositors: players who made their very first deposit during the selected period. The registration may have been earlier." icon={<Users size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Sports Actives" value={formatFull(overviewKpis.activesSports)} subtitle="Unique sports users" tooltip="Unique players who placed at least one real-money sports bet during the selected period." icon={<Activity size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Casino Actives" value={formatFull(overviewKpis.activesCasino)} subtitle="Unique casino users" tooltip="Unique players who placed at least one real-money casino bet during the selected period." icon={<Activity size={18} />} accent="gold" loading={isLoading} />
         <KpiCard
           title="Total Deposits"
           value={hasTransactionsData ? formatFull(transactionSummary.totalDeposits) : "Pending"}
           subtitle={hasTransactionsData ? "Gross deposits" : "Transactions export pending"}
+          tooltip="Sum of all player deposits (money added to accounts) during the selected period."
           icon={<DollarSign size={18} />}
           accent="amber"
           loading={isLoading}
@@ -134,16 +135,17 @@ export function HomePrimaryKpis({
           title="Total Withdrawals"
           value={hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending"}
           subtitle={hasTransactionsData ? "Paid out" : "Transactions export pending"}
+          tooltip="Sum of all player withdrawals (money taken out of accounts) during the selected period."
           icon={<ArrowUpRight size={18} />}
           accent="red"
           loading={isLoading}
         />
-        <KpiCard title="Total Turnover" value={formatFull(overviewKpis.totalStake)} subtitle="Sports + Casino" icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="GGR" value={formatFull(overviewKpis.grossRevenue)} subtitle={`Sports + Casino · ${margin}% margin`} icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="Total Turnover" value={formatFull(overviewKpis.totalStake)} subtitle="Sports + Casino" tooltip="Total amount staked by players across Sports and Casino. Does not include Horse Racing or Lotto." icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
+        <KpiCard title="GGR" value={formatFull(overviewKpis.grossRevenue)} subtitle={`Sports + Casino · ${margin}% margin`} tooltip="Gross Gaming Revenue = Total Stakes minus Total Payouts. Can be negative when players win more than they wager." icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} icon={<Percent size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD" icon={<Percent size={18} />} accent="amber" loading={isLoading} />
+        <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} tooltip="Net Gaming Revenue = GGR minus Bonuses minus Adjustments. The cleanest measure of actual revenue retained." icon={<Percent size={18} />} accent="green" loading={isLoading} />
+        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD" tooltip="Conversion Rate = FTDs / Registrations x 100. Percentage of newly registered players who made their first deposit." icon={<Percent size={18} />} accent="amber" loading={isLoading} />
       </div>
     </>
   );
