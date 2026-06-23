@@ -99,32 +99,6 @@ export default function CrmPage() {
       else setAvgDepositValue(null);
     }).catch(() => {});
 
-    // CRM AI Insights
-    fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number; registrations?: number; ftds?: number }>(`/kpis?${query}`)
-      .then((d) => {
-        const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
-        const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-        const params = new URLSearchParams({
-          start: filters.dateFrom, end: filters.dateTo,
-          registrations: String(d.registrations ?? 0),
-          ftds: String(d.ftds ?? 0),
-          ngr: String(Math.round(d.ngr ?? 0)),
-          ggr: String(Math.round(d.ngr ?? 0)),
-          churn_pct: String(d.churn_pct ?? 0),
-          active_players: String(d.total_actives_unique ?? 0),
-        });
-        setAiLoading(true);
-        fetch(`${API_BASE}/insights/ai-summary?${params}`, {
-          method: "POST",
-          headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
-        })
-          .then(r => r.json())
-          .then(res => { if (res.available) setAiInsights(res as AiInsights); })
-          .catch(() => {})
-          .finally(() => setAiLoading(false));
-      })
-      .catch(() => {});
-
     // Payment methods breakdown
     fetchJson<{ has_data: boolean; providers: PaymentProvider[] }>(`/transactions/providers?${query}`)
       .then((d) => { if (d.has_data) setPaymentMethods(d.providers ?? []); })
@@ -140,6 +114,35 @@ export default function CrmPage() {
       }
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo, filters.granularity]);
+
+  // CRM AI Insights — fires once churn and retention data are available
+  useEffect(() => {
+    if (churnPct === null && retentionSummary === null && totalActives === null) return;
+    const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+    const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const params = new URLSearchParams({
+      start: filters.dateFrom, end: filters.dateTo,
+      churn_pct: String(churnPct ?? 0),
+      retention_d7: String(retentionSummary?.avg_d7 ?? 0),
+      retention_d30: String(retentionSummary?.avg_d30 ?? 0),
+      active_players: String(totalActives ?? 0),
+      avg_ftd_value: String(Math.round(avgDepositValue ?? 0)),
+      // ARPU as NGR proxy
+      ngr: String(arpu != null && totalActives != null ? arpu * totalActives : 0),
+      ggr: String(arpu != null && totalActives != null ? arpu * totalActives : 0),
+      registrations: "0", ftds: "0",
+    });
+    setAiLoading(true);
+    fetch(`${API_BASE}/insights/ai-summary?${params}`, {
+      method: "POST",
+      headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
+    })
+      .then(r => r.json())
+      .then(res => { if (res.available) setAiInsights(res as AiInsights); })
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateFrom, filters.dateTo, churnPct, retentionSummary?.avg_d30, totalActives]);
 
   // Cohort summary for period
   const cohortSummary = cohortData.length > 0 ? {

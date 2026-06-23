@@ -180,30 +180,6 @@ export default function VipPage() {
         const rev = revenueRes.status === "fulfilled" ? revenueRes.value : null;
         setRevenue(rev);
 
-        // Fetch VIP AI insights
-        if (rev?.has_data) {
-          const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
-          const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-          const params = new URLSearchParams({
-            start: filters.dateFrom, end: filters.dateTo,
-            registrations: "0", ftds: "0",
-            ggr: String(Math.round(rev.total_ggr ?? 0)),
-            ngr: String(Math.round(rev.total_ggr ?? 0)),
-            turnover: String(Math.round(rev.total_turnover ?? 0)),
-            total_vips: String(rev.vip_count ?? 0),
-            vip_ggr: String(Math.round(rev.total_ggr ?? 0)),
-            active_players: String(rev.active_vips ?? 0),
-          });
-          setAiLoading(true);
-          fetch(`${API_BASE}/insights/ai-summary?${params}`, {
-            method: "POST",
-            headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
-          })
-            .then(r => r.json())
-            .then(d => { if (!cancelled && d.available) setAiInsights(d as AiInsights); })
-            .catch(() => {})
-            .finally(() => { if (!cancelled) setAiLoading(false); });
-        }
         setManagers([]);
         setTopPlayers([]);
         setProductShare(null);
@@ -258,6 +234,36 @@ export default function VipPage() {
     load().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [debouncedQuery]);
+
+  // VIP AI Insights — fires once revenue data is loaded
+  useEffect(() => {
+    if (!revenue?.has_data) return;
+    const rev = revenue;
+    const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+    const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const params = new URLSearchParams({
+      start: filters.dateFrom, end: filters.dateTo,
+      registrations: "0", ftds: "0",
+      ggr:          String(Math.round(rev.total_ggr ?? 0)),
+      ngr:          String(Math.round(rev.total_ggr ?? 0)),
+      turnover:     String(Math.round(rev.total_turnover ?? 0)),
+      hold_pct:     String(rev.total_turnover ? ((rev.total_ggr ?? 0) / rev.total_turnover * 100).toFixed(1) : "0"),
+      total_vips:   String(rev.vip_count ?? 0),
+      vip_ggr:      String(Math.round(rev.total_ggr ?? 0)),
+      active_players: String(rev.active_vips ?? 0),
+      avg_ftd_value:  String(Math.round(rev.avg_revenue_per_vip ?? 0)),
+    });
+    setAiLoading(true);
+    fetch(`${API_BASE}/insights/ai-summary?${params}`, {
+      method: "POST",
+      headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.available) setAiInsights(d as AiInsights); })
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateFrom, filters.dateTo, revenue?.total_ggr, revenue?.vip_count]);
 
   const managerOptions = summary?.account_managers ?? [];
   const stageOptions = summary?.stages ?? [];
