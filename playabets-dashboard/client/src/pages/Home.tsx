@@ -414,8 +414,9 @@ export default function Home() {
           icon: ReactNode,
           pending = false,
           subtitle?: string,
+          tooltip?: string,
         ) => (
-          <div className="rounded-lg p-2.5" style={{ background: TILE_BG, border: "1px solid #dde8dd" }}>
+          <div className="rounded-lg p-2.5 relative group" style={{ background: TILE_BG, border: "1px solid #dde8dd" }}>
             <div className="flex items-center justify-between mb-1.5">
               <div className="text-[8px] font-bold uppercase tracking-widest truncate" style={{ color: accent }}>{label}</div>
               <div style={{ color: accent, opacity: 0.65 }}>{icon}</div>
@@ -424,6 +425,12 @@ export default function Home() {
               {value}
             </div>
             {subtitle && <div className="text-[7px] text-gray-400 leading-tight mt-0.5">{subtitle}</div>}
+            {tooltip && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-md shadow-xl text-[10px] leading-snug p-2.5 z-[9999] hidden group-hover:block pointer-events-none"
+                style={{ background: "#1a2e1a", color: "#e8f5e8", border: "1px solid #2d4a2d" }}>
+                {tooltip}
+              </div>
+            )}
           </div>
         );
 
@@ -472,44 +479,44 @@ export default function Home() {
                 {/* Revenue group — row 1: 6 tiles, row 2: 5 tiles */}
                 <div>
                   <div className="grid grid-cols-6 gap-2 mb-2">
-                    {tile("GGR",             formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />)}
-                    {tile("Turnover",        formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />)}
+                    {tile("GGR",             formatFull(overviewKPIs.grossRevenue),                                                                          CHART_COLORS.gold,      <BarChart2 size={11} />,    false, undefined, "Gross Gaming Revenue = Total Stakes minus Total Payouts. Can be negative when players win more than they wager.")}
+                    {tile("Turnover",        formatFull(overviewKPIs.totalStake),                                                                             "oklch(0.75 0.13 220)", <TrendingUp size={11} />,  false, undefined, "Total amount staked by players across Sports and Casino during the selected period.")}
                     {tile("Hold %",          overviewKPIs.totalStake > 0 ? `${((overviewKPIs.grossRevenue / overviewKPIs.totalStake) * 100).toFixed(2)}%` : "—",
-                                                                                                                                                              CHART_COLORS.green,     <Percent size={11} />, false, "GGR/Turnover")}
-                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                                                                    CHART_COLORS.green,     <TrendingUp size={11} />, liveNgr == null)}
-                    {tile("Bonus Issued",    liveBonusTxIssued != null && liveBonusTxIssued > 0 ? formatFull(liveBonusTxIssued) : "—",                       CHART_COLORS.amber,     <Zap size={11} />, !liveBonusTxIssued)}
-                    {tile("Bonus Converted", liveBonusConverted != null && liveBonusConverted > 0 ? formatFull(liveBonusConverted) : "—",                     CHART_COLORS.teal,      <Zap size={11} />, !liveBonusConverted, "ReasonID 54")}
+                                                                                                                                                              CHART_COLORS.green,     <Percent size={11} />,     false, "GGR/Turnover", "Hold % = GGR / Turnover x 100. The percentage of turnover retained as revenue. Higher is better.")}
+                    {tile("NGR",             liveNgr != null ? formatFull(liveNgr) : "—",                                                                    CHART_COLORS.green,     <TrendingUp size={11} />,  liveNgr == null, undefined, "Net Gaming Revenue = GGR minus Bonuses minus Adjustments. The cleanest measure of actual revenue retained.")}
+                    {tile("Bonus Issued",    liveBonusTxIssued != null && liveBonusTxIssued > 0 ? formatFull(liveBonusTxIssued) : "—",                       CHART_COLORS.amber,     <Zap size={11} />,         !liveBonusTxIssued, undefined, "Total value of bonuses issued to players during the period (free bets + bonus credits).")}
+                    {tile("Bonus Converted", liveBonusConverted != null && liveBonusConverted > 0 ? formatFull(liveBonusConverted) : "—",                     CHART_COLORS.teal,      <Zap size={11} />,         !liveBonusConverted, "ReasonID 54", "Total value of bonuses that players converted into real-money winnings (wagered through).")}
                   </div>
                   <div className="grid grid-cols-6 gap-2">
-                    {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />, !hasTransactionsData)}
-                    {tile("Withdrawals",     hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />, !hasTransactionsData)}
+                    {tile("Deposits",        hasTransactionsData ? formatFull(transactionSummary.totalDeposits)    : "Pending",                               CHART_COLORS.amber,     <DollarSign size={11} />,  !hasTransactionsData, undefined, "Sum of all player deposits (money added to accounts) during the selected period.")}
+                    {tile("Withdrawals",     hasTransactionsData ? formatFull(transactionSummary.totalWithdrawals) : "Pending",                               CHART_COLORS.red,       <ArrowUpRight size={11} />,!hasTransactionsData, undefined, "Sum of all player withdrawals (money taken out of accounts) during the selected period.")}
                     {tile("Net Cash",        hasTransactionsData ? formatFull((transactionSummary as typeof transactionSummary & { netDeposits?: number }).netDeposits ?? (transactionSummary.totalDeposits - transactionSummary.totalWithdrawals)) : "Pending",
-                                                                                                                                                              CHART_COLORS.teal,      <DollarSign size={11} />, !hasTransactionsData, "Dep−Wd (accepted)")}
+                                                                                                                                                              CHART_COLORS.teal,      <DollarSign size={11} />,  !hasTransactionsData, "Dep-Wd (accepted)", "Net Cash = Total Deposits minus Total Withdrawals. Positive means more money came in than went out.")}
                     {tile("Net Cash %",      hasTransactionsData && transactionSummary.totalDeposits > 0
                       ? `${((((transactionSummary as typeof transactionSummary & { netDeposits?: number }).netDeposits ?? (transactionSummary.totalDeposits - transactionSummary.totalWithdrawals)) / transactionSummary.totalDeposits) * 100).toFixed(1)}%`
-                      : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />, !hasTransactionsData)}
-                    {tile("Taxes Paid",      liveTaxesPaid != null && liveTaxesPaid > 0 ? formatFull(liveTaxesPaid) : "—",                                    CHART_COLORS.red,       <DollarSign size={11} />, liveTaxesPaid == null, "IDType 38")}
-                    {tile("Bonus Conv %",     liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />, liveBonusPct == null || liveBonusPct === 0, "Converted/Issued")}
+                      : "Pending",                                                                                                                             "oklch(0.72 0.11 195)", <Percent size={11} />,     !hasTransactionsData, undefined, "Net Cash as a percentage of total deposits. Shows what proportion of deposited funds were retained.")}
+                    {tile("Taxes Paid",      liveTaxesPaid != null && liveTaxesPaid > 0 ? formatFull(liveTaxesPaid) : "—",                                    CHART_COLORS.red,       <DollarSign size={11} />,  liveTaxesPaid == null, "IDType 38", "Taxes paid by players on their bets (StakeTax + WinningsTax) from the DWH.")}
+                    {tile("Bonus Conv %",    liveBonusPct != null && liveBonusPct > 0 ? `${liveBonusPct}%` : "—",                                             CHART_COLORS.green,     <Percent size={11} />,     liveBonusPct == null || liveBonusPct === 0, "Converted/Issued", "Bonus Conversion Rate = Bonus Converted / Bonus Issued x 100. How effectively players are converting bonuses into real play.")}
                   </div>
                 </div>
                 {/* Players group — row 1: 6 tiles, row 2: 5 tiles */}
                 <div className="border-t pt-3" style={{ borderColor: "#dde8dd" }}>
                   <div className="text-[9px] font-bold uppercase tracking-widest mb-2 text-gray-400">Players</div>
                   <div className="grid grid-cols-6 gap-2 mb-2">
-                    {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />)}
-                    {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,    false, "first dep in period")}
-                    {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,    liveFtdRegMonth == null, "reg'd + ever deposited")}
-                    {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />)}
-                    {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />, false, "period unique")}
-                    {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,      false, "period unique")}
+                    {tile("Registrations",   formatFull(kpiRegistrations),                                            "oklch(0.75 0.13 220)", <UserPlus size={11} />,  false, undefined,               "Total new player accounts created during the selected period.")}
+                    {tile("FTDs",            formatFull(kpiFtds),                                                     CHART_COLORS.gold,      <Users size={11} />,     false, "first dep in period",   "First Time Depositors: players whose very first ever deposit fell within this period.")}
+                    {tile("FTD Reg Month",   liveFtdRegMonth != null ? formatFull(liveFtdRegMonth) : "—",             CHART_COLORS.amber,     <Users size={11} />,     liveFtdRegMonth == null, "reg'd + ever deposited", "Players who registered in this period and have ever made a deposit (lifetime). Grows over time.")}
+                    {tile("Conv Rate",       `${periodConvRate}%`,                                                     CHART_COLORS.teal,      <Percent size={11} />,   false, undefined,               "Conversion Rate = FTDs / Registrations x 100. Percentage of new players who made their first deposit.")}
+                    {tile("Sports Actives",  formatFull(overviewKPIs.activesSports),                                  "oklch(0.82 0.10 160)", <Activity size={11} />,  false, "period unique",          "Unique players who placed at least one real-money sports bet during the selected period.")}
+                    {tile("Casino Actives",  formatFull(overviewKPIs.activesCasino),                                  CHART_COLORS.gold,      <Zap size={11} />,       false, "period unique",          "Unique players who placed at least one real-money casino bet during the selected period.")}
                   </div>
                   <div className="grid grid-cols-6 gap-2">
-                    {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino")}
-                    {tile("ARPU",            liveNgr != null && liveTotalActives != null && liveTotalActives > 0 ? formatFull(liveNgr / liveTotalActives) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives")}
-                    {tile("Depositors",      liveUniqueDepositors != null ? formatFull(liveUniqueDepositors) : "—",                                              CHART_COLORS.amber, <DollarSign size={11} />, liveUniqueDepositors == null, "period unique")}
-                    {tile("Dep/Customer",    liveUniqueDepositors != null && liveUniqueDepositors > 0 && hasTransactionsData ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "—", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors, "deposits/depositor")}
-                    {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,   <Activity size={11} />, liveChurnPct == null, "left/prev actives")}
-                    {tile("APD",             liveTotalApd != null ? `${liveTotalApd}d` : "—",                                                                      CHART_COLORS.green, <Activity size={11} />, liveTotalApd == null, "avg play days/user")}
+                    {tile("Total Actives",   liveTotalActives != null ? formatFull(liveTotalActives) : formatFull(overviewKPIs.activesSports + overviewKPIs.activesCasino), CHART_COLORS.teal, <Activity size={11} />, false, "unique sports+casino", "Total unique players active across Sports and Casino. Note: a player active in both is counted once.")}
+                    {tile("ARPU",            liveNgr != null && liveTotalActives != null && liveTotalActives > 0 ? formatFull(liveNgr / liveTotalActives) : "—", CHART_COLORS.green, <TrendingUp size={11} />, false, "NGR/Actives", "Average Revenue Per User = NGR / Total Active Players. Key measure of player value for the period.")}
+                    {tile("Depositors",      liveUniqueDepositors != null ? formatFull(liveUniqueDepositors) : "—",                                              CHART_COLORS.amber, <DollarSign size={11} />, liveUniqueDepositors == null, "period unique", "Unique players who made at least one deposit during the selected period (not just first-timers).")}
+                    {tile("Dep/Customer",    liveUniqueDepositors != null && liveUniqueDepositors > 0 && hasTransactionsData ? formatFull(transactionSummary.totalDeposits / liveUniqueDepositors) : "—", CHART_COLORS.teal, <DollarSign size={11} />, !liveUniqueDepositors, "deposits/depositor", "Average Deposit per Depositing Player = Total Deposits / Unique Depositors.")}
+                    {tile("Churn %",         liveChurnPct != null ? `${liveChurnPct}%` : "—",                                                                      CHART_COLORS.red,   <Activity size={11} />, liveChurnPct == null, "left/prev actives", "Churn Rate = Players who did not return this month / Total active players in the previous month x 100.")}
+                    {tile("APD",             liveTotalApd != null ? `${liveTotalApd}d` : "—",                                                                      CHART_COLORS.green, <Activity size={11} />, liveTotalApd == null, "avg play days/user", "Average Play Days per active user in the period. Measures engagement depth.")}
                   </div>
                 </div>
               </div>
