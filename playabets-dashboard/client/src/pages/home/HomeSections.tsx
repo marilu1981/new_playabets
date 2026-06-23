@@ -143,7 +143,6 @@ export function HomePrimaryKpis({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} icon={<Percent size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Top_FTDs (TBC from RFM)" value="TBC" valueClassName="text-gray-300" subtitle="High-value FTDs" icon={<Zap size={18} />} accent="gold" loading={isLoading} />
         <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD" icon={<Percent size={18} />} accent="amber" loading={isLoading} />
       </div>
     </>

@@ -9,7 +9,6 @@ import {
   usersByStatus as baseUsersByStatus,
   playerAcquisition as basePlayerAcquisition,
   revenueMetricsTrend as baseRevenueMetricsTrend,
-  segmentDistribution as baseSegmentDistribution,
   conversionRateTrend as baseConversionRateTrend,
   transactionSummary as baseTransactionSummary,
 } from "@/lib/mockData";
@@ -17,7 +16,7 @@ import { fetchJson, type DataMode } from "./homeUtils";
 
 type UseHomeDataArgs = {
   filters: DashboardFilters;
-  setFilters: Dispatch<SetStateAction<DashboardFilters>>;
+  setFilters: Dispatch<SetStateAction<DashboardFilters>> | ((f: DashboardFilters) => void);
 };
 
 export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
@@ -48,15 +47,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [liveBonusCoverage, setLiveBonusCoverage] = useState<{ coveredDays: number; totalDays: number } | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<Array<{ status: string; statusId: number | null; count: number }> | null>(null);
   const [liveUsersByStatus, setLiveUsersByStatus] = useState<Array<{ status: string; count: number }> | null>(null);
-  const [liveSegmentTrend, setLiveSegmentTrend] = useState<Array<{
-    date: string;
-    VIP: number;
-    Active: number;
-    New: number;
-    "Cooling": number;
-    Lapsed: number;
-    Dormant: number;
-  }> | null>(null);
   const [liveTodayKpis, setLiveTodayKpis] = useState<{
     ggr: number;
     turnover: number;
@@ -72,8 +62,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   const [hasTransactionsData, setHasTransactionsData] = useState<boolean>(false);
   const [hasBetslipStatusData, setHasBetslipStatusData] = useState<boolean>(false);
   const [hasUserStatusData, setHasUserStatusData] = useState<boolean>(false);
-  const [liveSegmentDistribution, setLiveSegmentDistribution] = useState<typeof baseSegmentDistribution | null>(null);
-  const [hasSegmentData, setHasSegmentData] = useState<boolean>(false);
   const [liveSummaryMetrics, setLiveSummaryMetrics] = useState<{
     overview: MetricRow[];
     sport: MetricRow[];
@@ -95,20 +83,13 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         persistLatestDate(maxDate);
         setLatestDataDate(maxDate);
         if (latest.last_updated) setLastUpdated(latest.last_updated);
-        setFilters((prev) => {
-          let dateTo = prev.dateTo;
-          let dateFrom = prev.dateFrom;
-          let changed = false;
-          if (dateTo > maxDate) {
-            dateTo = maxDate;
-            changed = true;
-          }
-          if (dateFrom > dateTo) {
-            dateFrom = `${dateTo.slice(0, 7)}-01`;
-            changed = true;
-          }
-          return changed ? { ...prev, dateFrom, dateTo } : prev;
-        });
+        // Clamp the persisted date range to the latest available data date
+        let dateTo = filters.dateTo;
+        let dateFrom = filters.dateFrom;
+        let changed = false;
+        if (dateTo > maxDate) { dateTo = maxDate; changed = true; }
+        if (dateFrom > dateTo) { dateFrom = `${dateTo.slice(0, 7)}-01`; changed = true; }
+        if (changed) setFilters({ ...filters, dateFrom, dateTo });
       })
       .catch(() => {});
 
@@ -132,7 +113,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       if (filters.brand !== "all") params.set("brand", filters.brand);
       if (filters.territory !== "all") params.set("territory", filters.territory);
       if (filters.country !== "all") params.set("country", filters.country);
-      if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
 
@@ -148,7 +128,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       });
       if (filters.territory !== "all") regsParams.set("territory", filters.territory);
       if (filters.country !== "all") regsParams.set("country", filters.country);
-      if (filters.currentSegment !== "all") regsParams.set("current_segment", filters.currentSegment);
       const regsQuery = regsParams.toString();
 
       const requests = {
@@ -216,15 +195,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         ),
         betslipStatus: fetchJson<Array<{ status?: string; statusId?: number | null; count?: number }>>(`/betting/betslips-by-status?${query}`),
         userStatus: fetchJson<{ statuses: Array<{ status?: string; count?: number }> }>(`/users/status-breakdown?${query}`),
-        rfmSegments: fetchJson<{ rows: Array<{ date: string; rfm_vip?: number; rfm_active?: number; rfm_new?: number; rfm_cooling?: number; rfm_lapsed?: number; rfm_dormant?: number }> }>(
-          `/rfm/segments?start=${filters.dateFrom}&end=${filters.dateTo}`
-        ),
         summary: fetchJson<{
           current: Record<string, number>;
           previous: Record<string, number>;
           ytd: Record<string, number>;
-          rfm: { vip: number; active: number; new: number; cooling: number; lapsed: number; dormant: number };
-          self_exclusions: number;
+            self_exclusions: number;
         }>(`/kpis/summary?start=${filters.dateFrom}&end=${filters.dateTo}`),
       };
 
@@ -547,10 +522,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       // conversionCohortsRes is kept for potential future use but conv rate is now computed above
       void conversionCohortsRes;
 
-      const [betslipStatusRes, userStatusRes, rfmSegmentsRes, summaryRes] = await Promise.allSettled([
+      const [betslipStatusRes, userStatusRes, summaryRes] = await Promise.allSettled([
         requests.betslipStatus,
         requests.userStatus,
-        requests.rfmSegments,
         requests.summary,
       ]);
 
@@ -587,82 +561,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         setHasUserStatusData(false);
       }
 
-      const segmentColors: Record<string, string> = {
-        rfm_vip:     "oklch(0.72 0.17 60)",
-        rfm_active:  "oklch(0.65 0.15 195)",
-        rfm_new:     "oklch(0.62 0.17 145)",
-        rfm_cooling: "oklch(0.72 0.14 85)",
-        rfm_lapsed:  "oklch(0.65 0.15 30)",
-        rfm_dormant: "oklch(0.45 0.05 0)",
-      };
-      const segmentLabels: Record<string, string> = {
-        rfm_vip:     "VIP",
-        rfm_active:  "Active",
-        rfm_new:     "New",
-        rfm_cooling: "Cooling",
-        rfm_lapsed:  "Lapsed",
-        rfm_dormant: "Dormant",
-      };
-      if (rfmSegmentsRes.status === "fulfilled") {
-        const rfmRows = rfmSegmentsRes.value.rows ?? [];
-        const trendRows = rfmRows
-          .filter((r) => Object.keys(segmentLabels).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
-          .sort((a, b) => String(a.date ?? "").localeCompare(String(b.date ?? "")))
-          .map((row) => ({
-            date: String(row.date ?? ""),
-            VIP: Number(row.rfm_vip ?? 0),
-            Active: Number(row.rfm_active ?? 0),
-            New: Number(row.rfm_new ?? 0),
-            "Cooling": Number(row.rfm_cooling ?? 0),
-            Lapsed: Number(row.rfm_lapsed ?? 0),
-            Dormant: Number(row.rfm_dormant ?? 0),
-          }));
-        const latestRow = rfmRows
-          .filter((r) => Object.keys(segmentLabels).some((k) => Number(r[k as keyof typeof r] ?? 0) > 0))
-          .sort((a, b) => b.date.localeCompare(a.date))[0];
-        if (latestRow) {
-          const segments = Object.keys(segmentLabels)
-            .map((key) => ({
-              segment: segmentLabels[key],
-              count: Number(latestRow[key as keyof typeof latestRow] ?? 0),
-              color: segmentColors[key],
-              pct: 0,
-            }))
-            .filter((s) => s.count > 0);
-          const total = segments.reduce((sum, s) => sum + s.count, 0) || 1;
-          const withPct = segments.map((s) => ({ ...s, pct: Number(((s.count / total) * 100).toFixed(1)) }));
-          setLiveSegmentDistribution(withPct);
-          setLiveSegmentTrend(
-            trendRows.length > 0
-              ? trendRows
-              : [{
-                  date: String(latestRow.date ?? ""),
-                  VIP: Number(latestRow.rfm_vip ?? 0),
-                  Active: Number(latestRow.rfm_active ?? 0),
-                  New: Number(latestRow.rfm_new ?? 0),
-                  "Cooling": Number(latestRow.rfm_cooling ?? 0),
-                  Lapsed: Number(latestRow.rfm_lapsed ?? 0),
-                  Dormant: Number(latestRow.rfm_dormant ?? 0),
-                }]
-          );
-          setHasSegmentData(true);
-        } else {
-          setLiveSegmentDistribution(null);
-          setLiveSegmentTrend(null);
-          setHasSegmentData(false);
-        }
-      } else {
-        setLiveSegmentDistribution(null);
-        setLiveSegmentTrend(null);
-        setHasSegmentData(false);
-      }
-
       if (summaryRes.status === "fulfilled") {
         const s = summaryRes.value;
         const c = s.current;
         const p = s.previous;
         const y = s.ytd;
-        const rfm = s.rfm;
         setLiveSummaryMetrics({
           overview: [
             { metric: "Registrations", current: c.registrations, previous: p.registrations, ytd: y.registrations },
@@ -708,12 +611,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Active Casino Players", current: c.casino_actives, previous: p.casino_actives, ytd: y.casino_actives },
           ],
           playerHealth: [
-            { metric: "VIP Players", current: rfm.vip, previous: 0, ytd: rfm.vip },
-            { metric: "Active Players", current: rfm.active, previous: 0, ytd: rfm.active },
-            { metric: "New Players", current: rfm.new, previous: 0, ytd: rfm.new },
-            { metric: "Cooling Players", current: rfm.cooling, previous: 0, ytd: rfm.cooling },
-            { metric: "Lapsed Players", current: rfm.lapsed, previous: 0, ytd: rfm.lapsed },
-            { metric: "Dormant Players", current: rfm.dormant, previous: 0, ytd: rfm.dormant },
+            { metric: "Active Sports Players", current: c.actives_sports, previous: p.actives_sports, ytd: y.actives_sports },
+            { metric: "Active Casino Players", current: c.casino_actives, previous: p.casino_actives, ytd: y.casino_actives },
+            { metric: "Total Actives", current: c.total_actives_unique, previous: p.total_actives_unique, ytd: y.total_actives_unique },
+            { metric: "Unique Depositors", current: c.period_unique_depositors, previous: p.period_unique_depositors, ytd: y.period_unique_depositors },
+            { metric: "Churn %", current: c.churn_pct, previous: p.churn_pct, ytd: y.churn_pct, isPercent: true },
             { metric: "Self-Exclusions", current: s.self_exclusions, previous: 0, ytd: s.self_exclusions },
           ],
         });
@@ -738,7 +640,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     filters.dateTo,
     filters.territory,
     filters.country,
-    filters.currentSegment,
     filters.granularity,
   ]);
 
@@ -814,12 +715,9 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     liveBonusCoverage,
     liveBetslipsByStatus,
     liveUsersByStatus,
-    liveSegmentTrend,
     hasTransactionsData,
     hasBetslipStatusData,
     hasUserStatusData,
-    liveSegmentDistribution,
-    hasSegmentData,
     liveTodayKpis,
     liveSummaryMetrics,
   };

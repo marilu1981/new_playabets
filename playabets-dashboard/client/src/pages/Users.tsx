@@ -255,7 +255,6 @@ export default function UsersPage() {
       });
       if (filters.territory !== "all") params.set("territory", filters.territory);
       if (filters.country !== "all") params.set("country", filters.country);
-      if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
       const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes, selfExTrendRes] = await Promise.allSettled([
@@ -347,7 +346,6 @@ export default function UsersPage() {
     filters.dateTo,
     filters.territory,
     filters.country,
-    filters.currentSegment,
     filters.granularity,
   ]);
 

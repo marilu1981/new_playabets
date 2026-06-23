@@ -66,7 +66,6 @@ export default function BettingPage() {
     const params = new URLSearchParams({ start: filters.dateFrom, end: filters.dateTo });
     if (filters.territory !== "all") params.set("territory", filters.territory);
     if (filters.country !== "all") params.set("country", filters.country);
-    if (filters.currentSegment !== "all") params.set("current_segment", filters.currentSegment);
     const query = params.toString();
     Promise.allSettled([
       fetchJson<{
@@ -168,7 +167,7 @@ export default function BettingPage() {
       });
 
     return () => { cancelled = true; };
-  }, [filters.dateFrom, filters.dateTo, filters.territory, filters.country, filters.currentSegment]);
+  }, [filters.dateFrom, filters.dateTo, filters.territory, filters.country]);
 
   const multiplier = useMemo(() => getFilterMultiplier(filters), [filters]);
   const overviewKPIs = useMemo(() => {

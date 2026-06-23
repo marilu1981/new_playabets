@@ -272,27 +272,6 @@ export default function FiltersPanel({ filters, onChange }: FiltersPanelProps) {
             </select>
           </div>
 
-          {/* USER SEGMENT */}
-          <div>
-            <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>
-              RFM Segment
-            </span>
-            <select
-              value={filters.currentSegment}
-              onChange={(e) => set("currentSegment", e.target.value)}
-              className={cn(selectClass, "focus:ring-amber-600/40")}
-              style={selectStyle}
-            >
-              <option value="all">All Segments</option>
-              <option value="Champions">Champions</option>
-              <option value="Loyal">Loyal</option>
-              <option value="Big Spenders">Big Spenders</option>
-              <option value="Mid">Mid</option>
-              <option value="At Risk">At Risk</option>
-              <option value="Dormant">Dormant</option>
-            </select>
-          </div>
-
           {/* CUSTOMER STATUS */}
           <div>
             <span className={labelClass} style={{ color: "oklch(0.55 0.01 155)" }}>

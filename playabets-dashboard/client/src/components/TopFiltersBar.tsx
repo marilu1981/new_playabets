@@ -18,7 +18,6 @@ export interface DashboardFilters {
   country: string;
   trafficSource: string;
   affiliateId: string;
-  currentSegment: string;
   customerStatus: string;
 }
 
@@ -31,7 +30,6 @@ export const defaultFilters: DashboardFilters = {
   country: "all",
   trafficSource: "all",
   affiliateId: "all",
-  currentSegment: "all",
   customerStatus: "all",
 };
 

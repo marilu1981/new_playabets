@@ -108,9 +108,6 @@ export function matchesRowFilters(
   if (!sameFilterValue(filters.trafficSource, row.trafficSource, TRAFFIC_MAP)) {
     return false;
   }
-  if (!sameFilterValue(filters.currentSegment, row.segment)) {
-    return false;
-  }
   if (!sameFilterValue(filters.customerStatus, row.status)) {
     return false;
   }
@@ -135,7 +132,6 @@ export function getFilterMultiplier(filters: DashboardFilters): number {
     filters.country,
     filters.trafficSource,
     filters.affiliateId,
-    filters.currentSegment,
     filters.customerStatus,
   ].filter((value) => value !== "all").length;
 
@@ -150,7 +146,6 @@ export function getFilterMultiplier(filters: DashboardFilters): number {
     filters.country,
     filters.trafficSource,
     filters.affiliateId,
-    filters.currentSegment,
     filters.customerStatus,
   ].join("|");
   let hash = 0;

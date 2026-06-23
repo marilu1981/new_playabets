@@ -28,7 +28,7 @@ import {
   revenueTrend as baseRevenueTrend,
   playerAcquisition as basePlayerAcquisition,
   revenueMetricsTrend as baseRevenueMetricsTrend,
-  segmentDistribution as baseSegmentDistribution,
+
   conversionRateTrend as baseConversionRateTrend,
   summaryMetrics as baseSummaryMetrics,
   transactionSummary as baseTransactionSummary,
@@ -76,7 +76,7 @@ export default function Home() {
     liveTransactionSummary,
     liveRangeKpis,
     hasTransactionsData,
-    liveSegmentDistribution,
+
     liveTodayKpis,
     liveSummaryMetrics,
     liveNgr,
@@ -162,20 +162,6 @@ export default function Home() {
     }
     return revenueTrend;
   }, [revenueMetricsTrend, revenueTrend]);
-  const segmentDistribution = useMemo(() => {
-    const source = liveSegmentDistribution ?? baseSegmentDistribution;
-    const filtered = source.filter((row) =>
-      filters.currentSegment === "all" ? true : row.segment === filters.currentSegment
-    );
-    const scaled = liveSegmentDistribution
-      ? filtered  // live data is already computed — don't scale with mock multiplier
-      : scaleArrayNumericFields(filtered, multiplier, ["segment", "color", "pct"]);
-    const total = scaled.reduce((sum, row) => sum + row.count, 0) || 1;
-    return scaled.map((row) => ({
-      ...row,
-      pct: Number(((row.count / total) * 100).toFixed(1)),
-    }));
-  }, [filters, liveSegmentDistribution, multiplier]);
   const conversionRateTrend = useMemo(() => {
     const filtered = filterByDateRange(sourceConversionRateTrend, filters, (row) => row.date);
     const normalized = filtered.map((row) => {
@@ -298,7 +284,7 @@ export default function Home() {
       ftds: kpiFtds,
       activePlayersSports: overviewKPIs.activesSports ?? 0,
       activePlayersCasino: overviewKPIs.activesCasino ?? 0,
-      segments: segmentDistribution.map((s) => ({ segment: s.segment, count: s.count, pct: s.pct })),
+      segments: [],
       casinoGGR: 0,
       casinoStake: 0,
       casinoMargin: 0,
@@ -309,7 +295,7 @@ export default function Home() {
       freebetUsagePct: 0,
       ngr: liveNgr,
     };
-  }, [filters, latestDataDate, overviewKPIs, kpiRegistrations, kpiFtds, segmentDistribution, transactionSummary, liveNgr]);
+  }, [filters, latestDataDate, overviewKPIs, kpiRegistrations, kpiFtds, transactionSummary, liveNgr]);
 
   const getSummaryRows = (): MetricRow[] => {
     if (summaryTab === "sport")  return summaryMetrics.sport;
