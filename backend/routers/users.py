@@ -662,6 +662,193 @@ def vip_demographics(
     }
 
 
+@router.get("/vip/trends")
+def vip_trends(
+    start: Optional[date] = Query(None),
+    end:   Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """31-day daily NGR/GGR/Turnover/Margin trend for VIP players."""
+    from backend.core.cache import VIP_REVENUE_DAILY_PATH
+    if not VIP_REVENUE_DAILY_PATH.exists():
+        return {"has_data": False, "points": []}
+
+    roster = _load_vip_roster()
+    if roster.empty:
+        return {"has_data": False, "points": []}
+    roster = _apply_vip_filters(roster, account_manager, stage)
+    vip_ids = set(roster["userid"].astype(str).unique())
+
+    df = load_parquet_cached(VIP_REVENUE_DAILY_PATH, "vip_revenue_daily")
+    df = df[df["userid"].astype(str).isin(vip_ids)]
+    df["_date"] = pd.to_datetime(df["date"]).dt.date
+    df = _filter_range(df, start, end)
+    if df.empty:
+        return {"has_data": False, "points": []}
+
+    for c in ["sports_stake", "sports_winnings", "casino_stake", "casino_winnings",
+              "sports_bets", "casino_bets"]:
+        if c not in df.columns:
+            df[c] = 0.0
+
+    daily = df.groupby("_date").agg(
+        sports_stake=("sports_stake", "sum"),
+        sports_winnings=("sports_winnings", "sum"),
+        casino_stake=("casino_stake", "sum"),
+        casino_winnings=("casino_winnings", "sum"),
+        sports_bets=("sports_bets", "sum"),
+        casino_bets=("casino_bets", "sum"),
+    ).reset_index().sort_values("_date")
+
+    points = []
+    for _, r in daily.iterrows():
+        turnover = float(r["sports_stake"]) + float(r["casino_stake"])
+        ggr      = (float(r["sports_stake"]) - float(r["sports_winnings"])) + \
+                   (float(r["casino_stake"]) - float(r["casino_winnings"]))
+        margin   = round(ggr / turnover * 100, 2) if turnover > 0 else 0.0
+        points.append({
+            "date":     str(r["_date"]),
+            "turnover": round(turnover, 2),
+            "ggr":      round(ggr, 2),
+            "margin":   margin,
+            "bets":     int(r["sports_bets"]) + int(r["casino_bets"]),
+        })
+
+    return {"has_data": True, "points": points}
+
+
+@router.get("/vip/monthly")
+def vip_monthly(
+    start: Optional[date] = Query(None),
+    end:   Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """6-month performance — one row per calendar month."""
+    from backend.core.cache import VIP_REVENUE_DAILY_PATH
+    if not VIP_REVENUE_DAILY_PATH.exists():
+        return {"has_data": False, "months": []}
+
+    roster = _load_vip_roster()
+    if roster.empty:
+        return {"has_data": False, "months": []}
+    roster = _apply_vip_filters(roster, account_manager, stage)
+    vip_ids = set(roster["userid"].astype(str).unique())
+
+    df = load_parquet_cached(VIP_REVENUE_DAILY_PATH, "vip_revenue_daily")
+    df = df[df["userid"].astype(str).isin(vip_ids)]
+    df["_date"] = pd.to_datetime(df["date"])
+
+    # Default: last 6 months if no range given
+    if end is None:
+        end = date.today()
+    if start is None:
+        start = date(end.year - 1 if end.month <= 6 else end.year, (end.month - 6) % 12 + 1, 1)
+    df = df[(df["_date"].dt.date >= start) & (df["_date"].dt.date <= end)]
+    if df.empty:
+        return {"has_data": False, "months": []}
+
+    df["_month"] = df["_date"].dt.to_period("M").astype(str)
+    for c in ["sports_stake", "sports_winnings", "casino_stake", "casino_winnings",
+              "sports_bets", "casino_bets"]:
+        if c not in df.columns:
+            df[c] = 0.0
+
+    monthly = df.groupby("_month").agg(
+        sports_stake=("sports_stake", "sum"),
+        sports_winnings=("sports_winnings", "sum"),
+        casino_stake=("casino_stake", "sum"),
+        casino_winnings=("casino_winnings", "sum"),
+        sports_bets=("sports_bets", "sum"),
+        casino_bets=("casino_bets", "sum"),
+        active_vips=("userid", "nunique"),
+    ).reset_index().sort_values("_month")
+
+    months = []
+    for _, r in monthly.iterrows():
+        turnover = float(r["sports_stake"]) + float(r["casino_stake"])
+        ggr      = (float(r["sports_stake"]) - float(r["sports_winnings"])) + \
+                   (float(r["casino_stake"]) - float(r["casino_winnings"]))
+        margin   = round(ggr / turnover * 100, 2) if turnover > 0 else 0.0
+        months.append({
+            "month":       str(r["_month"]),
+            "turnover":    round(turnover, 2),
+            "ggr":         round(ggr, 2),
+            "margin":      margin,
+            "bets":        int(r["sports_bets"]) + int(r["casino_bets"]),
+            "active_vips": int(r["active_vips"]),
+        })
+
+    return {"has_data": True, "months": months}
+
+
+@router.get("/vip/hourly")
+def vip_hourly(
+    start: Optional[date] = Query(None),
+    end:   Optional[date] = Query(None),
+    account_manager: Optional[str] = Query(None),
+    stage: Optional[str] = Query(None),
+):
+    """Hourly betting activity pattern for VIP players (aggregated across selected period)."""
+    from backend.core.cache import load_betslips_raw, load_casino_raw
+    from src.kpis.io_utils import normalize_cols, to_dt
+
+    roster = _load_vip_roster()
+    if roster.empty:
+        return {"has_data": False, "hours": []}
+    roster = _apply_vip_filters(roster, account_manager, stage)
+    vip_ids = set(roster["userid"].astype(str).unique())
+
+    def _hourly_from(raw_df: pd.DataFrame) -> pd.DataFrame:
+        empty = pd.DataFrame(columns=["hour", "bets", "turnover"])
+        if raw_df.empty:
+            return empty
+        df, col = normalize_cols(raw_df)
+        placement = col.get("placementdate") or col.get("placedate") or col.get("betdate") or col.get("date")
+        user_col  = col.get("userid")
+        stake_col = col.get("stake")
+        if not placement or not user_col:
+            return empty
+        df["_dt"] = to_dt(df[placement])
+        df["_date"] = df["_dt"].dt.date
+        df = _filter_range(df, start, end)
+        df = df[df[user_col].astype(str).isin(vip_ids)]
+        if df.empty:
+            return empty
+        df["_hour"] = df["_dt"].dt.hour
+        df["_stake"] = pd.to_numeric(df[stake_col], errors="coerce").fillna(0.0) if stake_col else 0.0
+        return df.groupby("_hour").agg(bets=("_hour", "size"), turnover=("_stake", "sum")).reset_index().rename(columns={"_hour": "hour"})
+
+    sports = _hourly_from(load_betslips_raw())
+    casino = _hourly_from(load_casino_raw())
+
+    # Merge both on hour 0-23
+    hours_df = pd.DataFrame({"hour": range(24)})
+    if not sports.empty:
+        hours_df = hours_df.merge(sports.rename(columns={"bets": "sports_bets", "turnover": "sports_stake"}), on="hour", how="left")
+    if not casino.empty:
+        hours_df = hours_df.merge(casino.rename(columns={"bets": "casino_bets", "turnover": "casino_stake"}), on="hour", how="left")
+    for c in ["sports_bets", "sports_stake", "casino_bets", "casino_stake"]:
+        if c not in hours_df.columns:
+            hours_df[c] = 0.0
+    hours_df = hours_df.fillna(0)
+
+    result = [
+        {
+            "hour":         int(r["hour"]),
+            "label":        f"{int(r['hour']):02d}:00",
+            "bets":         int(r["sports_bets"]) + int(r["casino_bets"]),
+            "sports_bets":  int(r["sports_bets"]),
+            "casino_bets":  int(r["casino_bets"]),
+            "turnover":     round(float(r["sports_stake"]) + float(r["casino_stake"]), 2),
+        }
+        for _, r in hours_df.iterrows()
+    ]
+
+    return {"has_data": any(h["bets"] > 0 for h in result), "hours": result}
+
+
 @router.get("/vip/overview")
 def vip_overview(
     start: Optional[date] = Query(None),

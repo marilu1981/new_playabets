@@ -3,7 +3,10 @@ import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
 import KpiCard from "@/components/KpiCard";
 import DataTable from "@/components/DataTable";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from "recharts";
 import { Crown, Upload, Users, Wallet, Gift, Percent, TrendingUp, DollarSign } from "lucide-react";
 import { cachedFetch, invalidateCache } from "@/lib/apiCache";
 import { formatFull, formatNumber, formatCompact } from "@/lib/formatters";
@@ -85,7 +88,12 @@ type Demographics = {
   gender_available?: boolean;
 };
 
+type TrendPoint   = { date: string; turnover: number; ggr: number; margin: number; bets: number };
+type MonthPoint   = { month: string; turnover: number; ggr: number; margin: number; bets: number; active_vips: number };
+type HourPoint    = { hour: number; label: string; bets: number; sports_bets: number; casino_bets: number; turnover: number };
+
 const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ffb500" };
+const CHART_COLORS = { ggr: "#7ab800", turnover: "#3b82f6", margin: "#ffb500", sports: "#7ab800", casino: "#ffb500" };
 
 export default function VipPage() {
   const vipDefaultFilters = useMemo<DashboardFilters>(() => {
@@ -110,6 +118,9 @@ export default function VipPage() {
   const [topPlayers, setTopPlayers] = useState<TopPlayer[]>([]);
   const [productShare, setProductShare] = useState<ProductShare | null>(null);
   const [demographics, setDemographics] = useState<Demographics | null>(null);
+  const [trends, setTrends] = useState<TrendPoint[]>([]);
+  const [monthly, setMonthly] = useState<MonthPoint[]>([]);
+  const [hourly, setHourly] = useState<HourPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -176,6 +187,9 @@ export default function VipPage() {
         setTopPlayers([]);
         setProductShare(null);
         setDemographics({ has_data: false, age_bands: [], countries: [], gender_available: false });
+        setTrends([]);
+        setMonthly([]);
+        setHourly([]);
 
         // Load detail sections asynchronously so they never block first paint.
         withTimeout(fetchJson<{ managers: ManagerRow[] }>(`/vip/by-manager?${debouncedQuery}`), 15000)
@@ -191,12 +205,20 @@ export default function VipPage() {
           .catch(() => { if (!cancelled) setProductShare(null); });
 
         withTimeout(fetchJson<Demographics>(`/vip/demographics?${debouncedQuery}`), 15000)
-          .then((d) => {
-            if (!cancelled) setDemographics(d ?? null);
-          })
-          .catch(() => {
-            if (!cancelled) setDemographics((prev) => prev ?? { has_data: false, age_bands: [], countries: [], gender_available: false });
-          });
+          .then((d) => { if (!cancelled) setDemographics(d ?? null); })
+          .catch(() => { if (!cancelled) setDemographics((prev) => prev ?? { has_data: false, age_bands: [], countries: [], gender_available: false }); });
+
+        fetchJson<{ has_data: boolean; points: TrendPoint[] }>(`/vip/trends?${debouncedQuery}`)
+          .then((d) => { if (!cancelled) setTrends(d?.points ?? []); })
+          .catch(() => { if (!cancelled) setTrends([]); });
+
+        fetchJson<{ has_data: boolean; months: MonthPoint[] }>(`/vip/monthly?${debouncedQuery}`)
+          .then((d) => { if (!cancelled) setMonthly(d?.months ?? []); })
+          .catch(() => { if (!cancelled) setMonthly([]); });
+
+        fetchJson<{ has_data: boolean; hours: HourPoint[] }>(`/vip/hourly?${debouncedQuery}`)
+          .then((d) => { if (!cancelled) setHourly(d?.hours ?? []); })
+          .catch(() => { if (!cancelled) setHourly([]); });
       } catch {
         if (cancelled) return;
         setSummary(null);
@@ -479,6 +501,107 @@ export default function VipPage() {
           data={topPlayers.map((p, i) => ({ ...p, rank: i + 1 }))}
         />
       </div>
+
+      {/* ── Revenue Trends (31-day) ─────────────────────────────────────── */}
+      {trends.length > 0 && (
+        <div className="rounded-xl p-5 mb-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue Trends</h3>
+          <p className="text-xs text-gray-500 mb-4">Daily GGR and Turnover for selected period</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={trends} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={Math.max(0, Math.floor(trends.length / 8))} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => [fmtZar(v), name]} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line type="monotone" dataKey="ggr"      name="GGR"      stroke={CHART_COLORS.ggr}      strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="turnover" name="Turnover"  stroke={CHART_COLORS.turnover} strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="grid grid-cols-4 gap-3 mt-4">
+            {[
+              { label: "Total GGR",      value: fmtZar(trends.reduce((s, p) => s + p.ggr, 0)) },
+              { label: "Total Turnover", value: fmtZar(trends.reduce((s, p) => s + p.turnover, 0)) },
+              { label: "Avg Daily GGR",  value: fmtZar(trends.reduce((s, p) => s + p.ggr, 0) / Math.max(1, trends.length)) },
+              { label: "Avg Margin",     value: `${(trends.reduce((s, p) => s + p.margin, 0) / Math.max(1, trends.filter(p => p.turnover > 0).length)).toFixed(1)}%` },
+            ].map((t) => (
+              <div key={t.label} className="text-center">
+                <div className="text-xs text-gray-500">{t.label}</div>
+                <div className="text-sm font-semibold text-gray-800 mt-0.5">{t.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6-Month Performance ─────────────────────────────────────────── */}
+      {monthly.length > 0 && (
+        <div className="rounded-xl p-5 mb-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">6-Month Performance</h3>
+          <p className="text-xs text-gray-500 mb-4">Monthly GGR and Turnover comparison</p>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={monthly} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => [fmtZar(v), name]} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="ggr"      name="GGR"      fill={CHART_COLORS.ggr}      radius={[3, 3, 0, 0]} />
+              <Bar dataKey="turnover" name="Turnover"  fill={CHART_COLORS.turnover} radius={[3, 3, 0, 0]} opacity={0.6} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Month", "Active VIPs", "GGR", "Turnover", "Margin %", "Bets"].map((h) => (
+                    <th key={h} className="text-left py-1.5 pr-4 text-gray-500 font-semibold text-[10px] uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map((m) => (
+                  <tr key={m.month} className="border-b border-gray-50">
+                    <td className="py-1.5 pr-4 text-gray-700 font-medium">{m.month}</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{formatCompact(m.active_vips)}</td>
+                    <td className="py-1.5 pr-4 text-gray-700">{fmtZar(m.ggr)}</td>
+                    <td className="py-1.5 pr-4 text-gray-700">{fmtZar(m.turnover)}</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{m.margin.toFixed(1)}%</td>
+                    <td className="py-1.5 pr-4 text-gray-600">{formatCompact(m.bets)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hourly Activity Analysis ────────────────────────────────────── */}
+      {hourly.length > 0 && hourly.some((h) => h.bets > 0) && (
+        <div className="rounded-xl p-5 mb-4" style={CARD}>
+          <h3 className="text-sm font-semibold text-gray-800 mb-1">Hourly Activity</h3>
+          <p className="text-xs text-gray-500 mb-4">Peak betting hours (SAST) — aggregated across selected period</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={hourly} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} interval={1} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={40} />
+              <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => [formatCompact(v), name]} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="sports_bets" name="Sports Bets" fill={CHART_COLORS.sports}  radius={[2, 2, 0, 0]} stackId="a" />
+              <Bar dataKey="casino_bets" name="Casino Bets" fill={CHART_COLORS.casino}  radius={[2, 2, 0, 0]} stackId="a" />
+            </BarChart>
+          </ResponsiveContainer>
+          {(() => {
+            const peak = hourly.reduce((best, h) => h.bets > best.bets ? h : best, hourly[0]);
+            return (
+              <p className="text-xs text-gray-500 mt-3">
+                Peak hour: <span className="font-semibold text-gray-700">{peak.label}</span> — {formatCompact(peak.bets)} bets
+              </p>
+            );
+          })()}
+        </div>
+      )}
     </DashboardLayout>
   );
 }
