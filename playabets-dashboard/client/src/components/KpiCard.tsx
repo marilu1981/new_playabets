@@ -3,14 +3,16 @@
  * Brand design: light card, Playa Green accent, Roboto Slab headings
  */
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, HelpCircle } from "lucide-react";
 
 interface KpiCardProps {
   title: string;
   value: React.ReactNode;
   subtitle?: string;
-  change?: number; // percentage change
+  tooltip?: string;
+  change?: number;
   changeLabel?: string;
   icon?: React.ReactNode;
   accent?: "gold" | "green" | "red" | "teal" | "amber";
@@ -21,17 +23,18 @@ interface KpiCardProps {
 }
 
 const accentColors = {
-  gold:  "#7ab800",   /* Playa Green — primary brand */
-  green: "#093508",   /* Forest Leaf */
+  gold:  "#7ab800",
+  green: "#093508",
   red:   "#d94040",
   teal:  "#0d8f8f",
-  amber: "#ffb500",   /* Sunny Yellow */
+  amber: "#ffb500",
 };
 
 export default function KpiCard({
   title,
   value,
   subtitle,
+  tooltip,
   change,
   changeLabel,
   icon,
@@ -43,6 +46,7 @@ export default function KpiCard({
   const color = accentColors[accent];
   const isPositive = change !== undefined && change > 0;
   const isNegative = change !== undefined && change < 0;
+  const [showTooltip, setShowTooltip] = useState(false);
 
   return (
     <div
@@ -53,7 +57,7 @@ export default function KpiCard({
         boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
-      {/* Top accent line — brand gradient */}
+      {/* Top accent line */}
       <div
         className="absolute top-0 left-0 right-0 h-1 rounded-t-lg"
         style={{ background: `linear-gradient(90deg, #7ab800, #093508)` }}
@@ -61,12 +65,29 @@ export default function KpiCard({
 
       <div className="flex items-start justify-between gap-2 mt-1">
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1.5 truncate">
-            {title}
+          <div className="flex items-center gap-1 mb-1.5">
+            <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest truncate">
+              {title}
+            </div>
+            {tooltip && (
+              <div className="relative flex-shrink-0" onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)}>
+                <HelpCircle size={10} className="text-gray-400 cursor-help" />
+                {showTooltip && (
+                  <div
+                    className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-48 rounded-md shadow-lg text-[10px] leading-snug p-2"
+                    style={{ background: "#1a2e1a", color: "#e8f5e8", border: "1px solid #2d4a2d" }}
+                  >
+                    {tooltip}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0"
+                      style={{ borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: "4px solid #1a2e1a" }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          <div
-            className={cn("text-sm font-bold text-gray-900 leading-tight break-all", valueClassName)}
-          >
+          <div className={cn("text-sm font-bold text-gray-900 leading-tight break-all", valueClassName)}>
             {loading ? (
               <div className="h-4 w-16 rounded animate-pulse" style={{ background: "#dde8dd" }} />
             ) : value}

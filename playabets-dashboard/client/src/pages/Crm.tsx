@@ -14,6 +14,8 @@ import { Users, TrendingUp, DollarSign, Activity, Clock } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
 import { aggregateByGranularity } from "@/pages/home/homeUtils";
+import AiInsightsPanel from "@/components/AiInsightsPanel";
+import type { AiInsights } from "@/lib/generateReport";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -36,6 +38,8 @@ export default function CrmPage() {
   const [filters, setFilters] = usePersistedFilters();
   const [cohortData, setCohortData]   = useState<Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }>>([]);
   const [avgDepositValue, setAvgDepositValue] = useState<number | null>(null);
+  const [aiInsights, setAiInsights] = useState<AiInsights | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const [churnPct, setChurnPct]   = useState<number | null>(null);
   const [arpu, setArpu]           = useState<number | null>(null);
   const [totalActives, setTotalActives] = useState<number | null>(null);
@@ -95,6 +99,32 @@ export default function CrmPage() {
       else setAvgDepositValue(null);
     }).catch(() => {});
 
+    // CRM AI Insights
+    fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number; registrations?: number; ftds?: number }>(`/kpis?${query}`)
+      .then((d) => {
+        const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+        const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+        const params = new URLSearchParams({
+          start: filters.dateFrom, end: filters.dateTo,
+          registrations: String(d.registrations ?? 0),
+          ftds: String(d.ftds ?? 0),
+          ngr: String(Math.round(d.ngr ?? 0)),
+          ggr: String(Math.round(d.ngr ?? 0)),
+          churn_pct: String(d.churn_pct ?? 0),
+          active_players: String(d.total_actives_unique ?? 0),
+        });
+        setAiLoading(true);
+        fetch(`${API_BASE}/insights/ai-summary?${params}`, {
+          method: "POST",
+          headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
+        })
+          .then(r => r.json())
+          .then(res => { if (res.available) setAiInsights(res as AiInsights); })
+          .catch(() => {})
+          .finally(() => setAiLoading(false));
+      })
+      .catch(() => {});
+
     // Payment methods breakdown
     fetchJson<{ has_data: boolean; providers: PaymentProvider[] }>(`/transactions/providers?${query}`)
       .then((d) => { if (d.has_data) setPaymentMethods(d.providers ?? []); })
@@ -134,21 +164,24 @@ export default function CrmPage() {
           <KpiCard
             title="Avg Deposit Value"
             value={avgDepositValue != null ? formatFull(avgDepositValue) : "Pending"}
-            subtitle="Total Deposits ÷ Deposit Count"
+            subtitle="Total Deposits / Deposit Count"
+            tooltip="Average Deposit Value = Total Deposits / Number of deposit transactions. Measures the typical size of each deposit."
             icon={<DollarSign size={18} />}
             accent="gold"
           />
           <KpiCard
             title="Churn (Actives)"
             value={churnPct != null ? `${churnPct}%` : "—"}
-            subtitle="Players left ÷ Total prev month"
+            subtitle="Players left / Total prev month"
+            tooltip="Churn Rate = Players who did not return this month / Total active players in the previous month x 100."
             icon={<Activity size={18} />}
             accent="amber"
           />
           <KpiCard
             title="ARPU"
             value={arpu != null ? formatFull(arpu) : "—"}
-            subtitle="NGR ÷ Total Actives"
+            subtitle="NGR / Total Actives"
+            tooltip="Average Revenue Per User = Net Gaming Revenue / Total Active Players. Key measure of player value."
             icon={<TrendingUp size={18} />}
             accent="green"
           />
@@ -156,20 +189,23 @@ export default function CrmPage() {
             title="Total Actives"
             value={totalActives != null ? formatFull(totalActives) : "—"}
             subtitle="Unique sports + casino players"
+            tooltip="Total unique players who placed at least one bet (sports or casino) during the selected period."
             icon={<Users size={18} />}
             accent="teal"
           />
           <KpiCard
             title="LTV (Period)"
             value={arpu != null ? formatFull(arpu) : "—"}
-            subtitle="NGR ÷ Active Players"
+            subtitle="NGR / Active Players"
+            tooltip="Lifetime Value proxy = NGR / Active Players for the period. True LTV requires full player history."
             icon={<TrendingUp size={18} />}
             accent="green"
           />
           <KpiCard
             title="Retention Rate"
             value={churnPct != null ? `${(100 - churnPct).toFixed(1)}%` : "—"}
-            subtitle="100% − Monthly Churn"
+            subtitle="100% - Monthly Churn"
+            tooltip="Retention Rate = 100% - Churn Rate. Percentage of active players who returned the following month."
             icon={<Clock size={18} />}
             accent="teal"
           />
@@ -177,6 +213,7 @@ export default function CrmPage() {
             title="Cohort D7 Conv"
             value={cohortSummary != null ? `${cohortSummary.avgD7Rate.toFixed(1)}%` : "—"}
             subtitle="Avg D7 FTD conversion"
+            tooltip="Of players who registered, what % made their first deposit within 7 days. Measures early onboarding effectiveness."
             icon={<Users size={18} />}
             accent="gold"
           />
@@ -184,6 +221,7 @@ export default function CrmPage() {
             title="Cohort D30 Conv"
             value={cohortSummary != null ? `${cohortSummary.avgD30Rate.toFixed(1)}%` : "—"}
             subtitle="Avg D30 FTD conversion"
+            tooltip="Of players who registered, what % made their first deposit within 30 days. Measures medium-term conversion."
             icon={<Users size={18} />}
             accent="green"
           />
@@ -191,6 +229,9 @@ export default function CrmPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 mb-4">
+        {/* CRM AI Insights */}
+        <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="CRM AI Insights" />
+
         {/* Cohort D7 / D30 Conversion */}
         <div className="rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort — FTD Conversion Rate</h3>

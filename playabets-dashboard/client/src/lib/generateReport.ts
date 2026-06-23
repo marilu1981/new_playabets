@@ -71,17 +71,14 @@ const C = {
 
 const PW = 210, PH = 297, ML = 14, MR = 14, CW = PW - ML - MR;
 
+// Full numbers with thousands separator — no abbreviation
 function fc(n: number): string {
   const s = n < 0 ? "-" : "", a = Math.abs(n);
-  if (a >= 1_000_000) return `${s}R${(a/1_000_000).toFixed(1)}M`;
-  if (a >= 1_000)     return `${s}R${(a/1_000).toFixed(0)}K`;
-  return `${s}R${a.toFixed(0)}`;
+  return `${s}R ${a.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}`;
 }
 function fnum(n: number): string {
   const s = n < 0 ? "-" : "", a = Math.abs(n);
-  if (a >= 1_000_000) return `${s}${(a/1_000_000).toFixed(1)}M`;
-  if (a >= 1_000)     return `${s}${(a/1_000).toFixed(0)}K`;
-  return `${s}${a.toFixed(0)}`;
+  return `${s}${a.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}`;
 }
 function fpct(n: number): string { return `${n.toFixed(1)}%`; }
 function sf(doc: jsPDF, rgb: [number,number,number]) { doc.setFillColor(rgb[0],rgb[1],rgb[2]); }
@@ -128,7 +125,7 @@ function kpiRow(doc: jsPDF, items: KpiEntry[], y: number): number {
     doc.rect(x, ry, w-2, 0.6, "F");
     doc.setFont("helvetica","normal"); doc.setFontSize(5.5); sc(doc, C.dimText);
     doc.text(it.label.toUpperCase(), x+2.5, ry+4);
-    doc.setFont("helvetica","bold"); doc.setFontSize(9.5); sc(doc, C.darkText);
+    doc.setFont("helvetica","bold"); doc.setFontSize(7.5); sc(doc, C.darkText);
     doc.text(it.value, x+2.5, ry+10.5);
     if (it.sub) {
       doc.setFont("helvetica","normal"); doc.setFontSize(5.5); sc(doc, C.dimText);
@@ -200,7 +197,7 @@ export function generateReport(data: ReportData): void {
   doc.setFont("helvetica","normal"); doc.setFontSize(7); sc(doc, C.dimText);
   doc.text("REPORTING PERIOD", PW/2-36, 102);
   doc.setFont("helvetica","bold"); doc.setFontSize(11); sc(doc, C.white);
-  doc.text(`${data.dateFrom}  →  ${data.dateTo}`, PW/2-36, 110);
+  doc.text(`${data.dateFrom}  to  ${data.dateTo}`, PW/2-36, 110);
   doc.setFont("helvetica","normal"); doc.setFontSize(7); sc(doc, C.dimText);
   doc.text(`Data as of: ${data.dataDate??"—"}`, PW/2-36, 115);
 
@@ -242,7 +239,7 @@ export function generateReport(data: ReportData): void {
     {label:"GGR",             value:fc(ggr),                         sub:data.holdPct ? `${data.holdPct.toFixed(1)}% hold` : "Gross Gaming Revenue", accent:C.green},
     {label:"NGR",             value:data.ngr ? fc(data.ngr) : "—",  sub:"Net Gaming Revenue",        accent:C.green},
     {label:"Total Deposits",  value:data.totalDeposits>0?fc(data.totalDeposits):"Pending", sub:"Period deposits", accent:C.gold},
-    {label:"Net Cash",        value:data.totalDeposits>0?fc(netCash):"Pending",            sub:"Deposits − Withdrawals", accent:C.gold},
+    {label:"Net Cash",        value:data.totalDeposits>0?fc(netCash):"Pending",            sub:"Deposits - Withdrawals", accent:C.gold},
     {label:"VIP GGR",         value:data.vipGgr?fc(data.vipGgr):"—", sub:`${data.totalVips??0} VIP players`, accent:C.amber},
   ];
   y = kpiRow(doc, kpis, y);
@@ -257,7 +254,7 @@ export function generateReport(data: ReportData): void {
   y = kpiRow(doc, sec2, y);
 
   // AI Insights
-  y = secHeader(doc, "AI Insights — Azure OpenAI", y);
+  y = secHeader(doc, "AI Insights - Azure OpenAI (gpt-4o-mini)", y);
 
   if (data.aiInsights) {
     const ai = data.aiInsights;
@@ -275,10 +272,10 @@ export function generateReport(data: ReportData): void {
   if (y < PH - 40) {
     y = secHeader(doc, "Notes", y);
     const notes = [
-      "All monetary values in South African Rand (ZAR). Data refreshed every 2 hours.",
-      "GGR = Total Stakes − Total Payouts. NGR = GGR − Bonuses. Hold % = GGR ÷ Turnover × 100.",
-      "FTD Conversion = First Time Depositors ÷ Registrations. Avg FTD = Total first deposit value ÷ FTDs.",
-      "Retention rates calculated from raw betslip cohorts. D7/D30 = % of new players who returned within 7/30 days.",
+      "All monetary values are in South African Rand (ZAR). Data is refreshed every 2 hours.",
+      "GGR = Total Stakes minus Total Payouts. NGR = GGR minus Bonuses. Hold % = GGR / Turnover x 100.",
+      "FTD Conversion = First Time Depositors / Registrations. Avg FTD Value = Total first deposit value / FTDs.",
+      "Retention rates are calculated from raw betslip cohorts. D7/D30 = % of new players who returned within 7/30 days.",
     ];
     notes.forEach(note => {
       const lines = doc.splitTextToSize(`• ${note}`, CW-4) as string[];

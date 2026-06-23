@@ -51,6 +51,7 @@ def _call_azure_openai(prompt: str) -> dict:
                     "Each array should contain 2-4 concise, specific, actionable items. "
                     "Focus on what matters most to a gaming operator: revenue, player acquisition, retention, and risk. "
                     "Use South African context (ZAR currency, local market norms). "
+                    "Use British English spelling throughout (e.g. analyse not analyze, organisation not organization, behaviour not behavior). "
                     "Do not include any text outside the JSON object."
                 ),
             },

@@ -131,6 +131,7 @@ export default function AcquisitionPage() {
           title="Marketing Spend"
           value={totals ? fmtZar(totals.marketing_spend) : "—"}
           subtitle="Total paid acquisition cost"
+          tooltip="Total amount spent on paid marketing across all channels for the selected period."
           icon={<DollarSign size={18} />}
           accent="amber"
           loading={loading}
@@ -139,6 +140,7 @@ export default function AcquisitionPage() {
           title="CPA"
           value={totals && totals.cpa > 0 ? fmtZar(totals.cpa) : "—"}
           subtitle="Cost per first-time depositor"
+          tooltip="Cost Per Acquisition = Marketing Spend / FTDs. How much it costs to acquire one depositing player."
           icon={<Target size={18} />}
           accent="teal"
           loading={loading}
@@ -146,7 +148,8 @@ export default function AcquisitionPage() {
         <KpiCard
           title="ROI"
           value={totals && totals.marketing_spend > 0 ? fmtPct(totals.roi_pct) : "—"}
-          subtitle="(Revenue − Spend) ÷ Spend"
+          subtitle="(Revenue - Spend) / Spend"
+          tooltip="Return on Investment = (Revenue - Marketing Spend) / Marketing Spend x 100. Higher is better."
           icon={<TrendingUp size={18} />}
           accent="green"
           loading={loading}
@@ -154,7 +157,8 @@ export default function AcquisitionPage() {
         <KpiCard
           title="Avg FTD Value"
           value={totals && totals.avg_ftd_value > 0 ? fmtZar(totals.avg_ftd_value) : "—"}
-          subtitle="Total first deposits ÷ FTDs"
+          subtitle="Total first deposits / FTDs"
+          tooltip="Average First Deposit Value = Total value of all first deposits / Number of FTDs. Measures quality of acquired players."
           icon={<Users size={18} />}
           accent="gold"
           loading={loading}

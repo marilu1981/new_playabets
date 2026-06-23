@@ -12,6 +12,8 @@ import {
 import { Crown, Upload, Users, Wallet, Gift, Percent, TrendingUp, DollarSign } from "lucide-react";
 import { cachedFetch, invalidateCache } from "@/lib/apiCache";
 import { formatFull, formatNumber, formatCompact } from "@/lib/formatters";
+import AiInsightsPanel from "@/components/AiInsightsPanel";
+import type { AiInsights } from "@/lib/generateReport";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -114,6 +116,8 @@ export default function VipPage() {
   const [hourly, setHourly] = useState<HourPoint[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [aiInsights, setAiInsights] = useState<AiInsights | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   type UploadStatus = { ok: boolean; added: number; updated: number; unchanged: number; total_in_roster: number; filename: string } | null;
   const [uploading, setUploading] = useState(false);
@@ -173,7 +177,33 @@ export default function VipPage() {
         ]);
         if (cancelled) return;
         setSummary(summaryRes.status === "fulfilled" ? summaryRes.value : null);
-        setRevenue(revenueRes.status === "fulfilled" ? revenueRes.value : null);
+        const rev = revenueRes.status === "fulfilled" ? revenueRes.value : null;
+        setRevenue(rev);
+
+        // Fetch VIP AI insights
+        if (rev?.has_data) {
+          const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+          const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+          const params = new URLSearchParams({
+            start: filters.dateFrom, end: filters.dateTo,
+            registrations: "0", ftds: "0",
+            ggr: String(Math.round(rev.total_ggr ?? 0)),
+            ngr: String(Math.round(rev.total_ggr ?? 0)),
+            turnover: String(Math.round(rev.total_turnover ?? 0)),
+            total_vips: String(rev.vip_count ?? 0),
+            vip_ggr: String(Math.round(rev.total_ggr ?? 0)),
+            active_players: String(rev.active_vips ?? 0),
+          });
+          setAiLoading(true);
+          fetch(`${API_BASE}/insights/ai-summary?${params}`, {
+            method: "POST",
+            headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
+          })
+            .then(r => r.json())
+            .then(d => { if (!cancelled && d.available) setAiInsights(d as AiInsights); })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setAiLoading(false); });
+        }
         setManagers([]);
         setTopPlayers([]);
         setProductShare(null);
@@ -331,11 +361,11 @@ export default function VipPage() {
 
       {/* VIP Revenue KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-        <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "—"} subtitle="VIPs ÷ total players" icon={<Percent size={18} />} accent="teal" loading={loading} />
-        <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "—"} subtitle="VIP GGR ÷ days" icon={<TrendingUp size={18} />} accent="green" loading={loading} />
-        <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "—"} subtitle="GGR ÷ VIP count" icon={<DollarSign size={18} />} accent="gold" loading={loading} />
-        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Selected period" icon={<Wallet size={18} />} accent="teal" loading={loading} />
-        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Selected period" icon={<DollarSign size={18} />} accent="green" loading={loading} />
+        <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "—"} subtitle="VIPs / total players" tooltip="VIP Conversion Rate = Total VIPs / Total Players x 100. What percentage of the player base holds VIP status." icon={<Percent size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "—"} subtitle="VIP GGR / days" tooltip="Average Per Day = Total VIP GGR / Number of days in period. Daily revenue contribution from VIP players." icon={<TrendingUp size={18} />} accent="green" loading={loading} />
+        <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "—"} subtitle="GGR / VIP count" tooltip="Average Revenue Per VIP = Total VIP GGR / Number of active VIPs. Measures individual VIP player value." icon={<DollarSign size={18} />} accent="gold" loading={loading} />
+        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Selected period" tooltip="Total amount staked by VIP players (Sports + Casino) during the selected period." icon={<Wallet size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Selected period" tooltip="Gross Gaming Revenue from VIP players = VIP Stakes - VIP Payouts (Sports + Casino) for the selected period." icon={<DollarSign size={18} />} accent="green" loading={loading} />
       </div>
 
       <p className="text-[11px] text-gray-400 mb-4">
@@ -468,6 +498,9 @@ export default function VipPage() {
           </div>
         </div>
       </div>
+
+      {/* VIP AI Insights */}
+      <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP AI Insights" />
 
       {/* Portfolio Manager table */}
       <div className="rounded-xl p-5 mb-4" style={CARD}>
