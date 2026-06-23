@@ -1,24 +1,23 @@
 """
-admin_db.py — SQLite persistence for dashboard user-permission management.
+admin_db.py — JSON file persistence for dashboard user-permission management.
 
-Schema: user_permissions(user_email, role, allowed_pages, created_at, updated_at)
+Switched from SQLite (unusable on Azure File Share due to SMB locking) to a
+JSON file. Reads/writes are atomic via write-then-rename on Linux.
+
+Schema: list of {user_email, role, allowed_pages, created_at, updated_at}
   role          : 'admin' | 'viewer'
-  allowed_pages : comma-separated route paths, or '*' for all pages.
-
-Bootstrap: set ADMIN_EMAILS env var (comma-separated) to grant admin access
-to specific emails even before any rows exist in the DB.  This avoids the
-chicken-and-egg problem where no one can log into the admin panel.
+  allowed_pages : list of route paths, or ['*'] for all pages.
 """
 from __future__ import annotations
 
+import json
 import os
-import sqlite3
+import tempfile
 from datetime import datetime, UTC
 from pathlib import Path
 
 from src.app_config import ADMIN_DB_PATH
 
-# All navigable dashboard paths (kept here as the single source of truth)
 DASHBOARD_PATHS: list[str] = [
     "/",
     "/users",
@@ -29,6 +28,7 @@ DASHBOARD_PATHS: list[str] = [
     "/crm",
     "/vip",
     "/product",
+    "/acquisition",
 ]
 
 _BOOTSTRAP_ADMINS: set[str] = {
@@ -37,128 +37,93 @@ _BOOTSTRAP_ADMINS: set[str] = {
     if e.strip()
 }
 
-
 import logging as _logging
 _log = _logging.getLogger("playabets.admin_db")
 
-
-def _connect() -> sqlite3.Connection:
-    db_path = str(Path(ADMIN_DB_PATH).resolve())
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    # timeout=30: wait up to 30s for stale SMB/NFS locks to clear between revisions.
-    # journal_mode=DELETE: WAL mode is unreliable on Azure File Share (network FS).
-    conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
-    conn.execute("PRAGMA journal_mode=DELETE")
-    conn.row_factory = sqlite3.Row
-    return conn
+# Use a JSON file alongside the old db path
+_JSON_PATH = Path(str(ADMIN_DB_PATH).replace(".db", "_users.json"))
 
 
-def _init_db() -> None:
-    import time
-    for attempt in range(5):
-        try:
-            with _connect() as conn:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS user_permissions (
-                        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_email    TEXT    NOT NULL UNIQUE,
-                        role          TEXT    NOT NULL DEFAULT 'viewer',
-                        allowed_pages TEXT    NOT NULL DEFAULT '*',
-                        created_at    TEXT    NOT NULL,
-                        updated_at    TEXT    NOT NULL
-                    )
-                """)
-                conn.commit()
-            return
-        except sqlite3.OperationalError as exc:
-            _log.warning("admin_db init attempt %d failed (%s)", attempt + 1, exc)
-            time.sleep(2)
+def _load() -> dict[str, dict]:
+    """Return {email: user_dict} from the JSON file."""
+    try:
+        if _JSON_PATH.exists():
+            data = json.loads(_JSON_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return {u["user_email"].lower(): u for u in data if "user_email" in u}
+    except Exception as exc:
+        _log.warning("admin_db load failed (%s)", exc)
+    return {}
 
 
-_init_db()
-
-
-def _pages_from_str(pages_str: str) -> list[str]:
-    return [p.strip() for p in pages_str.split(",") if p.strip()]
+def _save(users: dict[str, dict]) -> None:
+    """Atomic write: write to temp file then rename."""
+    try:
+        _JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+        data = list(users.values())
+        tmp = _JSON_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        tmp.replace(_JSON_PATH)
+    except Exception as exc:
+        _log.warning("admin_db save failed (%s)", exc)
 
 
 def get_all_users() -> list[dict]:
-    try:
-        with _connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM user_permissions ORDER BY user_email"
-            ).fetchall()
-        result = []
-        for r in rows:
-            d = dict(r)
-            d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
-            result.append(d)
-        return result
-    except sqlite3.OperationalError as exc:
-        _log.warning("get_all_users failed (%s)", exc)
-        return []
+    users = _load()
+    result = []
+    for u in sorted(users.values(), key=lambda x: x.get("user_email", "")):
+        d = dict(u)
+        if isinstance(d.get("allowed_pages"), str):
+            d["allowed_pages"] = [p.strip() for p in d["allowed_pages"].split(",") if p.strip()]
+        result.append(d)
+    return result
 
 
 def get_user(email: str) -> dict | None:
-    try:
-        with _connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM user_permissions WHERE user_email = ?",
-                (email.lower(),),
-            ).fetchone()
-        if not row:
-            return None
-        d = dict(row)
-        d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
-        return d
-    except sqlite3.OperationalError as exc:
-        _log.warning("get_user failed (%s) — returning None", exc)
-        _init_db()  # attempt to recreate table if missing
+    users = _load()
+    u = users.get(email.lower())
+    if not u:
         return None
+    d = dict(u)
+    if isinstance(d.get("allowed_pages"), str):
+        d["allowed_pages"] = [p.strip() for p in d["allowed_pages"].split(",") if p.strip()]
+    return d
 
 
 def upsert_user(email: str, role: str, allowed_pages: list[str]) -> dict:
     now = datetime.now(UTC).isoformat(timespec="seconds")
-    pages_str = ",".join(allowed_pages) if allowed_pages else "*"
-    with _connect() as conn:
-        conn.execute(
-            """
-            INSERT INTO user_permissions (user_email, role, allowed_pages, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(user_email) DO UPDATE SET
-                role          = excluded.role,
-                allowed_pages = excluded.allowed_pages,
-                updated_at    = excluded.updated_at
-            """,
-            (email.lower(), role, pages_str, now, now),
-        )
-        conn.commit()
+    users = _load()
+    key = email.lower()
+    existing = users.get(key, {})
+    users[key] = {
+        "user_email":    key,
+        "role":          role,
+        "allowed_pages": allowed_pages,
+        "created_at":    existing.get("created_at", now),
+        "updated_at":    now,
+    }
+    _save(users)
     return get_user(email)
 
 
 def delete_user(email: str) -> bool:
-    with _connect() as conn:
-        cur = conn.execute(
-            "DELETE FROM user_permissions WHERE user_email = ?", (email.lower(),)
-        )
-        conn.commit()
-    return cur.rowcount > 0
+    users = _load()
+    key = email.lower()
+    if key not in users:
+        return False
+    del users[key]
+    _save(users)
+    return True
 
 
 def is_admin(email: str) -> bool:
     if email.lower() in _BOOTSTRAP_ADMINS:
         return True
     user = get_user(email)
-    return user is not None and user["role"] == "admin"
+    return user is not None and user.get("role") == "admin"
 
 
 def get_effective_permissions(email: str) -> dict:
-    """Return the effective permissions for a user.
-
-    Falls back to full access (*) when the user is not in the DB yet,
-    so existing authenticated users aren't locked out before an admin
-    configures them.
-    """
     if email.lower() in _BOOTSTRAP_ADMINS:
         return {"user_email": email, "role": "admin", "allowed_pages": ["*"]}
     user = get_user(email)
