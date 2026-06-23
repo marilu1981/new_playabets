@@ -9,6 +9,7 @@ import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/To
 import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+// LineChart/Line kept for cohort conversion rate chart
 import { Users, TrendingUp, DollarSign, Activity, Clock } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
@@ -250,19 +251,19 @@ export default function CrmPage() {
             ))}
           </div>
 
-          {/* Retention by cohort line chart */}
+          {/* Retention by cohort — grouped bar chart */}
           {retentionCohorts.length > 0 && (
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={retentionCohorts} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={retentionCohorts} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
-                <XAxis dataKey="cohort_month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="cohort_month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={35} domain={[0, 100]} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${v}%`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="rate_d7"  name="D7 Retention"  stroke={COLORS.gold}  strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="rate_d30" name="D30 Retention" stroke={COLORS.teal}  strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="rate_d90" name="D90 Retention" stroke={COLORS.green} strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
+                <Bar dataKey="rate_d7"  name="D7 Retention"  fill={COLORS.gold}  radius={[3, 3, 0, 0]} />
+                <Bar dataKey="rate_d30" name="D30 Retention" fill={COLORS.teal}  radius={[3, 3, 0, 0]} />
+                <Bar dataKey="rate_d90" name="D90 Retention" fill={COLORS.green} radius={[3, 3, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           )}
 
