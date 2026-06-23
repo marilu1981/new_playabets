@@ -585,7 +585,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Bonus Issued", current: c.bonus_tx_net, previous: p.bonus_tx_net, ytd: y.bonus_tx_net, isCurrency: true },
             { metric: "Bonus Converted", current: c.bonus_redeemed, previous: p.bonus_redeemed, ytd: y.bonus_redeemed, isCurrency: true },
             { metric: "APD (NGR/Depositors)", current: c.period_unique_depositors > 0 ? Math.round(c.ngr / c.period_unique_depositors) : 0, previous: p.period_unique_depositors > 0 ? Math.round(p.ngr / p.period_unique_depositors) : 0, ytd: y.period_unique_depositors > 0 ? Math.round(y.ngr / y.period_unique_depositors) : 0, isCurrency: true },
-            { metric: "Avg FTD Value", current: c.ftds > 0 && c.deposits > 0 ? Math.round(c.deposits / c.ftds) : 0, previous: p.ftds > 0 && p.deposits > 0 ? Math.round(p.deposits / p.ftds) : 0, ytd: y.ftds > 0 && y.deposits > 0 ? Math.round(y.deposits / y.ftds) : 0, isCurrency: true },
+            { metric: "Avg Deposit / Depositor", current: c.period_unique_depositors > 0 && c.deposits > 0 ? Math.round(c.deposits / c.period_unique_depositors) : 0, previous: p.period_unique_depositors > 0 && p.deposits > 0 ? Math.round(p.deposits / p.period_unique_depositors) : 0, ytd: y.period_unique_depositors > 0 && y.deposits > 0 ? Math.round(y.deposits / y.period_unique_depositors) : 0, isCurrency: true },
             { metric: "Depositors", current: c.period_unique_depositors ?? 0, previous: p.period_unique_depositors ?? 0, ytd: y.period_unique_depositors ?? 0 },
             { metric: "Turnover / Deposits", current: (c.deposits ?? 0) > 0 ? Math.round((c.turnover / c.deposits) * 100) / 100 : 0, previous: (p.deposits ?? 0) > 0 ? Math.round((p.turnover / p.deposits) * 100) / 100 : 0, ytd: (y.deposits ?? 0) > 0 ? Math.round((y.turnover / y.deposits) * 100) / 100 : 0 },
           ],
@@ -599,7 +599,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
             { metric: "Win Rate %", current: c.win_rate, previous: p.win_rate, ytd: y.win_rate, isPercent: true },
             { metric: "Cancel Rate %", current: c.cancel_rate, previous: p.cancel_rate, ytd: y.cancel_rate, isPercent: true },
             { metric: "Avg Stake / Bet", current: c.avg_stake, previous: p.avg_stake, ytd: y.avg_stake, isCurrency: true },
-            { metric: "Avg FTD Value", current: c.ftds > 0 && c.deposits > 0 ? Math.round(c.deposits / c.ftds) : 0, previous: p.ftds > 0 && p.deposits > 0 ? Math.round(p.deposits / p.ftds) : 0, ytd: y.ftds > 0 && y.deposits > 0 ? Math.round(y.deposits / y.ftds) : 0, isCurrency: true },
+            { metric: "Avg Deposit / Depositor", current: c.period_unique_depositors > 0 && c.deposits > 0 ? Math.round(c.deposits / c.period_unique_depositors) : 0, previous: p.period_unique_depositors > 0 && p.deposits > 0 ? Math.round(p.deposits / p.period_unique_depositors) : 0, ytd: y.period_unique_depositors > 0 && y.deposits > 0 ? Math.round(y.deposits / y.period_unique_depositors) : 0, isCurrency: true },
           ],
           casino: [
             { metric: "Casino Bets", current: c.casino_bets, previous: p.casino_bets, ytd: y.casino_bets },
