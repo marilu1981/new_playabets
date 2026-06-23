@@ -293,7 +293,9 @@ export default function Home() {
       net_cash: String(Math.round((transactionSummary.totalDeposits ?? 0) - (transactionSummary.totalWithdrawals ?? 0))),
       churn_pct: String(liveChurnPct ?? 0),
       active_players: String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
-      bonus_issued: String(Math.round(liveBonusTxIssued ?? 0)),
+      bonus_issued:    String(Math.round(liveBonusTxIssued ?? 0)),
+      bonus_converted: String(Math.round(liveBonusConverted ?? 0)),
+      avg_ftd_value:   String(Math.round(0)),
     });
     setAiLoading(true);
     fetch(`${API_BASE}/insights/ai-summary?${params}`, {

@@ -59,6 +59,9 @@ def _call_azure_openai(prompt: str) -> dict:
                     "\n- No banned phrases: leverage, synergy, robust, seamless, world-class, best-in-class, transformative, paradigm, holistic, end-to-end, unlock value, going forward, ecosystem, space, delve."
                     "\n- No hedging: arguably, perhaps, it could be said, it may be worth considering."
                     "\n- Numbers: spell out one to nine, figures for 10 and above."
+                    "\n\nRecommendations must name the specific action, not the category. "
+                    "'Run a reactivation SMS to players who deposited in the past 60 days but not the past 30' is correct. "
+                    "'Implement retention strategies' is not. Be that specific for every recommendation."
                     "\n\nReturn ONLY a valid JSON object with exactly these four keys: "
                     "wins (array of strings), concerns (array of strings), watch_list (array of strings), recommendations (array of strings). "
                     "Each array must contain exactly 2 to 3 items. Each item must be one or two sentences maximum. "
@@ -108,6 +111,7 @@ def ai_summary(
         start=str(start), end=str(end),
         ggr=round(ggr, -3), ngr=round(ngr, -3),
         registrations=registrations, ftds=ftds,
+        bonus_converted=round(bonus_converted, -3),
     )
     if cache_key in _CACHE:
         return {**_CACHE[cache_key], "cached": True, "available": True}
