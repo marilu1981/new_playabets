@@ -110,14 +110,11 @@ def acquisition_channels(
     start: Optional[date] = Query(None),
     end:   Optional[date] = Query(None),
 ):
-    """Per-channel breakdown. Affiliates data from RavenTrack; others are placeholders."""
+    """Per-channel breakdown derived from RavenTrack affiliate classification."""
+    from src.kpis.affiliate_kpis import compute_channel_totals
     df = _load_affiliate_summary()
     df = _filter_period(df, start, end)
-
-    channels = [_aff_to_channel(df)]
-    for ch in ["Google Ads", "Meta", "Influencers", "Organic"]:
-        channels.append({"channel": ch, **_channel_placeholder()})
-
+    channels = compute_channel_totals(df)
     return {
         "range": {"start": str(start) if start else None, "end": str(end) if end else None},
         "channels": channels,

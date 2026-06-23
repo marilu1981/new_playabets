@@ -247,6 +247,21 @@ def fetch_players(date_from: date, date_to: date) -> pd.DataFrame:
     return df
 
 
+def _month_windows(start: date, end: date):
+    """Yield (month_start, month_end) pairs covering start→end."""
+    from calendar import monthrange
+    cur = start.replace(day=1)
+    while cur <= end:
+        _, last_day = monthrange(cur.year, cur.month)
+        month_end = min(cur.replace(day=last_day), end)
+        yield cur, month_end
+        # advance to first day of next month
+        if cur.month == 12:
+            cur = cur.replace(year=cur.year + 1, month=1, day=1)
+        else:
+            cur = cur.replace(month=cur.month + 1, day=1)
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -258,14 +273,26 @@ def main() -> None:
     _log(f"Backfill range: {BACKFILL_START} → {BACKFILL_END}")
     _log(f"Base URL: {BASE_URL}")
 
-    # Pull affiliate data for the full range (aggregate, not per-day)
-    aff_df = fetch_affiliates(BACKFILL_START, BACKFILL_END)
-    if not aff_df.empty:
-        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
-        out = OUT_DIR / f"affiliates_{BACKFILL_START}_{BACKFILL_END}_{ts}.parquet"
-        aff_df.to_parquet(out, index=False)
-        _log(f"Saved {len(aff_df)} affiliate rows → {out}")
-        _log(f"Columns: {list(aff_df.columns)}")
+    # Pull affiliate data month-by-month so each file covers exactly one month.
+    # This ensures the date filter in the dashboard works correctly per period.
+    all_frames = []
+    for month_start, month_end in _month_windows(BACKFILL_START, BACKFILL_END):
+        _log(f"Fetching affiliates {month_start} → {month_end}")
+        aff_df = fetch_affiliates(month_start, month_end)
+        if not aff_df.empty:
+            out = OUT_DIR / f"affiliates_{month_start}_{month_end}.parquet"
+            aff_df.to_parquet(out, index=False)
+            _log(f"  Saved {len(aff_df)} rows → {out.name}")
+            all_frames.append(aff_df)
+        else:
+            _log(f"  No data for {month_start} → {month_end}")
+        time.sleep(1)  # be polite
+
+    if all_frames:
+        import pandas as _pd
+        combined = _pd.concat(all_frames, ignore_index=True)
+        _log(f"Total affiliate rows saved: {len(combined)}")
+        _log(f"Columns: {list(combined.columns)}")
     else:
         _log("No affiliate data returned (check token scope / endpoint path).")
 
