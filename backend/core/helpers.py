@@ -280,6 +280,7 @@ def _summary_period(
         "churn_pct": churn_pct,
         "taxes_paid": round(taxes_paid, 2),
         "period_unique_depositors": _get_monthly_depositors(start, end, dep_df=depositors_monthly),
+        "avg_ftd_value": round(_s(ftd, "ftd_total_amount") / ftds, 2) if ftds > 0 and _s(ftd, "ftd_total_amount") > 0 else 0.0,
         "sports_bets": sports_bets, "sports_settled": sports_settled,
         "sports_turnover": round(sports_turnover, 2), "sports_winnings": round(sports_winnings, 2),
         "sports_ggr": round(sports_ggr, 2), "sports_hold": sports_hold,
