@@ -58,7 +58,12 @@ export default function CrmPage() {
     fetchJson<{ points: Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }> }>(
       `/timeseries/conversion-cohorts?${query}`
     ).then((d) => {
-      const pts = d.points ?? [];
+      // Sanitise: replace empty string rates with null so charts don't plot 0
+      const pts = (d.points ?? []).map(p => ({
+        ...p,
+        rate_d7:  (p.rate_d7  != null && p.rate_d7  !== "" && Number(p.rate_d7)  > 0) ? Number(p.rate_d7)  : null,
+        rate_d30: (p.rate_d30 != null && p.rate_d30 !== "" && Number(p.rate_d30) > 0) ? Number(p.rate_d30) : null,
+      }));
       if (filters.granularity === "daily") {
         setCohortData(pts);
       } else {
@@ -149,10 +154,10 @@ export default function CrmPage() {
     totalRegs: cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0),
     ftdsD7: cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0),
     ftdsD30: cohortData.reduce((s, r) => s + (r.ftds_d30 ?? 0), 0),
-    avgD7Rate: cohortData.filter(r => r.rate_d7 != null).reduce((s, r) => s + (r.rate_d7 ?? 0), 0) /
-               Math.max(1, cohortData.filter(r => r.rate_d7 != null).length),
-    avgD30Rate: cohortData.filter(r => r.rate_d30 != null).reduce((s, r) => s + (r.rate_d30 ?? 0), 0) /
-                Math.max(1, cohortData.filter(r => r.rate_d30 != null).length),
+    avgD7Rate: cohortData.filter(r => r.rate_d7 != null && r.rate_d7 !== "" && Number(r.rate_d7) > 0).reduce((s, r) => s + Number(r.rate_d7 ?? 0), 0) /
+               Math.max(1, cohortData.filter(r => r.rate_d7 != null && r.rate_d7 !== "" && Number(r.rate_d7) > 0).length),
+    avgD30Rate: cohortData.filter(r => r.rate_d30 != null && r.rate_d30 !== "" && Number(r.rate_d30) > 0).reduce((s, r) => s + Number(r.rate_d30 ?? 0), 0) /
+                Math.max(1, cohortData.filter(r => r.rate_d30 != null && r.rate_d30 !== "" && Number(r.rate_d30) > 0).length),
   } : null;
 
   return (

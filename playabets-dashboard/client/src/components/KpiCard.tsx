@@ -74,14 +74,15 @@ export default function KpiCard({
                 <HelpCircle size={10} className="text-gray-400 cursor-help" />
                 {showTooltip && (
                   <div
-                    className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-48 rounded-md shadow-lg text-[10px] leading-snug p-2"
-                    style={{ background: "#1a2e1a", color: "#e8f5e8", border: "1px solid #2d4a2d" }}
+                    className="fixed z-[9999] w-52 rounded-md shadow-xl text-[10px] leading-snug p-2.5 pointer-events-none"
+                    style={{
+                      background: "#1a2e1a",
+                      color: "#e8f5e8",
+                      border: "1px solid #2d4a2d",
+                      transform: "translateX(-50%) translateY(-110%)",
+                    }}
                   >
                     {tooltip}
-                    <div
-                      className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0"
-                      style={{ borderLeft: "4px solid transparent", borderRight: "4px solid transparent", borderTop: "4px solid #1a2e1a" }}
-                    />
                   </div>
                 )}
               </div>
