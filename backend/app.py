@@ -118,6 +118,45 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(APIKeyMiddleware)
 
+
+# ---------------------------------------------------------------------------
+# Startup cache warmup — pre-load all serving parquets into memory so the
+# first user request is fast instead of waiting for Azure File Share I/O.
+# ---------------------------------------------------------------------------
+@app.on_event("startup")
+async def warmup_cache() -> None:
+    import threading
+    def _warm():
+        from backend.core.cache import load_parquet_cached, load_daily_df, CASINO_DAILY_PATH, BONUS_DAILY_PATH, FTD_DAILY_PATH, FTD_REG_MONTH_DAILY_PATH, FTD_NEW_DEP_DAILY_PATH, ACTIVES_MONTHLY_PATH, RFM_USERS_PATH, TX_DAILY_PATH, VIP_ROSTER_PATH, CHURN_MONTHLY_PATH, DEPOSITORS_MONTHLY_PATH, TOTAL_ACTIVES_MONTHLY_PATH
+        from pathlib import Path
+        try:
+            logger.info("Cache warmup: loading serving parquets...")
+            load_daily_df()
+            for path, key in [
+                (CASINO_DAILY_PATH, "casino_daily"),
+                (BONUS_DAILY_PATH, "bonus_daily"),
+                (FTD_DAILY_PATH, "ftd_daily"),
+                (FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"),
+                (ACTIVES_MONTHLY_PATH, "actives_monthly"),
+                (TX_DAILY_PATH, "tx_daily"),
+                (VIP_ROSTER_PATH, "vip_roster"),
+                (RFM_USERS_PATH, "rfm_users"),
+                (CHURN_MONTHLY_PATH, "churn_monthly"),
+                (DEPOSITORS_MONTHLY_PATH, "depositors_monthly"),
+                (TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly"),
+                (_SERVING / "affiliate_summary.parquet", "affiliate_summary"),
+                (_SERVING / "payment_providers_daily.parquet", "payment_providers_daily"),
+                (_SERVING / "ftd_new_dep_daily.parquet", "ftd_new_dep_daily"),
+            ]:
+                if path.exists():
+                    load_parquet_cached(path, key)
+            logger.info("Cache warmup complete.")
+        except Exception as exc:
+            logger.warning("Cache warmup error (non-fatal): %s", exc)
+    # Run in background thread so startup doesn't block health checks
+    threading.Thread(target=_warm, daemon=True).start()
+
+
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
