@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
@@ -69,7 +70,7 @@ function VerticalSection({ title, color, metrics, loading }: {
 type Granularity = "daily" | "weekly" | "monthly";
 
 export default function ProductPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = usePersistedFilters();
   const [granularity, setGranularity] = useState<Granularity>("daily");
   const [sports, setSports]   = useState<VerticalMetrics | null>(null);
   const [casino, setCasino]   = useState<VerticalMetrics | null>(null);

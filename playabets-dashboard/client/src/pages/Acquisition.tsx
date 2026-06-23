@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import KpiCard from "@/components/KpiCard";
 import DataTable from "@/components/DataTable";
 import { DollarSign, Target, TrendingUp, Users } from "lucide-react";
@@ -71,7 +72,7 @@ const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 const fmtZar = (v: number) => `R ${formatFull(Math.round(v))}`;
 
 export default function AcquisitionPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = usePersistedFilters();
   const [channels, setChannels] = useState<ChannelRow[]>([]);
   const [affiliates, setAffiliates] = useState<AffiliateRow[]>([]);
   const [totals, setTotals] = useState<KpiTotals | null>(null);

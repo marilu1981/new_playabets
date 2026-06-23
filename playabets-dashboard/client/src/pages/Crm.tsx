@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import KpiCard from "@/components/KpiCard";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Users, TrendingUp, DollarSign, Activity, Clock } from "lucide-react";
@@ -30,7 +31,7 @@ const TT_STYLE = { background: "#fff", border: "1px solid #e4ece4", borderRadius
 const CARD_BG  = { background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" };
 
 export default function CrmPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = usePersistedFilters();
   const [cohortData, setCohortData]   = useState<Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }>>([]);
   const [avgDepositValue, setAvgDepositValue] = useState<number | null>(null);
   const [churnPct, setChurnPct]   = useState<number | null>(null);

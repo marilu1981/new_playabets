@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import KpiCard from "@/components/KpiCard";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -45,7 +46,7 @@ interface ProviderTotals {
 }
 
 export default function TransactionsPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = usePersistedFilters();
   const [kpis, setKpis]         = useState<TxKpis | null>(null);
   const [depTrend, setDepTrend]  = useState<TrendPoint[]>([]);
   const [wdTrend, setWdTrend]    = useState<TrendPoint[]>([]);
@@ -81,8 +82,8 @@ export default function TransactionsPage() {
       }
       setLoading(false);
 
-      withTimeout(fetchJson<{ has_data: boolean; rows: ProviderDetailRow[]; totals: ProviderTotals }>(`/transactions/providers?${query}`), 15000)
-        .then((provRes) => {
+      fetchJson<{ has_data: boolean; rows: ProviderDetailRow[]; totals: ProviderTotals }>(`/transactions/providers?${query}`)
+        .then((provRes: { has_data: boolean; rows: ProviderDetailRow[]; totals: ProviderTotals }) => {
           if (cancelled || !provRes?.has_data) return;
           setProviderRows(provRes.rows ?? []);
           setProviderTotals(provRes.totals ?? null);
