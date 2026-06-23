@@ -14,6 +14,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, ComposedChart, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -58,13 +59,7 @@ import type { ReportData } from "@/lib/generateReport";
 
 
 export default function Home() {
-  const [filters, setFilters] = useState<DashboardFilters>(() => {
-    const cached = getLatestDataDate();
-    if (cached && /^\d{4}-\d{2}-\d{2}$/.test(cached)) {
-      return { ...defaultFilters, dateFrom: `${cached.slice(0, 7)}-01`, dateTo: cached };
-    }
-    return defaultFilters;
-  });
+  const [filters, setFilters] = usePersistedFilters();
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino">("overview");
   const [revenueMetric, setRevenueMetric] = useState<"ggr" | "turnover" | "ngr">("ggr");
   const {
