@@ -12,6 +12,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Users, TrendingUp, DollarSign, Activity, Clock } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
+import { aggregateByGranularity } from "@/pages/home/homeUtils";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -41,10 +42,24 @@ export default function CrmPage() {
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
 
-    // Cohort conversion rates
+    // Cohort conversion rates — aggregate by granularity
     fetchJson<{ points: Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }> }>(
       `/timeseries/conversion-cohorts?${query}`
-    ).then((d) => setCohortData(d.points ?? [])).catch(() => {});
+    ).then((d) => {
+      const pts = d.points ?? [];
+      if (filters.granularity === "daily") {
+        setCohortData(pts);
+      } else {
+        // Aggregate to weekly/monthly — sum counts, average rates
+        const agg = aggregateByGranularity(
+          pts as Record<string, unknown>[],
+          filters.granularity,
+          (row) => row["date"] as string,
+          { avgFields: ["rate_d7", "rate_d30"] }
+        );
+        setCohortData(agg as typeof pts);
+      }
+    }).catch(() => {});
 
     // KPIs — churn, total actives, NGR for ARPU
     fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number }>(
@@ -71,7 +86,7 @@ export default function CrmPage() {
       else if (dep_unique > 0) setAvgDepositValue(dep / dep_unique);
       else setAvgDepositValue(null);
     }).catch(() => {});
-  }, [filters.dateFrom, filters.dateTo]);
+  }, [filters.dateFrom, filters.dateTo, filters.granularity]);
 
   // Cohort summary for period
   const cohortSummary = cohortData.length > 0 ? {
@@ -161,7 +176,9 @@ export default function CrmPage() {
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={cohortData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(0, 7)} interval={3} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }}
+                  tickFormatter={(v) => filters.granularity === "monthly" ? v.slice(0, 7) : filters.granularity === "weekly" ? `W${v.slice(5)}` : v.slice(5)}
+                  interval={filters.granularity === "daily" ? 6 : 0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={35} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v) => v == null ? "n/a" : `${Number(v).toFixed(1)}%`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -184,7 +201,9 @@ export default function CrmPage() {
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={cohortData} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }}
+                tickFormatter={(v) => filters.granularity === "monthly" ? v.slice(0, 7) : v.slice(5)}
+                interval={filters.granularity === "daily" ? 4 : 0} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={45} />
               <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatCompact(v)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
