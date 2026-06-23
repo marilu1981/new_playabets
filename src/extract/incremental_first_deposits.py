@@ -34,19 +34,34 @@ OUT_DIR = raw_dir("first_deposits")
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    # One row per user: their globally first deposit date across all causali.
-    # Exclude test users via join with view_users.
+    # One row per user: their globally first deposit date and amount.
+    # Join to Stats.transazioni on the idprimodeposito to get the Importo amount.
+    # Exclude test users.
     query = text(
         f"""
         SELECT
-            t.idutente,
-            MIN(t.dataprimodeposito) AS dataprimodeposito
-        FROM {VIEW_NAME} t
-        WHERE t.dataprimodeposito IS NOT NULL
-          AND t.idutente NOT IN (
+            d.idutente,
+            MIN(d.dataprimodeposito) AS dataprimodeposito,
+            SUM(CASE
+                WHEN d.dataprimodeposito = (
+                    SELECT MIN(d2.dataprimodeposito)
+                    FROM {VIEW_NAME} d2
+                    WHERE d2.idutente = d.idutente
+                ) THEN CAST(t.Importo AS FLOAT)
+                ELSE 0
+            END) AS first_deposit_amount
+        FROM {VIEW_NAME} d
+        LEFT JOIN Stats.transazioni t
+          ON t.IDUtente = d.idutente
+         AND CAST(t.Data AS DATE) = CAST(d.dataprimodeposito AS DATE)
+         AND t.IDCausale = d.idcausale
+         AND t.IDTipoImportoTransazione = 1
+         AND t.IDStatoGestioneTransazione = 3
+        WHERE d.dataprimodeposito IS NOT NULL
+          AND d.idutente NOT IN (
               SELECT userid FROM Dwh_en.view_users WHERE testuser = 1
           )
-        GROUP BY t.idutente
+        GROUP BY d.idutente
         """
     )
 

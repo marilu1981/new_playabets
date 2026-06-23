@@ -226,6 +226,8 @@ def kpis(
         # ftd_reg_month: users who *registered* in the period and have ever deposited.
         # These differ by ~4% because some users register before the period and deposit later.
         "ftds": _i(ftd, "ftds"),
+        "ftd_total_amount": _s(ftd, "ftd_total_amount"),
+        "avg_ftd_value": round(_s(ftd, "ftd_total_amount") / _i(ftd, "ftds"), 2) if _i(ftd, "ftds") > 0 and _s(ftd, "ftd_total_amount") > 0 else 0.0,
         "ftd_reg_month": ftd_reg_month,
         "ftd_new_depositors": ftd_new_depositors,
         "deposits": _s(tx, "deposits"),
