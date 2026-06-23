@@ -14,9 +14,9 @@ const STORAGE_KEY = "pb_dashboard_filters";
 function getDefaultDateRange(): { dateFrom: string; dateTo: string } {
   const today = new Date();
   const dateTo = today.toISOString().slice(0, 10);
-  // Start of previous month
-  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-  const dateFrom = prevMonth.toISOString().slice(0, 10);
+  const from = new Date(today);
+  from.setDate(today.getDate() - 30);
+  const dateFrom = from.toISOString().slice(0, 10);
   return { dateFrom, dateTo };
 }
 

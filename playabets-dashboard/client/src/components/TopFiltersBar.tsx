@@ -22,7 +22,7 @@ export interface DashboardFilters {
 }
 
 export const defaultFilters: DashboardFilters = {
-  dateFrom: (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0, 10); })(),
+  dateFrom: (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); })(),
   dateTo: new Date().toISOString().split("T")[0],
   granularity: "daily",
   brand: "all",
