@@ -55,13 +55,15 @@ import {
 import { useHomeData } from "./home/useHomeData";
 import { SummaryMetricsTable } from "./home/HomeSections";
 import ReportButton from "@/components/ReportButton";
-import type { ReportData } from "@/lib/generateReport";
+import type { ReportData, AiInsights } from "@/lib/generateReport";
 
 
 export default function Home() {
   const [filters, setFilters] = usePersistedFilters();
   const [summaryTab, setSummaryTab] = useState<"overview" | "sport" | "casino">("overview");
   const [revenueMetric, setRevenueMetric] = useState<"ggr" | "turnover" | "ngr">("ggr");
+  const [aiInsights, setAiInsights] = useState<AiInsights | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const {
     dataMode,
     latestDataDate,
@@ -269,9 +271,45 @@ export default function Home() {
 
 
 
+  // Fetch AI insights when core KPIs are available
+  const { useEffect: _useEffect } = { useEffect: (window as unknown as { React?: { useEffect: typeof import("react").useEffect } }).React?.useEffect ?? (() => {}) };
+  void _useEffect;
+
+  // AI insights — fetched once per period when live data arrives
+  useMemo(() => {
+    if (!liveNgr || !kpiRegistrations) return;
+    const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
+    const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const ggr = (overviewKPIs.totalStake ?? 0) - (overviewKPIs.totalWinnings ?? 0);
+    const params = new URLSearchParams({
+      start: filters.dateFrom, end: filters.dateTo,
+      registrations: String(kpiRegistrations), ftds: String(kpiFtds),
+      conv_rate: String(kpiRegistrations > 0 ? ((kpiFtds/kpiRegistrations)*100).toFixed(1) : 0),
+      ggr: String(Math.round(ggr)), ngr: String(Math.round(liveNgr ?? 0)),
+      turnover: String(Math.round(overviewKPIs.totalStake ?? 0)),
+      deposits: String(Math.round(transactionSummary.totalDeposits ?? 0)),
+      withdrawals: String(Math.round(transactionSummary.totalWithdrawals ?? 0)),
+      net_cash: String(Math.round((transactionSummary.totalDeposits ?? 0) - (transactionSummary.totalWithdrawals ?? 0))),
+      churn_pct: String(liveChurnPct ?? 0),
+      active_players: String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
+      bonus_issued: String(Math.round(liveBonusTxIssued ?? 0)),
+    });
+    setAiLoading(true);
+    fetch(`${API_BASE}/insights/ai-summary?${params}`, {
+      method: "POST",
+      headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.available) setAiInsights(d as AiInsights); })
+      .catch(() => {})
+      .finally(() => setAiLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateFrom, filters.dateTo, liveNgr]);
+
   const reportData: ReportData = useMemo(() => {
     const stake = overviewKPIs.totalStake ?? 0;
     const winnings = overviewKPIs.totalWinnings ?? 0;
+    const ggr = stake - winnings;
     return {
       dateFrom: filters.dateFrom,
       dateTo: filters.dateTo,
@@ -282,6 +320,7 @@ export default function Home() {
       grossMargin: stake > 0 ? ((stake - winnings) / stake) * 100 : 0,
       registrations: kpiRegistrations,
       ftds: kpiFtds,
+      avgFtdValue: liveRangeKpis ? undefined : undefined, // populated from /kpis
       activePlayersSports: overviewKPIs.activesSports ?? 0,
       activePlayersCasino: overviewKPIs.activesCasino ?? 0,
       segments: [],
@@ -291,11 +330,16 @@ export default function Home() {
       casinoProviderCount: 0,
       totalDeposits: transactionSummary.totalDeposits ?? 0,
       totalWithdrawals: transactionSummary.totalWithdrawals ?? 0,
-      bonusesCredited: 0,
+      bonusesCredited: liveBonusTxIssued ?? 0,
       freebetUsagePct: 0,
       ngr: liveNgr,
+      ggr,
+      holdPct: stake > 0 ? (ggr / stake) * 100 : 0,
+      churnPct: liveChurnPct ?? undefined,
+      totalVips: undefined,
+      vipGgr: undefined,
     };
-  }, [filters, latestDataDate, overviewKPIs, kpiRegistrations, kpiFtds, transactionSummary, liveNgr]);
+  }, [filters, latestDataDate, overviewKPIs, kpiRegistrations, kpiFtds, transactionSummary, liveNgr, liveChurnPct, liveBonusTxIssued, liveRangeKpis]);
 
   const getSummaryRows = (): MetricRow[] => {
     if (summaryTab === "sport")  return summaryMetrics.sport;
@@ -596,6 +640,45 @@ export default function Home() {
       )}
 
       {renderSummaryMetricsTable()}
+
+      {/* AI Insights Panel */}
+      {(aiLoading || aiInsights) && (
+        <div className="rounded-xl p-5 mb-4" style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">AI Insights</h3>
+              <p className="text-xs text-gray-500">Powered by Azure OpenAI · Data stays within Azure</p>
+            </div>
+            {aiLoading && <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7ab800", borderTopColor: "transparent" }} />}
+          </div>
+          {aiInsights && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { key: "wins",            label: "Wins",             bg: "#f0fdf4", border: "#bbf7d0", text: "#166534", dot: "#16a34a" },
+                { key: "concerns",        label: "Concerns",         bg: "#fef2f2", border: "#fecaca", text: "#991b1b", dot: "#dc2626" },
+                { key: "watch_list",      label: "Watch List",       bg: "#fffbeb", border: "#fde68a", text: "#92400e", dot: "#d97706" },
+                { key: "recommendations", label: "Recommendations",  bg: "#f0f9ff", border: "#bae6fd", text: "#0c4a6e", dot: "#0284c7" },
+              ].map(({ key, label, bg, border, text, dot }) => {
+                const items = aiInsights[key as keyof AiInsights] as string[];
+                if (!items?.length) return null;
+                return (
+                  <div key={key} className="rounded-lg p-4" style={{ background: bg, border: `1px solid ${border}` }}>
+                    <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: text }}>{label}</div>
+                    <ul className="space-y-2">
+                      {items.map((item, i) => (
+                        <li key={i} className="flex gap-2 text-xs" style={{ color: text }}>
+                          <span className="mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: dot }} />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
     </DashboardLayout>
   );
