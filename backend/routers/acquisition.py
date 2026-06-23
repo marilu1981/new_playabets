@@ -33,7 +33,8 @@ def _filter_period(df: pd.DataFrame, start: Optional[date], end: Optional[date])
         df2 = df.copy()
         df2["_from"] = pd.to_datetime(df2["date_from"], errors="coerce").dt.date
         df2["_to"]   = pd.to_datetime(df2["date_to"],   errors="coerce").dt.date
-        df2 = df2[(df2["_from"] >= start) & (df2["_to"] <= end)]
+        # Overlapping period: include rows whose fetch window overlaps the requested range
+        df2 = df2[(df2["_from"] <= end) & (df2["_to"] >= start)]
         return df2.drop(columns=["_from", "_to"])
     return df
 
