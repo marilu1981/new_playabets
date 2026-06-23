@@ -215,6 +215,7 @@ export default function AcquisitionPage() {
         <p className="text-xs text-gray-500 mb-4">Ranked by revenue — RavenTrack data</p>
         <DataTable<AffiliateRow>
           compact
+          light
           emptyMessage={loading ? "Loading…" : "No affiliate data yet. Pending RavenTrack token approval."}
           columns={[
             { key: "affiliate_name", header: "Affiliate", render: r => r.affiliate_name ?? r.affiliate_id ?? "—" },
