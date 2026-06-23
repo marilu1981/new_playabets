@@ -534,7 +534,7 @@ def main() -> None:
     # VIP revenue by user — pre-aggregated from raw betslips + casino per VIP userid.
     # Eliminates live raw-file loading on every VIP API request (was 3-4 seconds).
     try:
-        from src.kpis.io_utils import normalize_cols, read_all_parquets, to_dt
+        from src.kpis.io_utils import normalize_cols as _nc, to_dt as _to_dt
         vip_roster_path = SERVING / "vip_roster.parquet"
         if vip_roster_path.exists():
             vip_ids = set(pd.read_parquet(vip_roster_path)["userid"].astype(str).unique())
@@ -546,14 +546,14 @@ def main() -> None:
                 if not frames:
                     return empty
                 df = pd.concat(frames, ignore_index=True)
-                df, col = normalize_cols(df)
+                df, col = _nc(df)
                 placement = col.get("placementdate") or col.get("placedate") or col.get("betdate") or col.get("date")
                 user_col = col.get("userid")
                 stake_col = col.get("stake")
                 win_col = col.get("winnings") or col.get("userwinnings")
                 if not placement or not user_col:
                     return empty
-                df["_date"] = to_dt(df[placement]).dt.date
+                df["_date"] = _to_dt(df[placement]).dt.date
                 df["_uid"] = df[user_col].astype(str)
                 df = df[df["_uid"].isin(vip_ids)]
                 if df.empty:
