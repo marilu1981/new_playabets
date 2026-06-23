@@ -54,21 +54,25 @@ def _connect() -> sqlite3.Connection:
 
 
 def _init_db() -> None:
-    try:
-        with _connect() as conn:
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS user_permissions (
-                    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_email    TEXT    NOT NULL UNIQUE,
-                    role          TEXT    NOT NULL DEFAULT 'viewer',
-                    allowed_pages TEXT    NOT NULL DEFAULT '*',
-                    created_at    TEXT    NOT NULL,
-                    updated_at    TEXT    NOT NULL
-                )
-            """)
-            conn.commit()
-    except sqlite3.OperationalError as exc:
-        _log.warning("admin_db init failed (%s) — admin features degraded until DB is accessible", exc)
+    import time
+    for attempt in range(5):
+        try:
+            with _connect() as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS user_permissions (
+                        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_email    TEXT    NOT NULL UNIQUE,
+                        role          TEXT    NOT NULL DEFAULT 'viewer',
+                        allowed_pages TEXT    NOT NULL DEFAULT '*',
+                        created_at    TEXT    NOT NULL,
+                        updated_at    TEXT    NOT NULL
+                    )
+                """)
+                conn.commit()
+            return
+        except sqlite3.OperationalError as exc:
+            _log.warning("admin_db init attempt %d failed (%s)", attempt + 1, exc)
+            time.sleep(2)
 
 
 _init_db()
@@ -96,16 +100,21 @@ def get_all_users() -> list[dict]:
 
 
 def get_user(email: str) -> dict | None:
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT * FROM user_permissions WHERE user_email = ?",
-            (email.lower(),),
-        ).fetchone()
-    if not row:
+    try:
+        with _connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM user_permissions WHERE user_email = ?",
+                (email.lower(),),
+            ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
+        return d
+    except sqlite3.OperationalError as exc:
+        _log.warning("get_user failed (%s) — returning None", exc)
+        _init_db()  # attempt to recreate table if missing
         return None
-    d = dict(row)
-    d["allowed_pages"] = _pages_from_str(d["allowed_pages"])
-    return d
 
 
 def upsert_user(email: str, role: str, allowed_pages: list[str]) -> dict:
