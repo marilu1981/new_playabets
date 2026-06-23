@@ -604,6 +604,82 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] VIP revenue daily: error - {e}")
 
+    # Player retention (7/30/90 day) — computed from raw betslips + casino.
+    # For each calendar month cohort, find players who bet for the first time
+    # in that month, then check if they returned within 7/30/90 days.
+    try:
+        from src.kpis.io_utils import normalize_cols as _ncr, to_dt as _tdtr
+        import numpy as np
+
+        def _load_activity(paths, label):
+            frames = [pd.read_parquet(p) for p in paths if p.exists()]
+            if not frames:
+                return pd.DataFrame(columns=["userid", "date"])
+            df = pd.concat(frames, ignore_index=True)
+            df, col = _ncr(df)
+            placement = col.get("placementdate") or col.get("placedate") or col.get("betdate") or col.get("date")
+            user_col = col.get("userid")
+            if not placement or not user_col:
+                return pd.DataFrame(columns=["userid", "date"])
+            df["date"] = _tdtr(df[placement]).dt.date
+            df["userid"] = df[user_col].astype(str)
+            return df[["userid", "date"]].dropna()
+
+        bs_dir = RAW / "betslips"
+        cs_dir = RAW / "casino"
+        if not cs_dir.exists():
+            cs_dir = RAW / "Casino"
+
+        bs_paths = sorted(bs_dir.glob("betslips_*.parquet")) if bs_dir.exists() else []
+        cs_paths = sorted(cs_dir.glob("casino_*.parquet")) if cs_dir.exists() else []
+
+        if bs_paths or cs_paths:
+            activity = pd.concat(
+                [_load_activity(bs_paths, "sports"), _load_activity(cs_paths, "casino")],
+                ignore_index=True
+            ).drop_duplicates()
+
+            if not activity.empty:
+                activity["date"] = pd.to_datetime(activity["date"])
+                # First bet date per player
+                first_bet = activity.groupby("userid")["date"].min().reset_index().rename(columns={"date": "first_date"})
+                first_bet["cohort_month"] = first_bet["first_date"].dt.to_period("M").astype(str)
+
+                # All bets with first date attached
+                merged = activity.merge(first_bet, on="userid")
+                merged["days_since_first"] = (merged["date"] - merged["first_date"]).dt.days
+
+                # Cohort retention: for each cohort month, count players retained at D7/D30/D90
+                rows = []
+                for cohort, group in first_bet.groupby("cohort_month"):
+                    cohort_users = set(group["userid"])
+                    n = len(cohort_users)
+                    returned = merged[merged["userid"].isin(cohort_users) & (merged["days_since_first"] > 0)]
+                    d7  = returned[returned["days_since_first"] <= 7]["userid"].nunique()
+                    d30 = returned[returned["days_since_first"] <= 30]["userid"].nunique()
+                    d90 = returned[returned["days_since_first"] <= 90]["userid"].nunique()
+                    rows.append({
+                        "cohort_month": cohort,
+                        "cohort_size": n,
+                        "retained_d7":  d7,
+                        "retained_d30": d30,
+                        "retained_d90": d90,
+                        "rate_d7":  round(d7  / n * 100, 1) if n > 0 else 0.0,
+                        "rate_d30": round(d30 / n * 100, 1) if n > 0 else 0.0,
+                        "rate_d90": round(d90 / n * 100, 1) if n > 0 else 0.0,
+                    })
+
+                ret_df = pd.DataFrame(rows).sort_values("cohort_month")
+                ret_out = SERVING / "retention_monthly.parquet"
+                ret_df.to_parquet(ret_out, index=False)
+                print(f"[domain_kpis] Retention monthly: {len(ret_df)} cohorts -> {ret_out}")
+            else:
+                print("[domain_kpis] Retention: no activity data found")
+        else:
+            print("[domain_kpis] Retention: no betslip/casino raw files found")
+    except Exception as e:
+        print(f"[domain_kpis] Retention: error - {e}")
+
     print("[domain_kpis] Done.")
 
 

@@ -548,6 +548,44 @@ def ftd_daily(
     }
 
 
+@router.get("/crm/retention")
+def crm_retention(
+    start: Optional[date] = Query(None),
+    end:   Optional[date] = Query(None),
+):
+    """7/30/90-day player retention by cohort month, computed from raw betslips + casino."""
+    from backend.core.cache import _SERVING
+    path = _SERVING / "retention_monthly.parquet"
+    if not path.exists():
+        return {"has_data": False, "cohorts": [], "summary": {}}
+
+    df = load_parquet_cached(path, "retention_monthly")
+    if df.empty:
+        return {"has_data": False, "cohorts": [], "summary": {}}
+
+    # Filter to cohort months overlapping the selected date range
+    if start:
+        df = df[df["cohort_month"] >= start.strftime("%Y-%m")]
+    if end:
+        df = df[df["cohort_month"] <= end.strftime("%Y-%m")]
+
+    cohorts = df.to_dict("records")
+    for c in cohorts:
+        for k, v in c.items():
+            if hasattr(v, "item"):
+                c[k] = v.item()
+
+    # Summary: average rates across cohorts (exclude most recent month — D90 incomplete)
+    complete = df[df["cohort_month"] < df["cohort_month"].max()] if len(df) > 1 else df
+    summary = {
+        "avg_d7":  round(float(complete["rate_d7"].mean()), 1) if not complete.empty else 0.0,
+        "avg_d30": round(float(complete["rate_d30"].mean()), 1) if not complete.empty else 0.0,
+        "avg_d90": round(float(complete["rate_d90"].mean()), 1) if not complete.empty else 0.0,
+    }
+
+    return {"has_data": True, "cohorts": cohorts, "summary": summary}
+
+
 @router.get("/ftd-reg-month/daily")
 def ftd_reg_month_daily(
     start: date = Query(...),

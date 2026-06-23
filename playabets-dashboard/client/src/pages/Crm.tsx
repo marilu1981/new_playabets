@@ -39,6 +39,10 @@ export default function CrmPage() {
   const [arpu, setArpu]           = useState<number | null>(null);
   const [totalActives, setTotalActives] = useState<number | null>(null);
 
+  type RetentionCohort = { cohort_month: string; cohort_size: number; retained_d7: number; retained_d30: number; retained_d90: number; rate_d7: number; rate_d30: number; rate_d90: number };
+  const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
+  const [retentionSummary, setRetentionSummary] = useState<{ avg_d7: number; avg_d30: number; avg_d90: number } | null>(null);
+
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
 
@@ -85,6 +89,16 @@ export default function CrmPage() {
       if (cnt > 0) setAvgDepositValue(dep / cnt);
       else if (dep_unique > 0) setAvgDepositValue(dep / dep_unique);
       else setAvgDepositValue(null);
+    }).catch(() => {});
+
+    // 7/30/90-day retention by cohort
+    fetchJson<{ has_data: boolean; cohorts: RetentionCohort[]; summary: { avg_d7: number; avg_d30: number; avg_d90: number } }>(
+      `/crm/retention?start=${filters.dateFrom}&end=${filters.dateTo}`
+    ).then((d) => {
+      if (d.has_data) {
+        setRetentionCohorts(d.cohorts ?? []);
+        setRetentionSummary(d.summary ?? null);
+      }
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo, filters.granularity]);
 
@@ -212,6 +226,72 @@ export default function CrmPage() {
               <Bar dataKey="ftds_d30"      name="FTDs D30"      fill={COLORS.green} radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* 7 / 30 / 90-day Retention */}
+      {retentionSummary && (
+        <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Player Retention</h3>
+          <p className="text-xs text-gray-500 mb-4">% of new players who returned within 7, 30, and 90 days — by cohort month</p>
+
+          {/* Summary KPI cards */}
+          <div className="grid grid-cols-3 gap-4 mb-5">
+            {[
+              { label: "D7 Retention",  value: `${retentionSummary.avg_d7}%`,  color: COLORS.gold,  desc: "Return within 7 days" },
+              { label: "D30 Retention", value: `${retentionSummary.avg_d30}%`, color: COLORS.teal,  desc: "Return within 30 days" },
+              { label: "D90 Retention", value: `${retentionSummary.avg_d90}%`, color: COLORS.green, desc: "Return within 90 days" },
+            ].map((t) => (
+              <div key={t.label} className="rounded-lg p-4 text-center" style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}>
+                <div className="text-2xl font-bold mb-1" style={{ color: t.color }}>{t.value}</div>
+                <div className="text-xs font-semibold text-gray-700">{t.label}</div>
+                <div className="text-xs text-gray-400 mt-0.5">{t.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Retention by cohort line chart */}
+          {retentionCohorts.length > 0 && (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={retentionCohorts} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
+                <XAxis dataKey="cohort_month" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} width={35} domain={[0, 100]} />
+                <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => `${v}%`} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="rate_d7"  name="D7 Retention"  stroke={COLORS.gold}  strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="rate_d30" name="D30 Retention" stroke={COLORS.teal}  strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="rate_d90" name="D90 Retention" stroke={COLORS.green} strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+
+          {/* Cohort table */}
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Cohort Month", "New Players", "D7 Retained", "D7 %", "D30 Retained", "D30 %", "D90 Retained", "D90 %"].map((h) => (
+                    <th key={h} className="text-left py-1.5 pr-3 text-gray-500 font-semibold text-[10px] uppercase tracking-wider">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {retentionCohorts.map((c) => (
+                  <tr key={c.cohort_month} className="border-b border-gray-50">
+                    <td className="py-1.5 pr-3 text-gray-700 font-medium">{c.cohort_month}</td>
+                    <td className="py-1.5 pr-3 text-gray-600">{c.cohort_size.toLocaleString()}</td>
+                    <td className="py-1.5 pr-3 text-gray-600">{c.retained_d7.toLocaleString()}</td>
+                    <td className="py-1.5 pr-3 font-medium" style={{ color: COLORS.gold }}>{c.rate_d7}%</td>
+                    <td className="py-1.5 pr-3 text-gray-600">{c.retained_d30.toLocaleString()}</td>
+                    <td className="py-1.5 pr-3 font-medium" style={{ color: COLORS.teal }}>{c.rate_d30}%</td>
+                    <td className="py-1.5 pr-3 text-gray-600">{c.retained_d90.toLocaleString()}</td>
+                    <td className="py-1.5 pr-3 font-medium" style={{ color: COLORS.green }}>{c.rate_d90}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </DashboardLayout>
