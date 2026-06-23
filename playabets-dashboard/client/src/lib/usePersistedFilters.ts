@@ -11,8 +11,17 @@ import { getLatestDataDate } from "@/lib/apiCache";
 
 const STORAGE_KEY = "pb_dashboard_filters";
 
+function getDefaultDateRange(): { dateFrom: string; dateTo: string } {
+  const today = new Date();
+  const dateTo = today.toISOString().slice(0, 10);
+  // Start of previous month
+  const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const dateFrom = prevMonth.toISOString().slice(0, 10);
+  return { dateFrom, dateTo };
+}
+
 function getInitialFilters(): DashboardFilters {
-  // 1. Try localStorage (user's last selection)
+  // 1. Try localStorage (user's last explicit selection)
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -21,13 +30,8 @@ function getInitialFilters(): DashboardFilters {
     }
   } catch {}
 
-  // 2. Fall back to current month of latest data date
-  const latest = getLatestDataDate();
-  if (latest && /^\d{4}-\d{2}-\d{2}$/.test(latest)) {
-    return { ...defaultFilters, dateFrom: `${latest.slice(0, 7)}-01`, dateTo: latest };
-  }
-
-  return defaultFilters;
+  // 2. Default: start of previous month → today
+  return { ...defaultFilters, ...getDefaultDateRange() };
 }
 
 export function usePersistedFilters(): [DashboardFilters, (f: DashboardFilters) => void] {
