@@ -64,9 +64,9 @@ BACKFILL_END   = date.fromisoformat(os.environ.get("RT_BACKFILL_END",   str(_yes
 
 OUT_DIR = RAW_ROOT / "affiliates"
 
-# Confirmed paths from Postman collection dce86e95
-AFFILIATE_SEARCH_PATH = "/network/api/affiliate/search"
-PLAYER_REPORTING_PATH = "/network/api/reporting/player"
+# Confirmed working paths (tested 2026-06-23)
+AFFILIATE_REPORTING_PATH = "/network/api/reporting/affiliate"
+PLAYER_REPORTING_PATH    = "/network/api/reporting/player"
 
 
 def _log(msg: str) -> None:
@@ -113,15 +113,16 @@ def _fetch_paginated(token: str, path: str, params: dict) -> list[dict]:
 
         data = resp.json()
 
-        # Handle both paginated envelope {data: [...], meta: {...}} and plain list
+        # Handle RavenTrack reporting envelope: {params:{}, results:{data:[...], last_page:N}, totals:{}}
+        # Also handle plain list or simpler {data:[...]} shapes.
         if isinstance(data, list):
             records = data
             has_more = False
         elif isinstance(data, dict):
-            records = data.get("data", data.get("records", data.get("affiliates", data.get("players", []))))
-            meta = data.get("meta", data.get("pagination", {}))
-            last_page = meta.get("last_page", meta.get("totalPages", 1))
-            has_more = page < last_page
+            results = data.get("results", data)
+            records = results.get("data", data.get("data", data.get("records", data.get("affiliates", data.get("players", [])))))
+            last_page = results.get("last_page", data.get("last_page", 1))
+            has_more = page < int(last_page or 1)
         else:
             records = []
             has_more = False
@@ -138,50 +139,49 @@ def _fetch_paginated(token: str, path: str, params: dict) -> list[dict]:
 
 
 def fetch_affiliates(date_from: date, date_to: date) -> pd.DataFrame:
-    """Pull affiliate-level activity summary for the given date range."""
+    """Pull affiliate activity from /network/api/reporting/affiliate."""
     if not AFFILIATE_TOKEN:
         _log("RAVENTRACK_AFFILIATE_TOKEN not set — skipping affiliate fetch")
         return pd.DataFrame()
 
     _log(f"Fetching affiliates {date_from} → {date_to}")
     params = {
-        "created_at_from": str(date_from),
-        "created_at_to":   str(date_to),
-        "detailed":        "0",
+        "start_date":    str(date_from),
+        "end_date":      str(date_to),
+        "currency":      CURRENCY,
+        "grouping":      "affiliate",
+        "show_by_site":  "0",
+        "per_page":      str(PAGE_SIZE),
     }
-    records = _fetch_paginated(AFFILIATE_TOKEN, AFFILIATE_SEARCH_PATH, params)
+    records = _fetch_paginated(AFFILIATE_TOKEN, AFFILIATE_REPORTING_PATH, params)
     if not records:
         return pd.DataFrame()
 
     df = pd.json_normalize(records)
 
-    # Normalise field names — RavenTrack may return camelCase or snake_case
+    # Normalise field names from /reporting/affiliate response
     rename = {
-        # camelCase variants
-        "affiliateId":      "affiliate_id",
-        "affiliateName":    "affiliate_name",
-        "totalClicks":      "clicks",
-        "totalRegistrations": "registrations",
-        "totalFtds":        "ftds",
-        "ftdAmount":        "ftd_amount",
-        "totalRevenue":     "revenue",
-        "totalCommission":  "commission",
-        "marketingSpend":   "marketing_spend",
-        # snake_case variants (may already be correct)
-        "affiliate_id":     "affiliate_id",
-        "affiliate_name":   "affiliate_name",
-        "total_clicks":     "clicks",
-        "total_registrations": "registrations",
-        "total_ftds":       "ftds",
-        "ftd_amount":       "ftd_amount",
-        "total_revenue":    "revenue",
-        "total_commission": "commission",
-        "marketing_spend":  "marketing_spend",
+        "affiliate_profile_id":       "affiliate_id",
+        "affiliate_profile_username": "affiliate_name",
+        "clicks":                     "clicks",
+        "registrations":              "registrations",
+        "ftd_count":                  "ftds",
+        "new_account_deposits":       "ftd_amount",
+        "gross_revenue":              "revenue",
+        "net_revenue":                "net_revenue",
+        "deposits":                   "total_deposits",
+        "total_commission":           "commission",
+        "revshare_commission":        "revshare_commission",
+        "cpa_commission":             "cpa_commission",
+        "active_accounts":            "active_players",
+        "vendor_id":                  "vendor_id",
+        "vendor_name":                "vendor_name",
     }
     df = df.rename(columns={k: v for k, v in rename.items() if k in df.columns})
 
     # Ensure numeric columns
-    for col in ["clicks", "registrations", "ftds", "ftd_amount", "revenue", "commission", "marketing_spend"]:
+    for col in ["clicks", "registrations", "ftds", "ftd_amount", "revenue", "net_revenue",
+                "total_deposits", "commission", "revshare_commission", "cpa_commission", "active_players"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
 
