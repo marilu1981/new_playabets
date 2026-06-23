@@ -14,6 +14,7 @@ import {
 import { DollarSign, ArrowUpCircle, ArrowDownCircle, Users } from "lucide-react";
 import { formatCompact, formatFull } from "@/lib/formatters";
 import { cachedFetch } from "@/lib/apiCache";
+import { aggregateByGranularity } from "@/pages/home/homeUtils";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -110,12 +111,20 @@ export default function TransactionsPage() {
     };
   }, [filters.dateFrom, filters.dateTo]);
 
-  const trendData = depTrend.map((d, i) => ({
+  const rawTrendData = depTrend.map((d, i) => ({
     date: d.date,
     deposits: d.value,
     withdrawals: wdTrend[i]?.value ?? 0,
     net: d.value - (wdTrend[i]?.value ?? 0),
   }));
+
+  const trendData = filters.granularity === "daily"
+    ? rawTrendData
+    : (aggregateByGranularity(
+        rawTrendData as unknown as Record<string, unknown>[],
+        filters.granularity,
+        (r) => r["date"] as string,
+      ) as unknown as typeof rawTrendData);
 
   const dash = loading ? "…" : "—";
   const pending = !kpis?.has_data;
@@ -157,7 +166,9 @@ export default function TransactionsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={v => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }}
+                  tickFormatter={v => filters.granularity === "monthly" ? v.slice(0, 7) : v.slice(5)}
+                  interval={filters.granularity === "daily" ? 4 : 0} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={v => formatCompact(v)} axisLine={false} tickLine={false} width={60} />
                 <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatFull(v)} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />

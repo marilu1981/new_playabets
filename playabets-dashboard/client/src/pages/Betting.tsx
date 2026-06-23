@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cachedFetch } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
 import KpiCard from "@/components/KpiCard";
 import MockOverlay from "@/components/MockOverlay";
 import StatusBadge from "@/components/StatusBadge";
@@ -22,6 +23,7 @@ import {
   betslipsByType as baseBetslipsByType,
 } from "@/lib/mockData";
 import { formatCompact, formatFull } from "@/lib/formatters";
+import { aggregateByGranularity } from "@/pages/home/homeUtils";
 import {
   getFilterMultiplier,
   scaleArrayNumericFields,
@@ -48,7 +50,7 @@ interface DailyTrendPoint {
 }
 
 export default function BettingPage() {
-  const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
+  const [filters, setFilters] = usePersistedFilters();
   const [liveOverviewKPIs, setLiveOverviewKPIs] = useState<typeof baseOverviewKPIs | null>(null);
   const [liveBetslipsByStatus, setLiveBetslipsByStatus] = useState<typeof baseBetslipsByStatus | null>(null);
   const [liveBetslipsByType, setLiveBetslipsByType] = useState<typeof baseBetslipsByType | null>(null);
@@ -175,6 +177,15 @@ export default function BettingPage() {
     return scaleObjectNumericFields(baseOverviewKPIs, multiplier, ["currency"]);
   }, [multiplier, liveOverviewKPIs]);
 
+  const aggregatedStakeTrend = useMemo(() => {
+    if (!liveStakeTrend.length || filters.granularity === "daily") return liveStakeTrend;
+    return aggregateByGranularity(
+      liveStakeTrend as unknown as Record<string, unknown>[],
+      filters.granularity,
+      (r) => r["date"] as string,
+    ) as unknown as typeof liveStakeTrend;
+  }, [liveStakeTrend, filters.granularity]);
+
   const betslipsByStatus = useMemo(
     () => scaleArrayNumericFields(liveBetslipsByStatus ?? baseBetslipsByStatus, liveBetslipsByStatus ? 1 : multiplier, ["status", "statusId"]),
     [liveBetslipsByStatus, multiplier],
@@ -221,10 +232,10 @@ export default function BettingPage() {
       {/* Stake trend */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake vs Winnings vs GGR</h3>
-        <p className="text-xs text-gray-400 mb-4">Daily sportsbook activity — selected period</p>
-        {liveStakeTrend.length > 0 ? (
+        <p className="text-xs text-gray-400 mb-4">Sportsbook activity — {filters.granularity} view</p>
+        {aggregatedStakeTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={liveStakeTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
+            <AreaChart data={aggregatedStakeTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="stakeGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={COLORS.teal} stopOpacity={0.3} />
@@ -240,7 +251,9 @@ export default function BettingPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={4} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }}
+                tickFormatter={(v) => filters.granularity === "monthly" ? v.slice(0, 7) : v.slice(5)}
+                interval={filters.granularity === "daily" ? 4 : 0} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCompact(v)} axisLine={false} tickLine={false} width={62} />
               <Tooltip contentStyle={TT_STYLE} formatter={(v: number) => formatFull(v)} />
               <Legend wrapperStyle={{ fontSize: 11 }} />

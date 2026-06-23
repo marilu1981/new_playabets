@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { DashboardFilters, defaultFilters } from "@/components/TopFiltersBar";
+import { usePersistedFilters } from "@/lib/usePersistedFilters";
+import { aggregateByGranularity } from "@/pages/home/homeUtils";
 import KpiCard from "@/components/KpiCard";
 import DataTable from "@/components/DataTable";
 import {
@@ -96,19 +98,8 @@ const PRODUCT_COLORS: Record<string, string> = { Sports: "#7ab800", Casino: "#ff
 const CHART_COLORS = { ggr: "#7ab800", turnover: "#3b82f6", margin: "#ffb500", sports: "#7ab800", casino: "#ffb500" };
 
 export default function VipPage() {
-  const vipDefaultFilters = useMemo<DashboardFilters>(() => {
-    const end = new Date();
-    const start = new Date(end);
-    start.setDate(end.getDate() - 30);
-    const toIsoDate = (d: Date) => d.toISOString().split("T")[0];
-    return {
-      ...defaultFilters,
-      dateFrom: toIsoDate(start),
-      dateTo: toIsoDate(end),
-    };
-  }, []);
-
-  const [filters, setFilters] = useState<DashboardFilters>(vipDefaultFilters);
+  const vipDefaultFilters = defaultFilters;
+  const [filters, setFilters] = usePersistedFilters();
   const [manager, setManager] = useState<string>("all");
   const [stage, setStage] = useState<string>("all");
   const [currentOnly, setCurrentOnly] = useState<boolean>(false);
@@ -242,6 +233,23 @@ export default function VipPage() {
   const stageOptions = summary?.stages ?? [];
   const rev = revenue?.has_data ? revenue : null;
   const productPieData = (productShare?.products ?? []).map((p) => ({ name: p.product, value: p.stake }));
+
+  // Aggregate trend charts by selected granularity
+  const aggregatedTrends = useMemo(() => {
+    if (!trends.length || filters.granularity === "daily") return trends;
+    return aggregateByGranularity(
+      trends as unknown as Record<string, unknown>[],
+      filters.granularity,
+      (r) => r["date"] as string,
+      { avgFields: ["margin"] }
+    ) as unknown as TrendPoint[];
+  }, [trends, filters.granularity]);
+
+  const xTickFormatter = (v: string) =>
+    filters.granularity === "monthly" ? v.slice(0, 7) : v.slice(5);
+  const xInterval = filters.granularity === "daily"
+    ? Math.max(0, Math.floor(aggregatedTrends.length / 8))
+    : 0;
 
   return (
     <DashboardLayout
@@ -503,14 +511,14 @@ export default function VipPage() {
       </div>
 
       {/* ── Revenue Trends (31-day) ─────────────────────────────────────── */}
-      {trends.length > 0 && (
+      {aggregatedTrends.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue Trends</h3>
-          <p className="text-xs text-gray-500 mb-4">Daily GGR and Turnover for selected period</p>
+          <p className="text-xs text-gray-500 mb-4">GGR and Turnover — {filters.granularity} view</p>
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trends} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+            <LineChart data={aggregatedTrends} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} interval={Math.max(0, Math.floor(trends.length / 8))} axisLine={false} tickLine={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={xTickFormatter} interval={xInterval} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R${formatCompact(v)}`} axisLine={false} tickLine={false} width={55} />
               <Tooltip contentStyle={TT_STYLE} formatter={(v: number, name: string) => [fmtZar(v), name]} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -520,10 +528,10 @@ export default function VipPage() {
           </ResponsiveContainer>
           <div className="grid grid-cols-4 gap-3 mt-4">
             {[
-              { label: "Total GGR",      value: fmtZar(trends.reduce((s, p) => s + p.ggr, 0)) },
-              { label: "Total Turnover", value: fmtZar(trends.reduce((s, p) => s + p.turnover, 0)) },
-              { label: "Avg Daily GGR",  value: fmtZar(trends.reduce((s, p) => s + p.ggr, 0) / Math.max(1, trends.length)) },
-              { label: "Avg Margin",     value: `${(trends.reduce((s, p) => s + p.margin, 0) / Math.max(1, trends.filter(p => p.turnover > 0).length)).toFixed(1)}%` },
+              { label: "Total GGR",      value: fmtZar(aggregatedTrends.reduce((s, p) => s + p.ggr, 0)) },
+              { label: "Total Turnover", value: fmtZar(aggregatedTrends.reduce((s, p) => s + p.turnover, 0)) },
+              { label: `Avg ${filters.granularity === "daily" ? "Daily" : filters.granularity === "weekly" ? "Weekly" : "Monthly"} GGR`, value: fmtZar(aggregatedTrends.reduce((s, p) => s + p.ggr, 0) / Math.max(1, aggregatedTrends.length)) },
+              { label: "Avg Margin",     value: `${(aggregatedTrends.reduce((s, p) => s + p.margin, 0) / Math.max(1, aggregatedTrends.filter(p => p.turnover > 0).length)).toFixed(1)}%` },
             ].map((t) => (
               <div key={t.label} className="text-center">
                 <div className="text-xs text-gray-500">{t.label}</div>
