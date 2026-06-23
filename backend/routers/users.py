@@ -457,12 +457,17 @@ def _join_vip_revenue(
     vip_ids = set(roster["userid"].dropna().astype("Int64").astype(str))
     wagering = _per_user_wagering(period_start, period_end, vip_ids)
 
+    # Normalise userid to str on both sides before merge
+    roster = roster.copy()
+    roster["userid"] = roster["userid"].astype(str)
+
     if wagering.empty:
         merged = roster.copy()
         for c in ["sports_stake", "sports_winnings", "sports_bets",
                   "casino_stake", "casino_winnings", "casino_bets"]:
             merged[c] = 0.0
     else:
+        wagering["userid"] = wagering["userid"].astype(str)
         merged = roster.merge(wagering, on="userid", how="left")
         for c in ["sports_stake", "sports_winnings", "sports_bets",
                   "casino_stake", "casino_winnings", "casino_bets"]:
