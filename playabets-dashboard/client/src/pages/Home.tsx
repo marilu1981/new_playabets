@@ -272,32 +272,33 @@ export default function Home() {
 
 
 
-  // Fetch AI insights when core KPIs are available
-  const { useEffect: _useEffect } = { useEffect: (window as unknown as { React?: { useEffect: typeof import("react").useEffect } }).React?.useEffect ?? (() => {}) };
-  void _useEffect;
-
-  // AI insights — fetched once per period when live data arrives
-  useMemo(() => {
-    if (!liveNgr || !kpiRegistrations) return;
+  // AI insights — fetched once all core KPIs are available for the period
+  useEffect(() => {
+    if (!liveNgr || !kpiRegistrations || kpiRegistrations === 0) return;
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     const ggr = (overviewKPIs.totalStake ?? 0) - (overviewKPIs.totalWinnings ?? 0);
+    const holdPct = overviewKPIs.totalStake > 0 ? (ggr / overviewKPIs.totalStake * 100) : 0;
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
-      registrations: String(kpiRegistrations), ftds: String(kpiFtds),
-      conv_rate: String(kpiRegistrations > 0 ? ((kpiFtds/kpiRegistrations)*100).toFixed(1) : 0),
-      ggr: String(Math.round(ggr)), ngr: String(Math.round(liveNgr ?? 0)),
-      turnover: String(Math.round(overviewKPIs.totalStake ?? 0)),
-      deposits: String(Math.round(transactionSummary.totalDeposits ?? 0)),
-      withdrawals: String(Math.round(transactionSummary.totalWithdrawals ?? 0)),
-      net_cash: String(Math.round((transactionSummary.totalDeposits ?? 0) - (transactionSummary.totalWithdrawals ?? 0))),
-      churn_pct: String(liveChurnPct ?? 0),
-      active_players: String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
+      registrations:   String(kpiRegistrations),
+      ftds:            String(kpiFtds),
+      conv_rate:       String(kpiRegistrations > 0 ? ((kpiFtds / kpiRegistrations) * 100).toFixed(1) : 0),
+      ggr:             String(Math.round(ggr)),
+      ngr:             String(Math.round(liveNgr ?? 0)),
+      turnover:        String(Math.round(overviewKPIs.totalStake ?? 0)),
+      hold_pct:        String(holdPct.toFixed(1)),
+      deposits:        String(Math.round(transactionSummary.totalDeposits ?? 0)),
+      withdrawals:     String(Math.round(transactionSummary.totalWithdrawals ?? 0)),
+      net_cash:        String(Math.round((transactionSummary.totalDeposits ?? 0) - (transactionSummary.totalWithdrawals ?? 0))),
+      churn_pct:       String(liveChurnPct ?? 0),
+      active_players:  String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
       bonus_issued:    String(Math.round(liveBonusTxIssued ?? 0)),
       bonus_converted: String(Math.round(liveBonusConverted ?? 0)),
-      avg_ftd_value:   String(Math.round(0)),
+      avg_ftd_value:   String(Math.round(liveFtdRegMonth ?? 0)),
     });
     setAiLoading(true);
+    setAiInsights(null);
     fetch(`${API_BASE}/insights/ai-summary?${params}`, {
       method: "POST",
       headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
@@ -307,7 +308,7 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.dateFrom, filters.dateTo, liveNgr]);
+  }, [filters.dateFrom, filters.dateTo, kpiRegistrations, liveNgr]);
 
   const reportData: ReportData = useMemo(() => {
     const stake = overviewKPIs.totalStake ?? 0;

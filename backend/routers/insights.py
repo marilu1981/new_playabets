@@ -51,7 +51,7 @@ def _call_azure_openai(prompt: str) -> dict:
                     "\n- Lead with the finding, then justify it. Never throat-clear."
                     "\n- Short sentences. Active voice. One idea per sentence."
                     "\n- State risks plainly. If a number is bad, say so."
-                    "\n- Connect mechanic to commercial consequence. 'Churn is 18%' is weak. 'Churn at 18% means one in five active players last month did not return, costing approximately R[X] in recurring GGR' is strong."
+                    "\n- Connect mechanic to commercial consequence. 'Churn is 18%' is weak. 'Churn at 18% means one in five active players last month did not return' is strong. Calculate the ZAR cost from the data provided: cost = (churn_pct/100) * active_players * (ngr/active_players). Never write R[X] or placeholder values, always compute the actual figure."
                     "\n- Currency in figures: R150k, R2.3m, R8,500."
                     "\n- British English spelling throughout."
                     "\n- No em dashes. Use commas, colons, or full stops instead."

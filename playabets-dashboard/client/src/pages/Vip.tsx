@@ -241,17 +241,21 @@ export default function VipPage() {
     const rev = revenue;
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const holdPct = rev.total_turnover ? ((rev.total_ggr ?? 0) / rev.total_turnover * 100) : 0;
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
-      registrations: "0", ftds: "0",
-      ggr:          String(Math.round(rev.total_ggr ?? 0)),
-      ngr:          String(Math.round(rev.total_ggr ?? 0)),
-      turnover:     String(Math.round(rev.total_turnover ?? 0)),
-      hold_pct:     String(rev.total_turnover ? ((rev.total_ggr ?? 0) / rev.total_turnover * 100).toFixed(1) : "0"),
-      total_vips:   String(rev.vip_count ?? 0),
-      vip_ggr:      String(Math.round(rev.total_ggr ?? 0)),
-      active_players: String(rev.active_vips ?? 0),
-      avg_ftd_value:  String(Math.round(rev.avg_revenue_per_vip ?? 0)),
+      // VIP-specific context — no registrations/FTDs as VIPs are existing high-value players
+      registrations:   String(rev.vip_count ?? 0),  // use vip_count as "players in scope"
+      ftds:            String(rev.active_vips ?? 0),
+      conv_rate:       String(rev.vip_conversion_rate ?? 0),
+      ggr:             String(Math.round(rev.total_ggr ?? 0)),
+      ngr:             String(Math.round(rev.total_ggr ?? 0)),
+      turnover:        String(Math.round(rev.total_turnover ?? 0)),
+      hold_pct:        String(holdPct.toFixed(1)),
+      total_vips:      String(rev.vip_count ?? 0),
+      vip_ggr:         String(Math.round(rev.total_ggr ?? 0)),
+      active_players:  String(rev.active_vips ?? 0),
+      avg_ftd_value:   String(Math.round(rev.avg_revenue_per_vip ?? 0)),
     });
     setAiLoading(true);
     fetch(`${API_BASE}/insights/ai-summary?${params}`, {
@@ -383,6 +387,9 @@ export default function VipPage() {
         <p className="text-[11px] text-amber-600 mb-4">Updating VIP data for new filters…</p>
       )}
 
+      {/* VIP AI Insights — directly below KPI cards */}
+      <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP AI Insights" />
+
       {/* By stage + Product share */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
         <div className="rounded-xl p-5" style={CARD}>
@@ -504,9 +511,6 @@ export default function VipPage() {
           </div>
         </div>
       </div>
-
-      {/* VIP AI Insights */}
-      <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP AI Insights" />
 
       {/* Portfolio Manager table */}
       <div className="rounded-xl p-5 mb-4" style={CARD}>

@@ -122,20 +122,25 @@ export default function CrmPage() {
 
   // CRM AI Insights — fires once churn and retention data are available
   useEffect(() => {
-    if (churnPct === null && retentionSummary === null && totalActives === null) return;
+    if (churnPct === null || totalActives === null || totalActives === 0) return;
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
+    const estimatedNgr = arpu != null && totalActives != null ? arpu * totalActives : 0;
+    // cohortData gives us registrations and FTD counts for the period
+    const periodRegs = cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0);
+    const periodFtds = cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0);
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
-      churn_pct: String(churnPct ?? 0),
-      retention_d7: String(retentionSummary?.avg_d7 ?? 0),
-      retention_d30: String(retentionSummary?.avg_d30 ?? 0),
-      active_players: String(totalActives ?? 0),
-      avg_ftd_value: String(Math.round(avgDepositValue ?? 0)),
-      // ARPU as NGR proxy
-      ngr: String(arpu != null && totalActives != null ? arpu * totalActives : 0),
-      ggr: String(arpu != null && totalActives != null ? arpu * totalActives : 0),
-      registrations: "0", ftds: "0",
+      registrations:   String(periodRegs),
+      ftds:            String(periodFtds),
+      conv_rate:       String(periodRegs > 0 ? ((periodFtds / periodRegs) * 100).toFixed(1) : "0"),
+      churn_pct:       String(churnPct ?? 0),
+      retention_d7:    String(retentionSummary?.avg_d7 ?? 0),
+      retention_d30:   String(retentionSummary?.avg_d30 ?? 0),
+      active_players:  String(totalActives ?? 0),
+      avg_ftd_value:   String(Math.round(avgDepositValue ?? 0)),
+      ngr:             String(Math.round(estimatedNgr)),
+      ggr:             String(Math.round(estimatedNgr)),
     });
     setAiLoading(true);
     fetch(`${API_BASE}/insights/ai-summary?${params}`, {
