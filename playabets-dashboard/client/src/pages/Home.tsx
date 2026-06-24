@@ -10,7 +10,7 @@
  * - Summary Metrics Table (4 tabs + Export to CSV)
  */
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getLatestDataDate, getLastUpdated } from "@/lib/apiCache";
 import DashboardLayout from "@/components/DashboardLayout";
 import TopFiltersBar, { defaultFilters, type DashboardFilters } from "@/components/TopFiltersBar";
