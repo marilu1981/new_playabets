@@ -79,7 +79,7 @@ export default function KpiCard({
                       background: "#1a2e1a",
                       color: "#e8f5e8",
                       border: "1px solid #2d4a2d",
-                      transform: "translateX(-50%) translateY(-110%)",
+                      transform: "translateX(-50%) translateY(10%)",
                     }}
                   >
                     {tooltip}

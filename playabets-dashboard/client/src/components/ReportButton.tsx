@@ -78,9 +78,9 @@ export default function ReportButton({ data }: ReportButtonProps) {
       disabled={loading}
       className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-semibold transition-all duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
       style={{
-        background: "oklch(0.72 0.14 85 / 15%)",
-        color: "oklch(0.72 0.14 85)",
-        border: "1px solid oklch(0.72 0.14 85 / 30%)",
+        background: "#7ab800",
+        color: "#ffffff",
+        border: "1px solid #5a8c00",
       }}
       title="Download executive PDF report with AI insights"
     >

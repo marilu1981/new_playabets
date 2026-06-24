@@ -427,7 +427,7 @@ export default function Home() {
             </div>
             {subtitle && <div className="text-[7px] text-gray-400 leading-tight mt-0.5">{subtitle}</div>}
             {tooltip && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 rounded-md shadow-xl text-[10px] leading-snug p-2.5 z-[9999] hidden group-hover:block pointer-events-none"
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-52 rounded-md shadow-xl text-[10px] leading-snug p-2.5 z-[9999] hidden group-hover:block pointer-events-none"
                 style={{ background: "#1a2e1a", color: "#e8f5e8", border: "1px solid #2d4a2d" }}>
                 {tooltip}
               </div>
