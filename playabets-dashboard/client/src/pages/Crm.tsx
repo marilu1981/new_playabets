@@ -243,7 +243,7 @@ export default function CrmPage() {
 
       <div className="grid grid-cols-1 gap-4 mb-4">
         {/* CRM AI Insights */}
-        <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="CRM AI Insights" />
+        <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="CRM Insights" />
 
         {/* Cohort D7 / D30 Conversion */}
         <div className="rounded-xl p-5" style={CARD_BG}>

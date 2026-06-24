@@ -19,7 +19,7 @@ const QUADRANTS = [
   { key: "recommendations", label: "Recommendations",  bg: "#f0f9ff", border: "#bae6fd", text: "#0c4a6e", dot: "#0284c7" },
 ];
 
-export default function AiInsightsPanel({ insights, loading, title = "AI Insights", className = "" }: Props) {
+export default function AiInsightsPanel({ insights, loading, title = "Insights", className = "" }: Props) {
   if (!loading && !insights) return null;
 
   return (
@@ -30,7 +30,6 @@ export default function AiInsightsPanel({ insights, loading, title = "AI Insight
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-          <p className="text-xs text-gray-500">Powered by Azure OpenAI · Data stays within Azure</p>
         </div>
         {loading && (
           <div

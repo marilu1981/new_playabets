@@ -388,7 +388,7 @@ export default function VipPage() {
       )}
 
       {/* VIP AI Insights — directly below KPI cards */}
-      <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP AI Insights" />
+      <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP Insights" />
 
       {/* By stage + Product share */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
