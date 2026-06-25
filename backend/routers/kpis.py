@@ -58,6 +58,7 @@ router = APIRouter()
 
 _SAST = timezone(timedelta(hours=2))
 _SUMMARY_CACHE: dict[tuple, dict] = {}
+_KPIS_CACHE: dict[tuple, dict] = {}
 
 
 def _path_mtime(path: Path) -> int:
@@ -113,6 +114,14 @@ def kpis(
     current_segment: Optional[str] = Query(None),
 ):
     allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
+
+    # Result cache — keyed on date range + file mtimes (same as summary cache)
+    # Only cache unfiltered requests (territory/country filters bypass)
+    if allowed_ids is None:
+        kpis_cache_key = _summary_cache_key(start, end, start, end, date(end.year, 1, 1))[:6]
+        cached = _KPIS_CACHE.get(kpis_cache_key)
+        if cached is not None:
+            return cached
 
     df = _filter_range(load_daily_df(), start, end)
     tx = _load_transactions_df(start, end)
@@ -257,6 +266,9 @@ def kpis(
             "registrations_filtered": filtered_registrations is not None,
         },
     }
+    if allowed_ids is None:
+        _KPIS_CACHE[kpis_cache_key] = result  # type: ignore[possibly-undefined]
+    return result
 
 
 @router.get("/kpis/latest")

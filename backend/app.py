@@ -127,29 +127,37 @@ app.add_middleware(APIKeyMiddleware)
 async def warmup_cache() -> None:
     import threading
     def _warm():
-        from backend.core.cache import load_parquet_cached, load_daily_df, CASINO_DAILY_PATH, BONUS_DAILY_PATH, FTD_DAILY_PATH, FTD_REG_MONTH_DAILY_PATH, FTD_NEW_DEP_DAILY_PATH, ACTIVES_MONTHLY_PATH, RFM_USERS_PATH, TX_DAILY_PATH, VIP_ROSTER_PATH, CHURN_MONTHLY_PATH, DEPOSITORS_MONTHLY_PATH, TOTAL_ACTIVES_MONTHLY_PATH
-        from pathlib import Path
+        from backend.core.cache import load_parquet_cached, load_daily_df, CASINO_DAILY_PATH, BONUS_DAILY_PATH, FTD_DAILY_PATH, FTD_REG_MONTH_DAILY_PATH, FTD_NEW_DEP_DAILY_PATH, ACTIVES_MONTHLY_PATH, RFM_USERS_PATH, TX_DAILY_PATH, VIP_ROSTER_PATH, CHURN_MONTHLY_PATH, DEPOSITORS_MONTHLY_PATH, TOTAL_ACTIVES_MONTHLY_PATH, TAXES_RAW_DIR
         try:
             logger.info("Cache warmup: loading serving parquets...")
             load_daily_df()
             for path, key in [
-                (CASINO_DAILY_PATH, "casino_daily"),
-                (BONUS_DAILY_PATH, "bonus_daily"),
-                (FTD_DAILY_PATH, "ftd_daily"),
-                (FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"),
-                (ACTIVES_MONTHLY_PATH, "actives_monthly"),
-                (TX_DAILY_PATH, "tx_daily"),
-                (VIP_ROSTER_PATH, "vip_roster"),
-                (RFM_USERS_PATH, "rfm_users"),
-                (CHURN_MONTHLY_PATH, "churn_monthly"),
-                (DEPOSITORS_MONTHLY_PATH, "depositors_monthly"),
-                (TOTAL_ACTIVES_MONTHLY_PATH, "total_actives_monthly"),
-                (_SERVING / "affiliate_summary.parquet", "affiliate_summary"),
+                (CASINO_DAILY_PATH,           "casino_daily"),
+                (BONUS_DAILY_PATH,            "bonus_daily"),
+                (FTD_DAILY_PATH,              "ftd_daily"),
+                (FTD_REG_MONTH_DAILY_PATH,    "ftd_reg_month_daily"),
+                (FTD_NEW_DEP_DAILY_PATH,      "ftd_new_dep_daily"),
+                (ACTIVES_MONTHLY_PATH,        "actives_monthly"),
+                (TX_DAILY_PATH,               "tx_daily"),
+                (VIP_ROSTER_PATH,             "vip_roster"),
+                (RFM_USERS_PATH,              "rfm_users"),
+                (CHURN_MONTHLY_PATH,          "churn_monthly"),
+                (DEPOSITORS_MONTHLY_PATH,     "depositors_monthly"),
+                (TOTAL_ACTIVES_MONTHLY_PATH,  "total_actives_monthly"),
+                (_SERVING / "affiliate_summary.parquet",       "affiliate_summary"),
                 (_SERVING / "payment_providers_daily.parquet", "payment_providers_daily"),
-                (_SERVING / "ftd_new_dep_daily.parquet", "ftd_new_dep_daily"),
+                (_SERVING / "vip_revenue_daily.parquet",       "vip_revenue_daily"),
+                (_SERVING / "retention_monthly.parquet",       "retention_monthly"),
             ]:
                 if path.exists():
                     load_parquet_cached(path, key)
+            # Pre-load taxes raw files (these cause /kpis to be slow on first call)
+            if TAXES_RAW_DIR.exists():
+                import pandas as pd
+                tax_files = sorted(TAXES_RAW_DIR.glob("taxes_*.parquet"))
+                if tax_files:
+                    pd.concat([pd.read_parquet(f) for f in tax_files], ignore_index=True)
+                    logger.info("Cache warmup: taxes loaded (%d files)", len(tax_files))
             logger.info("Cache warmup complete.")
         except Exception as exc:
             logger.warning("Cache warmup error (non-fatal): %s", exc)
@@ -199,10 +207,13 @@ def health():
 # ---------------------------------------------------------------------------
 @app.post("/cache/clear")
 def cache_clear():
+    from backend.routers.kpis import _SUMMARY_CACHE, _KPIS_CACHE
     _PARQUET_CACHE.clear()
     _COHORT_CACHE["fingerprint"] = None
     _COHORT_CACHE["df"] = pd.DataFrame()
     _COHORT_CACHE["max_observed_date"] = None
+    _SUMMARY_CACHE.clear()
+    _KPIS_CACHE.clear()
     return {"ok": True}
 
 
