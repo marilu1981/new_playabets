@@ -14,6 +14,7 @@ import { cachedFetch, invalidateCache } from "@/lib/apiCache";
 import { formatFull, formatNumber, formatCompact } from "@/lib/formatters";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { AiInsights } from "@/lib/generateReport";
+import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -235,25 +236,31 @@ export default function VipPage() {
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
-  // VIP AI Insights — fires once revenue data is loaded
+  // VIP AI Insights — fires once revenue data is loaded, cached per period
   useEffect(() => {
     if (!revenue?.has_data) return;
     const rev = revenue;
+    const vipGgr = Math.round(rev.total_ggr ?? 0);
+    const vipCount = rev.vip_count ?? 0;
+
+    // Return cached insights if available
+    const cached = getCachedInsights("vip", filters.dateFrom, filters.dateTo, vipGgr, vipCount);
+    if (cached) { setAiInsights(cached); return; }
+
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-    const holdPct = rev.total_turnover ? ((rev.total_ggr ?? 0) / rev.total_turnover * 100) : 0;
+    const holdPct = rev.total_turnover ? (vipGgr / rev.total_turnover * 100) : 0;
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
-      // VIP-specific context — no registrations/FTDs as VIPs are existing high-value players
-      registrations:   String(rev.vip_count ?? 0),  // use vip_count as "players in scope"
+      registrations:   String(vipCount),
       ftds:            String(rev.active_vips ?? 0),
       conv_rate:       String(rev.vip_conversion_rate ?? 0),
-      ggr:             String(Math.round(rev.total_ggr ?? 0)),
-      ngr:             String(Math.round(rev.total_ggr ?? 0)),
+      ggr:             String(vipGgr),
+      ngr:             String(vipGgr),
       turnover:        String(Math.round(rev.total_turnover ?? 0)),
       hold_pct:        String(holdPct.toFixed(1)),
-      total_vips:      String(rev.vip_count ?? 0),
-      vip_ggr:         String(Math.round(rev.total_ggr ?? 0)),
+      total_vips:      String(vipCount),
+      vip_ggr:         String(vipGgr),
       active_players:  String(rev.active_vips ?? 0),
       avg_ftd_value:   String(Math.round(rev.avg_revenue_per_vip ?? 0)),
     });
@@ -263,7 +270,12 @@ export default function VipPage() {
       headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
     })
       .then(r => r.json())
-      .then(d => { if (d.available) setAiInsights(d as AiInsights); })
+      .then(d => {
+        if (d.available) {
+          setAiInsights(d as AiInsights);
+          setCachedInsights("vip", filters.dateFrom, filters.dateTo, d as AiInsights, vipGgr, vipCount);
+        }
+      })
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -16,6 +16,7 @@ import { cachedFetch } from "@/lib/apiCache";
 import { aggregateByGranularity } from "@/pages/home/homeUtils";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { AiInsights } from "@/lib/generateReport";
+import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -120,13 +121,21 @@ export default function CrmPage() {
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo, filters.granularity]);
 
-  // CRM AI Insights — fires once churn and retention data are available
+  // CRM AI Insights — fires once CRM-specific data is available (churn + retention, NOT just main KPIs)
   useEffect(() => {
-    if (churnPct === null || totalActives === null || totalActives === 0) return;
+    // Require both churn AND retention summary — ensures we have CRM-specific data, not just main dashboard KPIs
+    if (churnPct === null || retentionSummary === null || totalActives === null || totalActives === 0) return;
+    const churn = churnPct ?? 0;
+    const d30 = retentionSummary?.avg_d30 ?? 0;
+    const actives = totalActives ?? 0;
+
+    // Return cached insights if available
+    const cached = getCachedInsights("crm", filters.dateFrom, filters.dateTo, churn, d30, actives);
+    if (cached) { setAiInsights(cached); return; }
+
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     const estimatedNgr = arpu != null && totalActives != null ? arpu * totalActives : 0;
-    // cohortData gives us registrations and FTD counts for the period
     const periodRegs = cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0);
     const periodFtds = cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0);
     const params = new URLSearchParams({
@@ -134,10 +143,10 @@ export default function CrmPage() {
       registrations:   String(periodRegs),
       ftds:            String(periodFtds),
       conv_rate:       String(periodRegs > 0 ? ((periodFtds / periodRegs) * 100).toFixed(1) : "0"),
-      churn_pct:       String(churnPct ?? 0),
+      churn_pct:       String(churn),
       retention_d7:    String(retentionSummary?.avg_d7 ?? 0),
-      retention_d30:   String(retentionSummary?.avg_d30 ?? 0),
-      active_players:  String(totalActives ?? 0),
+      retention_d30:   String(d30),
+      active_players:  String(actives),
       avg_ftd_value:   String(Math.round(avgDepositValue ?? 0)),
       ngr:             String(Math.round(estimatedNgr)),
       ggr:             String(Math.round(estimatedNgr)),
@@ -148,7 +157,12 @@ export default function CrmPage() {
       headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
     })
       .then(r => r.json())
-      .then(res => { if (res.available) setAiInsights(res as AiInsights); })
+      .then(res => {
+        if (res.available) {
+          setAiInsights(res as AiInsights);
+          setCachedInsights("crm", filters.dateFrom, filters.dateTo, res as AiInsights, churn, d30, actives);
+        }
+      })
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps

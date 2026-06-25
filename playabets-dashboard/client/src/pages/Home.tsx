@@ -57,6 +57,7 @@ import { SummaryMetricsTable } from "./home/HomeSections";
 import ReportButton from "@/components/ReportButton";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { ReportData, AiInsights } from "@/lib/generateReport";
+import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 
 export default function Home() {
@@ -272,20 +273,28 @@ export default function Home() {
 
 
 
-  // AI insights — fetched once all core KPIs are available for the period
+  // AI insights — cached per period in localStorage, only re-fetches when period or key metrics change
   useEffect(() => {
     if (!liveNgr || !kpiRegistrations || kpiRegistrations === 0) return;
+    const ggr = (overviewKPIs.totalStake ?? 0) - (overviewKPIs.totalWinnings ?? 0);
+    const ngr = Math.round(liveNgr ?? 0);
+    const regs = kpiRegistrations;
+
+    // Return cached insights if available for this period + metrics
+    const cached = getCachedInsights("home", filters.dateFrom, filters.dateTo, ggr, ngr, regs);
+    if (cached) { setAiInsights(cached); return; }
+
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-    const ggr = (overviewKPIs.totalStake ?? 0) - (overviewKPIs.totalWinnings ?? 0);
     const holdPct = overviewKPIs.totalStake > 0 ? (ggr / overviewKPIs.totalStake * 100) : 0;
+    // Note: no retention_d7/d30 here — not available on home page, AI should not mention them
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
-      registrations:   String(kpiRegistrations),
+      registrations:   String(regs),
       ftds:            String(kpiFtds),
-      conv_rate:       String(kpiRegistrations > 0 ? ((kpiFtds / kpiRegistrations) * 100).toFixed(1) : 0),
+      conv_rate:       String(regs > 0 ? ((kpiFtds / regs) * 100).toFixed(1) : 0),
       ggr:             String(Math.round(ggr)),
-      ngr:             String(Math.round(liveNgr ?? 0)),
+      ngr:             String(ngr),
       turnover:        String(Math.round(overviewKPIs.totalStake ?? 0)),
       hold_pct:        String(holdPct.toFixed(1)),
       deposits:        String(Math.round(transactionSummary.totalDeposits ?? 0)),
@@ -295,7 +304,6 @@ export default function Home() {
       active_players:  String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
       bonus_issued:    String(Math.round(liveBonusTxIssued ?? 0)),
       bonus_converted: String(Math.round(liveBonusConverted ?? 0)),
-      avg_ftd_value:   String(Math.round(liveFtdRegMonth ?? 0)),
     });
     setAiLoading(true);
     setAiInsights(null);
@@ -304,7 +312,12 @@ export default function Home() {
       headers: { "Accept": "application/json", ...(API_KEY_H ? { "X-API-Key": API_KEY_H } : {}) },
     })
       .then(r => r.json())
-      .then(d => { if (d.available) setAiInsights(d as AiInsights); })
+      .then(d => {
+        if (d.available) {
+          setAiInsights(d as AiInsights);
+          setCachedInsights("home", filters.dateFrom, filters.dateTo, d as AiInsights, ggr, ngr, regs);
+        }
+      })
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
