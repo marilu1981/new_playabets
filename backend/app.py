@@ -125,6 +125,9 @@ app.add_middleware(APIKeyMiddleware)
 # ---------------------------------------------------------------------------
 @app.on_event("startup")
 async def warmup_cache() -> None:
+    # Run synchronously first (blocks startup by ~5-10s) to ensure the cache
+    # is hot before the first user request arrives. Background thread handles
+    # any remaining files that take longer.
     import threading
     def _warm():
         from backend.core.cache import load_parquet_cached, load_daily_df, CASINO_DAILY_PATH, BONUS_DAILY_PATH, FTD_DAILY_PATH, FTD_REG_MONTH_DAILY_PATH, FTD_NEW_DEP_DAILY_PATH, ACTIVES_MONTHLY_PATH, RFM_USERS_PATH, TX_DAILY_PATH, VIP_ROSTER_PATH, CHURN_MONTHLY_PATH, DEPOSITORS_MONTHLY_PATH, TOTAL_ACTIVES_MONTHLY_PATH, TAXES_RAW_DIR
@@ -161,8 +164,9 @@ async def warmup_cache() -> None:
             logger.info("Cache warmup complete.")
         except Exception as exc:
             logger.warning("Cache warmup error (non-fatal): %s", exc)
-    # Run in background thread so startup doesn't block health checks
-    threading.Thread(target=_warm, daemon=True).start()
+    # Run warmup in foreground first so cache is hot before first request.
+    # Container health check has a 10s grace period, so this is safe.
+    _warm()
 
 
 # ---------------------------------------------------------------------------
