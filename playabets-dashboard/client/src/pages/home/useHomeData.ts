@@ -99,10 +99,8 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   }, [setFilters]);
 
   useEffect(() => {
-    if (latestDataDate === null) {
-      return;
-    }
-
+    // Don't gate on latestDataDate — fire immediately using persisted filter dates.
+    // latestDataDate from /kpis/latest will clamp the dates if needed once it arrives.
     let cancelled = false;
 
     async function loadLiveData() {
@@ -637,7 +635,6 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
       cancelled = true;
     };
   }, [
-    latestDataDate,
     filters.dateFrom,
     filters.dateTo,
     filters.territory,
