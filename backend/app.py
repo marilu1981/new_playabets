@@ -218,6 +218,8 @@ def cache_clear():
     _COHORT_CACHE["max_observed_date"] = None
     _SUMMARY_CACHE.clear()
     _KPIS_CACHE.clear()
+    from backend.routers.insights import _CACHE as _INSIGHTS_CACHE
+    _INSIGHTS_CACHE.clear()
     return {"ok": True}
 
 

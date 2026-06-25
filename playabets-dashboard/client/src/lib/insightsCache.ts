@@ -5,7 +5,7 @@
  */
 import type { AiInsights } from "@/lib/generateReport";
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2"; // bumped: removed D7/D30 from home insights
 
 function cacheKey(page: string, dateFrom: string, dateTo: string, metricHash: string): string {
   return `pb_insights_${CACHE_VERSION}_${page}_${dateFrom}_${dateTo}_${metricHash}`;
