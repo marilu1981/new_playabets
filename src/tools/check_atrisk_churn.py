@@ -86,13 +86,18 @@ def _read_userids(path: Path) -> set[int]:
     return set(pd.to_numeric(df[col], errors="coerce").dropna().astype(int).tolist())
 
 
-def _last_activity_per_user(flagged: set[int]) -> tuple[dict[int, pd.Timestamp], pd.Timestamp | None]:
+def _last_activity_per_user(
+    flagged: set[int],
+) -> tuple[dict[int, pd.Timestamp], pd.Timestamp | None, dict[int, set[str]]]:
     """
-    Return {userid: last_real_money_bet_date} for the flagged users only, across
-    sports + casino, and the max activity date seen in the data (the data's
-    'as of' date). Restricting to flagged users keeps memory sane for big lists.
+    For the flagged users only, return:
+      - {userid: last_real_money_bet_date}  (across sports + casino)
+      - data_max: latest activity date in the data (the 'as of' date)
+      - {userid: set("YYYY-MM")}  the months each flagged user was active
+    Restricting to flagged users keeps memory sane for big lists.
     """
     last: dict[int, pd.Timestamp] = {}
+    months: dict[int, set[str]] = {}
     data_max: pd.Timestamp | None = None
 
     def _ingest(df, uid, dcol):
@@ -112,6 +117,9 @@ def _last_activity_per_user(flagged: set[int]) -> tuple[dict[int, pd.Timestamp],
         for uu, dd in grp.items():
             if uu not in last or dd > last[uu]:
                 last[uu] = dd
+        sub["mon"] = sub["d"].dt.to_period("M").astype(str)
+        for uu, mon in sub[["u", "mon"]].drop_duplicates().itertuples(index=False):
+            months.setdefault(uu, set()).add(mon)
 
     bs_raw = read_all_parquets(raw_dir("betslips"), "betslips*.parquet")
     if not bs_raw.empty:
@@ -131,7 +139,7 @@ def _last_activity_per_user(flagged: set[int]) -> tuple[dict[int, pd.Timestamp],
                 ca = ca[pd.to_numeric(ca[stake], errors="coerce").fillna(0) > 0]
             _ingest(ca, uid, dcol)
 
-    return last, data_max
+    return last, data_max, months
 
 
 def _active_users_by_month(flag_month: str, next_month: str) -> tuple[dict[str, set[int]], dict[str, set[int]]]:
@@ -175,7 +183,7 @@ def _run_silence(flagged: set[int], silence_days: int, as_of_arg: str | None, ou
     silence_days+ ago as of the data's latest date (or --as-of). Works mid-month;
     does not need the calendar month to be complete.
     """
-    last, data_max = _last_activity_per_user(flagged)
+    last, data_max, _months = _last_activity_per_user(flagged)
     if data_max is None:
         print("[atrisk] WARNING: no activity found in raw data at all. Is the data present on this machine?")
         return
@@ -221,22 +229,35 @@ def _run_silence(flagged: set[int], silence_days: int, as_of_arg: str | None, ou
     print(f"\nSaved per-user result -> {out}")
 
 
-def _run_since(flagged: set[int], since_arg: str, out: Path) -> None:
+def _run_since(flagged: set[int], since_arg: str, out: Path,
+               require_months: list[str] | None = None) -> None:
     """
     Since rule: churned = a flagged player who was ever active, but placed NO
     real-money bet AFTER the `since` date (i.e. went quiet after being flagged).
     'After' is strictly > since (the flag day itself does not count as retention).
+
+    If require_months is given (e.g. ["2026-04","2026-05"]), the baseline is
+    restricted to flagged players who placed a real-money bet in any of those
+    months, so churn is measured only on a genuinely-active cohort.
     """
     since = pd.Timestamp(since_arg)
-    last, data_max = _last_activity_per_user(flagged)
+    last, data_max, months = _last_activity_per_user(flagged)
     if data_max is None:
         print("[atrisk] WARNING: no activity found in raw data at all.")
         return
+
+    require = set(require_months) if require_months else None
+    if require:
+        baseline = {u for u in flagged if months.get(u) and (months[u] & require)}
+        print(f"[atrisk] baseline filter: active in {sorted(require)} -> {len(baseline):,} of {len(flagged):,} flagged")
+    else:
+        baseline = flagged
+
     print(f"[atrisk] data latest date = {data_max.date()}   flagged on = {since.date()}   "
           f"checking bets after {since.date()} (through {data_max.date()})")
 
     rows = []
-    for uid in flagged:
+    for uid in baseline:
         lb = last.get(uid)
         ever_active = lb is not None
         bet_after = ever_active and lb > since
@@ -244,6 +265,7 @@ def _run_since(flagged: set[int], since_arg: str, out: Path) -> None:
         rows.append({
             "userid": uid,
             "last_bet_date": lb.date().isoformat() if ever_active else "",
+            "active_months": ";".join(sorted(months.get(uid, []))),
             "bet_after_flag": int(bet_after),
             "ever_active": int(ever_active),
             "churned": int(churned),
@@ -253,21 +275,19 @@ def _run_since(flagged: set[int], since_arg: str, out: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     res.to_csv(out, index=False)
 
-    n_flagged = len(res)
-    n_ever = int(res["ever_active"].sum())
-    n_churned = int(res["churned"].sum())
+    n_base = len(res)
+    n_ever = int(res["ever_active"].sum()) if n_base else 0
+    n_churned = int(res["churned"].sum()) if n_base else 0
     n_retained = n_ever - n_churned
-    n_never = n_flagged - n_ever
 
+    label = f"active in {sorted(require)}" if require else "all flagged"
     print("\n" + "=" * 64)
-    print(f"AT-RISK CHURN RESULT (no bet since {since.date()})")
+    print(f"AT-RISK CHURN RESULT (baseline: {label}; churn = no bet after {since.date()})")
     print("=" * 64)
-    print(f"Flagged at-risk ............................ {n_flagged:,}")
-    print(f"  Ever active in the data ................. {n_ever:,}")
+    print(f"Baseline players ........................... {n_base:,}")
     if n_ever:
-        print(f"    -> Churned (no bet after {since.date()}) ... {n_churned:,}   ({n_churned / n_ever * 100:.1f}% of active)")
-        print(f"    -> Retained (bet after {since.date()}) ..... {n_retained:,}   ({n_retained / n_ever * 100:.1f}% of active)")
-    print(f"  Never seen in betting data ............. {n_never:,}")
+        print(f"  -> Churned (no bet after {since.date()}) ..... {n_churned:,}   ({n_churned / n_ever * 100:.1f}%)")
+        print(f"  -> Retained (bet after {since.date()}) ....... {n_retained:,}   ({n_retained / n_ever * 100:.1f}%)")
     print(f"\nSaved per-user result -> {out}")
 
 
@@ -279,6 +299,9 @@ def main() -> None:
                         "since = no bet after --since date (went quiet after flagging); "
                         "month = dashboard calendar-month rule")
     p.add_argument("--since", default=None, help="(since rule) flag date YYYY-MM-DD; churned = no bet after this date")
+    p.add_argument("--require-active-in", default=None,
+                   help="(since rule) comma months e.g. 2026-04,2026-05 — restrict baseline to players "
+                        "who bet real money in any of these months")
     p.add_argument("--silence-days", type=int, default=21, help="Days of no bet = churned (silence rule), default 21")
     p.add_argument("--as-of", default=None, help="Override 'as of' date (YYYY-MM-DD); default = latest date in data")
     p.add_argument("--flag-month", default="2026-05", help="(month rule) Month list was generated (YYYY-MM)")
@@ -298,7 +321,8 @@ def main() -> None:
     if args.rule == "since":
         if not args.since:
             p.error("--rule since requires --since YYYY-MM-DD")
-        _run_since(flagged, args.since, out)
+        req = [m.strip() for m in args.require_active_in.split(",") if m.strip()] if args.require_active_in else None
+        _run_since(flagged, args.since, out, require_months=req)
         return
 
     # ---- month rule (dashboard definition) ----
