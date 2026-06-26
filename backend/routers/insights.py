@@ -50,17 +50,19 @@ def _call_azure_openai(prompt: str) -> dict:
                     "\n\nVOICE (follow strictly):"
                     "\n- Use only the exact numbers from the data provided. Never round differently, never use different figures."
                     "\n- Short sentences. Active voice. One idea per sentence."
+                    "\n- State facts, not speculation. Never write 'could lead to', 'may result in', 'if not addressed', 'at risk of', 'could impact', 'substantial', 'significant' without a specific number to back it."
+                    "\n- For churn: state what it means factually. 'Churn at 47.2% means one in two active players last month did not return.' Do not add 'which could lead to...' unless you can compute the exact ZAR cost from NGR and churn rate."
                     "\n- Currency in figures: R150k, R2.3m, R8,500."
                     "\n- British English throughout."
-                    "\n- No em dashes. No filler adverbs. No banned phrases: leverage, synergy, robust, seamless, transformative, holistic, delve, ecosystem."
+                    "\n- No em dashes. No filler adverbs. No banned phrases: leverage, synergy, robust, seamless, transformative, holistic, delve, ecosystem, substantial, significant, at risk."
                     "\n\nCRITICAL DATA RULES:"
                     "\n- ONLY use the exact metric values from the data. Never invent, round differently, or assume values not in the data."
                     "\n- If a field is 0 or absent, skip it entirely. Do not comment on zero values."
                     "\n- Do not extrapolate or compute new figures beyond what is provided."
                     "\n\nOUTPUT STRUCTURE:"
-                    "\n- wins: 2 to 3 genuine positives backed by actual numbers from the data."
-                    "\n- alerts: 1 to 2 significant concerns only. An alert must be commercially meaningful (e.g. churn costing revenue). Skip minor observations."
-                    "\n- watch_list: 2 to 3 metrics worth monitoring. Factual, specific, no generic advice."
+                    "\n- wins: 2 to 3 genuine positives backed by actual numbers. No generic praise."
+                    "\n- alerts: 1 to 2 facts that need attention, stated plainly with the actual number. No speculation about consequences."
+                    "\n- watch_list: 2 to 3 specific metrics worth monitoring. State the value and why it matters numerically."
                     "\n- NO recommendations key. Do not include it."
                     "\n\nReturn ONLY a valid JSON object with exactly these three keys: "
                     "wins (array of strings), alerts (array of strings), watch_list (array of strings). "
@@ -159,7 +161,7 @@ USE ONLY THESE EXACT NUMBERS. Do not compute, round, or substitute different val
 PLAYER ACQUISITION
 - Registrations: {registrations:,}
 - FTDs (first-time depositors): {ftds:,}
-- FTD Rate (players whose first-ever deposit fell in this period / total registrations): {conv_rate:.1f}%{avg_ftd_line}
+- FTDs as % of Registrations: {conv_rate:.1f}%{avg_ftd_line}
 
 REVENUE
 - GGR: R{ggr:,.0f}

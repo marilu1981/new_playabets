@@ -294,7 +294,7 @@ export default function Home() {
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(regs),
       ftds:            String(kpiFtds),
-      conv_rate:       String(regs > 0 ? ((kpiFtds / regs) * 100).toFixed(1) : 0),
+      conv_rate:       String(periodConvRate), // matches Conv Rate tile (ftd_reg_month / registrations)
       ggr:             String(ggr),
       ngr:             String(ngr),
       turnover:        String(turnover),
