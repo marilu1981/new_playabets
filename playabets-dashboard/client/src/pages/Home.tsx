@@ -273,28 +273,38 @@ export default function Home() {
 
 
 
-  // AI insights — cached per period in localStorage, only re-fetches when period or key metrics change
+  // AI insights — cached per period, re-fetches when summary metrics (prev period) arrive
   useEffect(() => {
     if (!liveNgr || !kpiRegistrations || kpiRegistrations === 0) return;
-    // Use grossRevenue (combined sports+casino GGR) — same value as the GGR tile
+    // Wait for summary metrics so we can include previous period comparisons
+    if (!liveSummaryMetrics) return;
+
     const ggr = Math.round(overviewKPIs.grossRevenue ?? 0);
     const ngr = Math.round(liveNgr ?? 0);
     const regs = kpiRegistrations;
 
+    // Extract previous period values from summary metrics table
+    const overviewRows = liveSummaryMetrics.overview;
+    const prevGgr  = Math.round(overviewRows.find(r => r.metric === "Total GGR")?.previous ?? 0);
+    const prevNgr  = Math.round(overviewRows.find(r => r.metric === "NGR")?.previous ?? 0);
+    const prevRegs = Math.round(overviewRows.find(r => r.metric === "Registrations")?.previous ?? 0);
+    const prevFtds = Math.round(overviewRows.find(r => r.metric === "FTDs")?.previous ?? 0);
+    const prevTurnover = Math.round(overviewRows.find(r => r.metric === "Total Turnover")?.previous ?? 0);
+
     // Return cached insights if available for this period + metrics
-    const cached = getCachedInsights("home", filters.dateFrom, filters.dateTo, ggr, ngr, regs);
+    const cached = getCachedInsights("home", filters.dateFrom, filters.dateTo, ggr, ngr, regs, prevGgr);
     if (cached) { setAiInsights(cached); return; }
 
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     const turnover = Math.round(overviewKPIs.totalStake ?? 0);
     const holdPct = turnover > 0 ? (ggr / turnover * 100) : 0;
-    // FTD conv rate uses kpiFtds/regs — matches the FTDs tile definition
+
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(regs),
       ftds:            String(kpiFtds),
-      conv_rate:       String(periodConvRate), // matches Conv Rate tile (ftd_reg_month / registrations)
+      conv_rate:       String(periodConvRate),
       ggr:             String(ggr),
       ngr:             String(ngr),
       turnover:        String(turnover),
@@ -306,6 +316,12 @@ export default function Home() {
       active_players:  String(liveTotalActives ?? ((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0))),
       bonus_issued:    String(Math.round(liveBonusTxIssued ?? 0)),
       bonus_converted: String(Math.round(liveBonusConverted ?? 0)),
+      // Previous period for comparison
+      prev_ggr:        String(prevGgr),
+      prev_ngr:        String(prevNgr),
+      prev_registrations: String(prevRegs),
+      prev_ftds:       String(prevFtds),
+      prev_turnover:   String(prevTurnover),
     });
     setAiLoading(true);
     setAiInsights(null);
@@ -317,13 +333,14 @@ export default function Home() {
       .then(d => {
         if (d.available) {
           setAiInsights(d as AiInsights);
-          setCachedInsights("home", filters.dateFrom, filters.dateTo, d as AiInsights, ggr, ngr, regs);
+          setCachedInsights("home", filters.dateFrom, filters.dateTo, d as AiInsights, ggr, ngr, regs, prevGgr);
         }
       })
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.dateFrom, filters.dateTo, kpiRegistrations, liveNgr, overviewKPIs.grossRevenue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateFrom, filters.dateTo, kpiRegistrations, liveNgr, overviewKPIs.grossRevenue, !!liveSummaryMetrics]);
 
   const reportData: ReportData = useMemo(() => {
     const stake = overviewKPIs.totalStake ?? 0;

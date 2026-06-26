@@ -104,6 +104,12 @@ def ai_summary(
     vip_ggr:            float = Query(0.0),
     bonus_issued:       float = Query(0.0),
     bonus_converted:    float = Query(0.0),
+    # Previous period for comparison
+    prev_ggr:           float = Query(0.0),
+    prev_ngr:           float = Query(0.0),
+    prev_registrations: int   = Query(0),
+    prev_ftds:          int   = Query(0),
+    prev_turnover:      float = Query(0.0),
 ):
     """Generate AI insights for the selected period using Azure OpenAI (gpt-4o-mini)."""
     if not _ENDPOINT or not _KEY:
@@ -154,6 +160,22 @@ TRANSACTIONS
 
     avg_ftd_line = f"\n- Avg First Deposit Value: R{avg_ftd_value:,.0f}" if avg_ftd_value > 0 else ""
 
+    # Build previous period comparison lines
+    prev_lines = ""
+    if prev_ggr > 0 or prev_registrations > 0:
+        def pct_change(curr: float, prev: float) -> str:
+            if prev <= 0: return "n/a"
+            chg = (curr - prev) / prev * 100
+            return f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
+
+        prev_lines = f"""
+PREVIOUS PERIOD COMPARISON (vs period immediately before {start})
+- GGR: R{prev_ggr:,.0f} → now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)})
+- NGR: R{prev_ngr:,.0f} → now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)})
+- Registrations: {prev_registrations:,} → now {registrations:,} ({pct_change(registrations, prev_registrations)})
+- FTDs: {prev_ftds:,} → now {ftds:,} ({pct_change(ftds, prev_ftds)})
+- Turnover: R{prev_turnover:,.0f} → now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)})"""
+
     prompt = f"""
 Playabets gaming operator data — {start} to {end} ({days} days).
 USE ONLY THESE EXACT NUMBERS. Do not compute, round, or substitute different values.
@@ -175,7 +197,9 @@ PLAYERS
 {vip_lines}
 {bonus_lines}
 
-Provide actionable insights in JSON format with wins, concerns, watch_list, and recommendations.
+{prev_lines}
+
+Provide insights in JSON format: wins, alerts, watch_list only. Reference period-over-period changes where available.
 """
 
     try:
