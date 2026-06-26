@@ -27,14 +27,14 @@ _DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
 _API_VER    = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-07-18")
 
 
-_PROMPT_VERSION = "v7"  # bump when prompt changes to bust in-memory cache
+_PROMPT_VERSION = "v8"  # bumped: per-page context (home/crm/vip)
 
 def _cache_key(**kwargs) -> str:
     payload = json.dumps({**kwargs, "_pv": _PROMPT_VERSION}, sort_keys=True, default=str)
     return hashlib.md5(payload.encode()).hexdigest()
 
 
-def _call_azure_openai(prompt: str) -> dict:
+def _call_azure_openai(prompt: str, context: str = "home") -> dict:
     from openai import AzureOpenAI
     client = AzureOpenAI(
         azure_endpoint=_ENDPOINT,
@@ -47,7 +47,7 @@ def _call_azure_openai(prompt: str) -> dict:
             {
                 "role": "system",
                 "content": (
-                    "You are a gaming analytics practitioner with deep experience in South African sports betting and casino operations. "
+                    f"{_CONTEXT_PROMPTS.get(context, _CONTEXT_PROMPTS['home'])} "
                     "You write like someone who has built and operated gaming data products, not like a generalist consultant. "
                     "VOICE (follow strictly):"
                     "\n- Use only the exact numbers from the data provided. Never round differently, never use different figures."
@@ -83,10 +83,29 @@ def _call_azure_openai(prompt: str) -> dict:
     return json.loads(raw)
 
 
+_CONTEXT_PROMPTS: dict[str, str] = {
+    "home": (
+        "You are analysing the EXECUTIVE OVERVIEW for a South African gaming operator. "
+        "Focus on overall business health: revenue, player acquisition, deposits, churn. "
+        "Do not mention VIP players or CRM metrics unless they are explicitly in the data."
+    ),
+    "crm": (
+        "You are analysing the CRM DASHBOARD for a South African gaming operator. "
+        "Focus on player behaviour: retention, churn, cohort conversion, deposit patterns. "
+        "Do not mention VIP-specific metrics or overall business revenue unless explicitly provided."
+    ),
+    "vip": (
+        "You are analysing the VIP PORTFOLIO for a South African gaming operator. "
+        "Focus only on the high-value player segment: VIP GGR, turnover, hold%, active VIPs, avg revenue per VIP. "
+        "Do not mention general registrations, FTDs, or CRM metrics."
+    ),
+}
+
 @router.post("/insights/ai-summary")
 def ai_summary(
     start: date = Query(...),
     end:   date = Query(...),
+    context: str = Query("home"),  # which page: home | crm | vip
     # KPIs passed as query params — no sensitive player data, just aggregates
     registrations:      int   = Query(0),
     ftds:               int   = Query(0),
@@ -119,6 +138,7 @@ def ai_summary(
         return {"available": False, "reason": "Azure OpenAI not configured"}
 
     cache_key = _cache_key(
+        context=context,
         start=str(start), end=str(end),
         ggr=round(ggr, -3), ngr=round(ngr, -3),
         registrations=registrations, ftds=ftds,
@@ -208,7 +228,7 @@ Provide insights in JSON format: wins, alerts, watch_list only. Reference period
 """
 
     try:
-        result = _call_azure_openai(prompt)
+        result = _call_azure_openai(prompt, context)
         _CACHE[cache_key] = result
         return {**result, "cached": False, "available": True}
     except Exception as exc:

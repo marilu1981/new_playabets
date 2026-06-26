@@ -247,6 +247,7 @@ export default function VipPage() {
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     const holdPct = rev.total_turnover ? (vipGgr / rev.total_turnover * 100) : 0;
     const params = new URLSearchParams({
+      context: "vip",
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(vipCount),
       ftds:            String(rev.active_vips ?? 0),

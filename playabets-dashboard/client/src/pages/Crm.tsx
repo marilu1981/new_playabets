@@ -135,6 +135,7 @@ export default function CrmPage() {
     const periodRegs = cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0);
     const periodFtds = cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0);
     const params = new URLSearchParams({
+      context: "crm",
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(periodRegs),
       ftds:            String(periodFtds),

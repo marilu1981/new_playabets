@@ -304,6 +304,7 @@ export default function Home() {
     const holdPct = turnover > 0 ? (ggr / turnover * 100) : 0;
 
     const params = new URLSearchParams({
+      context: "home",
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(regs),
       ftds:            String(kpiFtds),
