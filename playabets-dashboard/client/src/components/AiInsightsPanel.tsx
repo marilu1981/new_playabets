@@ -1,7 +1,6 @@
 /**
  * PLAYA BETS — AI Insights Panel
- * Reusable 4-quadrant AI insights display.
- * Used on Home, VIP, and CRM pages.
+ * 3-section display: Wins, Alerts, Watch List. No Recommendations.
  */
 import type { AiInsights } from "@/lib/generateReport";
 
@@ -13,10 +12,9 @@ interface Props {
 }
 
 const QUADRANTS = [
-  { key: "wins",            label: "Wins",             bg: "#f0fdf4", border: "#bbf7d0", text: "#166534", dot: "#16a34a" },
-  { key: "concerns",        label: "Concerns",         bg: "#fef2f2", border: "#fecaca", text: "#991b1b", dot: "#dc2626" },
-  { key: "watch_list",      label: "Watch List",       bg: "#fffbeb", border: "#fde68a", text: "#92400e", dot: "#d97706" },
-  { key: "recommendations", label: "Recommendations",  bg: "#f0f9ff", border: "#bae6fd", text: "#0c4a6e", dot: "#0284c7" },
+  { key: "wins",       label: "Wins",       bg: "#f0fdf4", border: "#bbf7d0", text: "#166534", dot: "#16a34a" },
+  { key: "alerts",     label: "Alerts",     bg: "#fef2f2", border: "#fecaca", text: "#991b1b", dot: "#dc2626" },
+  { key: "watch_list", label: "Watch List", bg: "#fffbeb", border: "#fde68a", text: "#92400e", dot: "#d97706" },
 ];
 
 export default function AiInsightsPanel({ insights, loading, title = "Insights", className = "" }: Props) {
@@ -28,9 +26,7 @@ export default function AiInsightsPanel({ insights, loading, title = "Insights",
       style={{ background: "#ffffff", border: "1px solid #e4ece4", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}
     >
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
-        </div>
+        <h3 className="text-sm font-semibold text-gray-800">{title}</h3>
         {loading && (
           <div
             className="w-4 h-4 rounded-full border-2 animate-spin"
@@ -40,9 +36,9 @@ export default function AiInsightsPanel({ insights, loading, title = "Insights",
       </div>
 
       {insights && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {QUADRANTS.map(({ key, label, bg, border, text, dot }) => {
-            const items = insights[key as keyof AiInsights] as string[];
+            const items = (insights as unknown as Record<string, unknown>)[key] as string[] | undefined;
             if (!items?.length) return null;
             return (
               <div key={key} className="rounded-lg p-3.5" style={{ background: bg, border: `1px solid ${border}` }}>

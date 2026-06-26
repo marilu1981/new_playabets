@@ -7,9 +7,10 @@ import jsPDF from "jspdf";
 
 export interface AiInsights {
   wins: string[];
-  concerns: string[];
+  alerts?: string[];
+  concerns?: string[]; // legacy — mapped to alerts
   watch_list: string[];
-  recommendations: string[];
+  recommendations?: string[]; // removed from prompt, kept for backward compat
 }
 
 export interface ReportData {
@@ -258,10 +259,9 @@ export function generateReport(data: ReportData): void {
 
   if (data.aiInsights) {
     const ai = data.aiInsights;
-    y = insightBlock(doc, "Wins",            ai.wins,            y, [76,175,127],  [240,250,245] as [number,number,number]);
-    y = insightBlock(doc, "Concerns",        ai.concerns,        y, [200,70,70],   [252,242,242] as [number,number,number]);
-    y = insightBlock(doc, "Watch List",      ai.watch_list,      y, [210,150,60],  [252,248,238] as [number,number,number]);
-    y = insightBlock(doc, "Recommendations", ai.recommendations, y, [10,32,20],    [245,248,246] as [number,number,number]);
+    y = insightBlock(doc, "Wins",       ai.wins,                          y, [76,175,127],  [240,250,245] as [number,number,number]);
+    y = insightBlock(doc, "Alerts",     ai.alerts ?? ai.concerns ?? [],   y, [200,70,70],   [252,242,242] as [number,number,number]);
+    y = insightBlock(doc, "Watch List", ai.watch_list,                    y, [210,150,60],  [252,248,238] as [number,number,number]);
   } else {
     doc.setFont("helvetica","italic"); doc.setFontSize(8); sc(doc, C.dimText);
     doc.text("AI insights not available for this period — ensure Azure OpenAI is configured.", ML+3, y+4);

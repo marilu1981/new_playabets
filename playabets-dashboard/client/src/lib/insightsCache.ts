@@ -5,7 +5,7 @@
  */
 import type { AiInsights } from "@/lib/generateReport";
 
-const CACHE_VERSION = "v3"; // bumped: D7/D30 omitted from prompt when zero
+const CACHE_VERSION = "v4"; // bumped: alerts replaces concerns, recommendations removed
 
 function cacheKey(page: string, dateFrom: string, dateTo: string, metricHash: string): string {
   return `pb_insights_${CACHE_VERSION}_${page}_${dateFrom}_${dateTo}_${metricHash}`;
