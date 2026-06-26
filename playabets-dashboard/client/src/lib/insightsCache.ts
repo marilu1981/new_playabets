@@ -5,7 +5,7 @@
  */
 import type { AiInsights } from "@/lib/generateReport";
 
-const CACHE_VERSION = "v4"; // bumped: alerts replaces concerns, recommendations removed
+const CACHE_VERSION = "v5"; // bumped: fixed active_players, stricter prompt
 
 function cacheKey(page: string, dateFrom: string, dateTo: string, metricHash: string): string {
   return `pb_insights_${CACHE_VERSION}_${page}_${dateFrom}_${dateTo}_${metricHash}`;

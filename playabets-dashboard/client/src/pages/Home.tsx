@@ -301,7 +301,7 @@ export default function Home() {
       withdrawals:     String(Math.round(transactionSummary.totalWithdrawals ?? 0)),
       net_cash:        String(Math.round((transactionSummary.totalDeposits ?? 0) - (transactionSummary.totalWithdrawals ?? 0))),
       churn_pct:       String(liveChurnPct ?? 0),
-      active_players:  String((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0)),
+      active_players:  String(liveTotalActives ?? ((overviewKPIs.activesSports ?? 0) + (overviewKPIs.activesCasino ?? 0))),
       bonus_issued:    String(Math.round(liveBonusTxIssued ?? 0)),
       bonus_converted: String(Math.round(liveBonusConverted ?? 0)),
     });

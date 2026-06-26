@@ -153,21 +153,22 @@ TRANSACTIONS
     avg_ftd_line = f"\n- Avg First Deposit Value: R{avg_ftd_value:,.0f}" if avg_ftd_value > 0 else ""
 
     prompt = f"""
-Playabets gaming operator performance report — {start} to {end} ({days} days).
+Playabets gaming operator data — {start} to {end} ({days} days).
+USE ONLY THESE EXACT NUMBERS. Do not compute, round, or substitute different values.
 
 PLAYER ACQUISITION
-- New Registrations: {registrations:,}
-- First Time Depositors (FTDs): {ftds:,}
-- FTD Conversion Rate: {conv_rate:.1f}%{avg_ftd_line}
+- Registrations: {registrations:,}
+- FTDs (first-time depositors): {ftds:,}
+- FTD Conversion (FTDs / Registrations): {conv_rate:.1f}%{avg_ftd_line}
 
 REVENUE
-- GGR (Gross Gaming Revenue): R{ggr:,.0f}
-- NGR (Net Gaming Revenue): R{ngr:,.0f}
-- Total Turnover: R{turnover:,.0f}
+- GGR: R{ggr:,.0f}
+- NGR: R{ngr:,.0f}
+- Turnover: R{turnover:,.0f}
 - Hold %: {hold_pct:.1f}%
 {tx_lines}
-PLAYER HEALTH
-- Active Players: {active_players:,}
+PLAYERS
+- Active Players (unique): {active_players:,}
 - Churn Rate: {churn_pct:.1f}%{retention_lines}
 {vip_lines}
 {bonus_lines}
