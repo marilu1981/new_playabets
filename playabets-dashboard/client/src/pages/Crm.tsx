@@ -16,7 +16,6 @@ import { cachedFetch } from "@/lib/apiCache";
 import { aggregateByGranularity } from "@/pages/home/homeUtils";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { AiInsights } from "@/lib/generateReport";
-import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -128,9 +127,6 @@ export default function CrmPage() {
     const actives = totalActives ?? 0;
 
     // Return cached insights if available
-    const cached = getCachedInsights("crm", filters.dateFrom, filters.dateTo, churn, d30, actives);
-    if (cached) { setAiInsights(cached); return; }
-
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     // Use ARPU * actives as NGR proxy — only if both are non-zero
@@ -160,7 +156,6 @@ export default function CrmPage() {
       .then(res => {
         if (res.available) {
           setAiInsights(res as AiInsights);
-          setCachedInsights("crm", filters.dateFrom, filters.dateTo, res as AiInsights, churn, d30, actives);
         }
       })
       .catch(() => {})

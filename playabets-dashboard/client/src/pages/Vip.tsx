@@ -14,7 +14,6 @@ import { cachedFetch, invalidateCache } from "@/lib/apiCache";
 import { formatFull, formatNumber, formatCompact } from "@/lib/formatters";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { AiInsights } from "@/lib/generateReport";
-import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
 async function fetchJson<T>(path: string): Promise<T> {
@@ -244,9 +243,6 @@ export default function VipPage() {
     const vipCount = rev.vip_count ?? 0;
 
     // Return cached insights if available
-    const cached = getCachedInsights("vip", filters.dateFrom, filters.dateTo, vipGgr, vipCount);
-    if (cached) { setAiInsights(cached); return; }
-
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
     const holdPct = rev.total_turnover ? (vipGgr / rev.total_turnover * 100) : 0;
@@ -273,7 +269,6 @@ export default function VipPage() {
       .then(d => {
         if (d.available) {
           setAiInsights(d as AiInsights);
-          setCachedInsights("vip", filters.dateFrom, filters.dateTo, d as AiInsights, vipGgr, vipCount);
         }
       })
       .catch(() => {})

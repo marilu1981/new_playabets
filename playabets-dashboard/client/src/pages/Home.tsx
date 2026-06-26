@@ -57,7 +57,6 @@ import { SummaryMetricsTable } from "./home/HomeSections";
 import ReportButton from "@/components/ReportButton";
 import AiInsightsPanel from "@/components/AiInsightsPanel";
 import type { ReportData, AiInsights } from "@/lib/generateReport";
-import { getCachedInsights, setCachedInsights } from "@/lib/insightsCache";
 
 
 export default function Home() {
@@ -297,9 +296,7 @@ export default function Home() {
     const prevFtds = Math.round(overviewRows.find(r => r.metric === "FTDs")?.previous ?? 0);
     const prevTurnover = Math.round(overviewRows.find(r => r.metric === "Total Turnover")?.previous ?? 0);
 
-    // Return cached insights if available for this period + metrics
-    const cached = getCachedInsights("home", filters.dateFrom, filters.dateTo, ggr, ngr, regs, prevGgr);
-    if (cached) { setAiInsights(cached); return; }
+    // No localStorage cache — always fetch from backend (backend has its own in-memory cache)
 
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
@@ -339,7 +336,6 @@ export default function Home() {
       .then(d => {
         if (d.available) {
           setAiInsights(d as AiInsights);
-          setCachedInsights("home", filters.dateFrom, filters.dateTo, d as AiInsights, ggr, ngr, regs, prevGgr);
         }
       })
       .catch(() => {})
