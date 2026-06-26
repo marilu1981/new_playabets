@@ -56,7 +56,7 @@ def _call_azure_openai(prompt: str) -> dict:
                     "\n- British English throughout."
                     "\n- No em dashes. No filler adverbs."
                     "\n- Banned words (never use): leverage, synergy, robust, seamless, transformative, holistic, delve, ecosystem, substantial, significant, at risk, crucial, critical, essential, extremely."
-                    "\n\nCRITICAL DATA RULES:"
+                    "\n\nDATA RULES (mandatory):"
                     "\n- ONLY use the exact metric values from the data. Never invent, round differently, or assume values not in the data."
                     "\n- If a field is 0 or absent, skip it entirely. Do not comment on zero values."
                     "\n- Do not extrapolate or compute new figures beyond what is provided."
@@ -171,12 +171,13 @@ TRANSACTIONS
             return f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
 
         prev_lines = f"""
-PREVIOUS PERIOD COMPARISON (vs period immediately before {start})
-- GGR: R{prev_ggr:,.0f} → now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)})
-- NGR: R{prev_ngr:,.0f} → now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)})
-- Registrations: {prev_registrations:,} → now {registrations:,} ({pct_change(registrations, prev_registrations)})
-- FTDs: {prev_ftds:,} → now {ftds:,} ({pct_change(ftds, prev_ftds)})
-- Turnover: R{prev_turnover:,.0f} → now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)})"""
+PERIOD-OVER-PERIOD CHANGES (previous period → THIS period)
+- GGR: was R{prev_ggr:,.0f}, now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)})
+- NGR: was R{prev_ngr:,.0f}, now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)})
+- Registrations: was {prev_registrations:,}, now {registrations:,} ({pct_change(registrations, prev_registrations)})
+- FTDs: was {prev_ftds:,}, now {ftds:,} ({pct_change(ftds, prev_ftds)})
+- Turnover: was R{prev_turnover:,.0f}, now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)})
+The "now" figures above are THIS period's actual values. Use these when describing the current period."""
 
     prompt = f"""
 Playabets gaming operator data — {start} to {end} ({days} days).
