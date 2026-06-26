@@ -1,19 +1,22 @@
 /**
- * Persistent insights cache — stores AI insights in localStorage per page+period.
- * Prevents re-fetching insights on every page load for the same date range.
- * Cache key: page + dateFrom + dateTo + a hash of key metric values.
+ * Persistent insights cache — stores AI insights in localStorage per page+period+metrics.
+ *
+ * Cache key = page + dateFrom + dateTo + rounded metric values.
+ * - Date changes → new key → new fetch automatically.
+ * - Metric values change (new pipeline run) → new key → new fetch automatically.
+ * - No manual version bumping needed.
+ *
+ * Old keys accumulate silently in localStorage but are small (< 2KB each) and
+ * browsers evict LRU when storage is full.
  */
 import type { AiInsights } from "@/lib/generateReport";
 
-const CACHE_VERSION = "v5"; // bumped: fixed active_players, stricter prompt
+const PREFIX = "pb_insights";
 
-function cacheKey(page: string, dateFrom: string, dateTo: string, metricHash: string): string {
-  return `pb_insights_${CACHE_VERSION}_${page}_${dateFrom}_${dateTo}_${metricHash}`;
-}
-
-function hashMetrics(...values: (number | string)[]): string {
-  // Simple hash — just round to nearest 1000 and join
-  return values.map(v => typeof v === "number" ? Math.round(v / 1000) : v).join("_");
+function buildKey(page: string, dateFrom: string, dateTo: string, ...metricValues: number[]): string {
+  // Round each metric to nearest 1000 so minor pipeline fluctuations don't bust the cache
+  const hash = metricValues.map(v => String(Math.round(v / 1000))).join("_");
+  return `${PREFIX}_${page}_${dateFrom}_${dateTo}_${hash}`;
 }
 
 export function getCachedInsights(
@@ -23,8 +26,7 @@ export function getCachedInsights(
   ...metricValues: number[]
 ): AiInsights | null {
   try {
-    const key = cacheKey(page, dateFrom, dateTo, hashMetrics(...metricValues));
-    const stored = localStorage.getItem(key);
+    const stored = localStorage.getItem(buildKey(page, dateFrom, dateTo, ...metricValues));
     if (!stored) return null;
     return JSON.parse(stored) as AiInsights;
   } catch {
@@ -40,7 +42,6 @@ export function setCachedInsights(
   ...metricValues: number[]
 ): void {
   try {
-    const key = cacheKey(page, dateFrom, dateTo, hashMetrics(...metricValues));
-    localStorage.setItem(key, JSON.stringify(insights));
+    localStorage.setItem(buildKey(page, dateFrom, dateTo, ...metricValues), JSON.stringify(insights));
   } catch {}
 }
