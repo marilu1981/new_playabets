@@ -273,6 +273,12 @@ export default function Home() {
 
 
 
+  // Clear stale insights when period changes so old data never flashes
+  useEffect(() => {
+    setAiInsights(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.dateFrom, filters.dateTo]);
+
   // AI insights — cached per period, re-fetches when summary metrics (prev period) arrive
   useEffect(() => {
     if (!liveNgr || !kpiRegistrations || kpiRegistrations === 0) return;
