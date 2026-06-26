@@ -221,12 +221,64 @@ def _run_silence(flagged: set[int], silence_days: int, as_of_arg: str | None, ou
     print(f"\nSaved per-user result -> {out}")
 
 
+def _run_since(flagged: set[int], since_arg: str, out: Path) -> None:
+    """
+    Since rule: churned = a flagged player who was ever active, but placed NO
+    real-money bet AFTER the `since` date (i.e. went quiet after being flagged).
+    'After' is strictly > since (the flag day itself does not count as retention).
+    """
+    since = pd.Timestamp(since_arg)
+    last, data_max = _last_activity_per_user(flagged)
+    if data_max is None:
+        print("[atrisk] WARNING: no activity found in raw data at all.")
+        return
+    print(f"[atrisk] data latest date = {data_max.date()}   flagged on = {since.date()}   "
+          f"checking bets after {since.date()} (through {data_max.date()})")
+
+    rows = []
+    for uid in flagged:
+        lb = last.get(uid)
+        ever_active = lb is not None
+        bet_after = ever_active and lb > since
+        churned = ever_active and not bet_after  # active before, silent since flag
+        rows.append({
+            "userid": uid,
+            "last_bet_date": lb.date().isoformat() if ever_active else "",
+            "bet_after_flag": int(bet_after),
+            "ever_active": int(ever_active),
+            "churned": int(churned),
+        })
+
+    res = pd.DataFrame(rows)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    res.to_csv(out, index=False)
+
+    n_flagged = len(res)
+    n_ever = int(res["ever_active"].sum())
+    n_churned = int(res["churned"].sum())
+    n_retained = n_ever - n_churned
+    n_never = n_flagged - n_ever
+
+    print("\n" + "=" * 64)
+    print(f"AT-RISK CHURN RESULT (no bet since {since.date()})")
+    print("=" * 64)
+    print(f"Flagged at-risk ............................ {n_flagged:,}")
+    print(f"  Ever active in the data ................. {n_ever:,}")
+    if n_ever:
+        print(f"    -> Churned (no bet after {since.date()}) ... {n_churned:,}   ({n_churned / n_ever * 100:.1f}% of active)")
+        print(f"    -> Retained (bet after {since.date()}) ..... {n_retained:,}   ({n_retained / n_ever * 100:.1f}% of active)")
+    print(f"  Never seen in betting data ............. {n_never:,}")
+    print(f"\nSaved per-user result -> {out}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Check at-risk players against churn definitions")
     p.add_argument("--atrisk", required=True, help="Path to the at-risk userid file (.xlsx or .csv)")
-    p.add_argument("--rule", choices=["silence", "month"], default="silence",
-                   help="silence = N-day no-bet rule (default, matches at-risk model); "
+    p.add_argument("--rule", choices=["silence", "since", "month"], default="silence",
+                   help="silence = N-day no-bet rule (matches model); "
+                        "since = no bet after --since date (went quiet after flagging); "
                         "month = dashboard calendar-month rule")
+    p.add_argument("--since", default=None, help="(since rule) flag date YYYY-MM-DD; churned = no bet after this date")
     p.add_argument("--silence-days", type=int, default=21, help="Days of no bet = churned (silence rule), default 21")
     p.add_argument("--as-of", default=None, help="Override 'as of' date (YYYY-MM-DD); default = latest date in data")
     p.add_argument("--flag-month", default="2026-05", help="(month rule) Month list was generated (YYYY-MM)")
@@ -241,6 +293,12 @@ def main() -> None:
 
     if args.rule == "silence":
         _run_silence(flagged, args.silence_days, args.as_of, out)
+        return
+
+    if args.rule == "since":
+        if not args.since:
+            p.error("--rule since requires --since YYYY-MM-DD")
+        _run_since(flagged, args.since, out)
         return
 
     # ---- month rule (dashboard definition) ----
