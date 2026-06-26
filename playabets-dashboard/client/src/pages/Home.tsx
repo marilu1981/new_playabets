@@ -276,7 +276,8 @@ export default function Home() {
   // AI insights — cached per period in localStorage, only re-fetches when period or key metrics change
   useEffect(() => {
     if (!liveNgr || !kpiRegistrations || kpiRegistrations === 0) return;
-    const ggr = (overviewKPIs.totalStake ?? 0) - (overviewKPIs.totalWinnings ?? 0);
+    // Use grossRevenue (combined sports+casino GGR) — same value as the GGR tile
+    const ggr = Math.round(overviewKPIs.grossRevenue ?? 0);
     const ngr = Math.round(liveNgr ?? 0);
     const regs = kpiRegistrations;
 
@@ -286,16 +287,17 @@ export default function Home() {
 
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-    const holdPct = overviewKPIs.totalStake > 0 ? (ggr / overviewKPIs.totalStake * 100) : 0;
-    // Note: no retention_d7/d30 here — not available on home page, AI should not mention them
+    const turnover = Math.round(overviewKPIs.totalStake ?? 0);
+    const holdPct = turnover > 0 ? (ggr / turnover * 100) : 0;
+    // FTD conv rate uses kpiFtds/regs — matches the FTDs tile definition
     const params = new URLSearchParams({
       start: filters.dateFrom, end: filters.dateTo,
       registrations:   String(regs),
       ftds:            String(kpiFtds),
       conv_rate:       String(regs > 0 ? ((kpiFtds / regs) * 100).toFixed(1) : 0),
-      ggr:             String(Math.round(ggr)),
+      ggr:             String(ggr),
       ngr:             String(ngr),
-      turnover:        String(Math.round(overviewKPIs.totalStake ?? 0)),
+      turnover:        String(turnover),
       hold_pct:        String(holdPct.toFixed(1)),
       deposits:        String(Math.round(transactionSummary.totalDeposits ?? 0)),
       withdrawals:     String(Math.round(transactionSummary.totalWithdrawals ?? 0)),
@@ -321,7 +323,7 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setAiLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.dateFrom, filters.dateTo, kpiRegistrations, liveNgr]);
+  }, [filters.dateFrom, filters.dateTo, kpiRegistrations, liveNgr, overviewKPIs.grossRevenue]);
 
   const reportData: ReportData = useMemo(() => {
     const stake = overviewKPIs.totalStake ?? 0;
