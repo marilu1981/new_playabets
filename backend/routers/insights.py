@@ -159,7 +159,7 @@ USE ONLY THESE EXACT NUMBERS. Do not compute, round, or substitute different val
 PLAYER ACQUISITION
 - Registrations: {registrations:,}
 - FTDs (first-time depositors): {ftds:,}
-- FTD Conversion (FTDs / Registrations): {conv_rate:.1f}%{avg_ftd_line}
+- FTD Rate (players whose first-ever deposit fell in this period / total registrations): {conv_rate:.1f}%{avg_ftd_line}
 
 REVENUE
 - GGR: R{ggr:,.0f}
