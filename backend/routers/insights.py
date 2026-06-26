@@ -27,8 +27,10 @@ _DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
 _API_VER    = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-07-18")
 
 
+_PROMPT_VERSION = "v7"  # bump when prompt changes to bust in-memory cache
+
 def _cache_key(**kwargs) -> str:
-    payload = json.dumps(kwargs, sort_keys=True, default=str)
+    payload = json.dumps({**kwargs, "_pv": _PROMPT_VERSION}, sort_keys=True, default=str)
     return hashlib.md5(payload.encode()).hexdigest()
 
 
