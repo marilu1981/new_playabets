@@ -27,7 +27,7 @@ _DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
 _API_VER    = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-07-18")
 
 
-_PROMPT_VERSION = "v8"  # bumped: per-page context (home/crm/vip)
+_PROMPT_VERSION = "v11"  # bumped: VIP GGR share-of-total only when real total supplied
 
 def _cache_key(**kwargs) -> str:
     payload = json.dumps({**kwargs, "_pv": _PROMPT_VERSION}, sort_keys=True, default=str)
@@ -62,6 +62,8 @@ def _call_azure_openai(prompt: str, context: str = "home") -> dict:
                     "\n- ONLY use the exact metric values from the data. Never invent, round differently, or assume values not in the data."
                     "\n- If a field is 0 or absent, skip it entirely. Do not comment on zero values."
                     "\n- Do not extrapolate or compute new figures beyond what is provided."
+                    "\n- NEVER calculate a percentage change yourself. The ONLY percentage changes you may state are the exact ones already written in the 'PERIOD-OVER-PERIOD CHANGES' section (e.g. '+2.2%'). Copy them verbatim. If a change figure is not in that section, do not state any percentage change for that metric."
+                    "\n- When you mention a change, quote the exact percentage from the PERIOD-OVER-PERIOD CHANGES section character for character. Do not derive your own."
                     "\n\nOUTPUT STRUCTURE:"
                     "\n- wins: 2 to 3 genuine positives backed by actual numbers. No generic praise."
                     "\n- alerts: 1 to 2 facts that need attention, stated plainly with the actual number. No speculation about consequences."
@@ -80,7 +82,53 @@ def _call_azure_openai(prompt: str, context: str = "home") -> dict:
         response_format={"type": "json_object"},
     )
     raw = resp.choices[0].message.content or "{}"
-    return json.loads(raw)
+    return _scrub_banned(json.loads(raw))
+
+
+# Deterministic safety net: even if the model ignores the prompt, these words
+# never reach the user. Order matters — phrases before single words.
+_BANNED_REPLACEMENTS: list[tuple[str, str]] = [
+    ("which is critical", "which is worth noting"),
+    ("which is crucial", "which is worth noting"),
+    ("which is essential", "which is worth noting"),
+    ("is critical for", "is useful for"),
+    ("is crucial for", "is useful for"),
+    ("is essential for", "is useful for"),
+    ("at risk", "to watch"),
+    ("leverage", "use"),
+    ("synergy", "alignment"),
+    ("robust", "strong"),
+    ("seamless", "smooth"),
+    ("transformative", "notable"),
+    ("holistic", "overall"),
+    ("delve", "look"),
+    ("ecosystem", "platform"),
+    ("substantial", "sizeable"),
+    ("significant", "notable"),
+    ("crucial", "notable"),
+    ("critical", "notable"),
+    ("essential", "key"),
+    ("extremely", "very"),
+]
+
+
+def _scrub_word(text: str) -> str:
+    import re
+    out = text
+    for bad, good in _BANNED_REPLACEMENTS:
+        # word-boundary, case-insensitive; preserve leading capital
+        def _repl(m: re.Match) -> str:
+            return good.capitalize() if m.group(0)[:1].isupper() else good
+        out = re.sub(rf"\b{re.escape(bad)}\b", _repl, out, flags=re.IGNORECASE)
+    return out
+
+
+def _scrub_banned(data: dict) -> dict:
+    for key in ("wins", "alerts", "watch_list"):
+        items = data.get(key)
+        if isinstance(items, list):
+            data[key] = [_scrub_word(str(i)) for i in items]
+    return data
 
 
 _CONTEXT_PROMPTS: dict[str, str] = {
@@ -144,6 +192,9 @@ def ai_summary(
         registrations=registrations, ftds=ftds,
         bonus_converted=round(bonus_converted, -3),
         prev_ggr=round(prev_ggr, -3),
+        prev_ngr=round(prev_ngr, -3),
+        prev_registrations=prev_registrations,
+        prev_ftds=prev_ftds,
     )
     if cache_key in _CACHE:
         return {**_CACHE[cache_key], "cached": True, "available": True}
@@ -162,8 +213,12 @@ def ai_summary(
         vip_lines = f"""
 VIP
 - Total VIPs: {total_vips:,}
-- VIP GGR Contribution: R{vip_ggr:,.0f}
-- VIP GGR as % of Total: {(vip_ggr/ggr*100) if ggr > 0 else 0:.1f}%"""
+- VIP GGR: R{vip_ggr:,.0f}
+- Avg revenue per VIP: R{(vip_ggr/total_vips) if total_vips > 0 else 0:,.0f}"""
+        # Only state share-of-total when a genuine company-wide GGR was supplied
+        # (the VIP page passes ggr == vip_ggr, which would falsely read 100%).
+        if ggr > vip_ggr > 0:
+            vip_lines += f"\n- VIP GGR as % of Total: {vip_ggr/ggr*100:.1f}%"
 
     bonus_lines = ""
     if bonus_issued > 0:
@@ -193,13 +248,13 @@ TRANSACTIONS
             return f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
 
         prev_lines = f"""
-PERIOD-OVER-PERIOD CHANGES (previous period → THIS period)
-- GGR: was R{prev_ggr:,.0f}, now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)})
-- NGR: was R{prev_ngr:,.0f}, now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)})
-- Registrations: was {prev_registrations:,}, now {registrations:,} ({pct_change(registrations, prev_registrations)})
-- FTDs: was {prev_ftds:,}, now {ftds:,} ({pct_change(ftds, prev_ftds)})
-- Turnover: was R{prev_turnover:,.0f}, now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)})
-The "now" figures above are THIS period's actual values. Use these when describing the current period."""
+PERIOD-OVER-PERIOD CHANGES (these percentages are PRE-CALCULATED — copy them exactly, do NOT compute your own)
+- GGR: now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)} vs previous R{prev_ggr:,.0f})
+- NGR: now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)} vs previous R{prev_ngr:,.0f})
+- Registrations: now {registrations:,} ({pct_change(registrations, prev_registrations)} vs previous {prev_registrations:,})
+- FTDs: now {ftds:,} ({pct_change(ftds, prev_ftds)} vs previous {prev_ftds:,})
+- Turnover: now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)} vs previous R{prev_turnover:,.0f})
+The "now" figures above are THIS period's actual values. The percentages in brackets are correct — use them verbatim and never recalculate."""
 
     prompt = f"""
 Playabets gaming operator data — {start} to {end} ({days} days).
