@@ -86,6 +86,54 @@ def _read_userids(path: Path) -> set[int]:
     return set(pd.to_numeric(df[col], errors="coerce").dropna().astype(int).tolist())
 
 
+def _last_activity_per_user(flagged: set[int]) -> tuple[dict[int, pd.Timestamp], pd.Timestamp | None]:
+    """
+    Return {userid: last_real_money_bet_date} for the flagged users only, across
+    sports + casino, and the max activity date seen in the data (the data's
+    'as of' date). Restricting to flagged users keeps memory sane for big lists.
+    """
+    last: dict[int, pd.Timestamp] = {}
+    data_max: pd.Timestamp | None = None
+
+    def _ingest(df, uid, dcol):
+        nonlocal data_max
+        d = pd.to_datetime(df[dcol], errors="coerce")
+        u = pd.to_numeric(df[uid], errors="coerce")
+        sub = pd.DataFrame({"u": u, "d": d}).dropna()
+        if sub.empty:
+            return
+        sub["u"] = sub["u"].astype(int)
+        m = sub["d"].max()
+        data_max = m if data_max is None or m > data_max else data_max
+        sub = sub[sub["u"].isin(flagged)]
+        if sub.empty:
+            return
+        grp = sub.groupby("u")["d"].max()
+        for uu, dd in grp.items():
+            if uu not in last or dd > last[uu]:
+                last[uu] = dd
+
+    bs_raw = read_all_parquets(raw_dir("betslips"), "betslips*.parquet")
+    if not bs_raw.empty:
+        bs, m = normalize_cols(bs_raw)
+        uid, dcol, credit = m.get("userid"), m.get("placementdate"), m.get("credittype")
+        if uid and dcol:
+            if credit:  # real money only, matches dashboard
+                bs = bs[bs[credit].astype(str) == "User Account"]
+            _ingest(bs, uid, dcol)
+
+    ca_raw = read_all_parquets(raw_dir("casino"), "*.parquet")
+    if not ca_raw.empty:
+        ca, m = normalize_cols(ca_raw)
+        uid, dcol, stake = m.get("userid"), m.get("placementdate"), m.get("stake")
+        if uid and dcol:
+            if stake:  # real money only, matches dashboard
+                ca = ca[pd.to_numeric(ca[stake], errors="coerce").fillna(0) > 0]
+            _ingest(ca, uid, dcol)
+
+    return last, data_max
+
+
 def _active_users_by_month(flag_month: str, next_month: str) -> tuple[dict[str, set[int]], dict[str, set[int]]]:
     """Return {month: set(userid)} for sports and casino, restricted to the two months."""
     wanted = {flag_month, next_month}
@@ -121,20 +169,84 @@ def _active_users_by_month(flag_month: str, next_month: str) -> tuple[dict[str, 
     return sports, casino
 
 
+def _run_silence(flagged: set[int], silence_days: int, as_of_arg: str | None, out: Path) -> None:
+    """
+    Silence rule (matches the at-risk model): churned = last real-money bet was
+    silence_days+ ago as of the data's latest date (or --as-of). Works mid-month;
+    does not need the calendar month to be complete.
+    """
+    last, data_max = _last_activity_per_user(flagged)
+    if data_max is None:
+        print("[atrisk] WARNING: no activity found in raw data at all. Is the data present on this machine?")
+        return
+    as_of = pd.Timestamp(as_of_arg) if as_of_arg else data_max
+    cutoff = as_of - pd.Timedelta(days=silence_days)
+    print(f"[atrisk] data latest date = {data_max.date()}   as_of = {as_of.date()}   "
+          f"silence cutoff = {cutoff.date()} ({silence_days}d)")
+
+    rows = []
+    for uid in flagged:
+        lb = last.get(uid)
+        ever_active = lb is not None
+        days_since = int((as_of - lb).days) if ever_active else None
+        # Churned = had activity at some point but last bet is older than cutoff.
+        churned = ever_active and lb < cutoff
+        rows.append({
+            "userid": uid,
+            "last_bet_date": lb.date().isoformat() if ever_active else "",
+            "days_since_last_bet": days_since if days_since is not None else "",
+            "ever_active": int(ever_active),
+            "churned": int(churned),
+        })
+
+    res = pd.DataFrame(rows)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    res.to_csv(out, index=False)
+
+    n_flagged = len(res)
+    n_ever = int(res["ever_active"].sum())
+    n_churned = int(res["churned"].sum())
+    n_retained = n_ever - n_churned
+    n_never = n_flagged - n_ever
+
+    print("\n" + "=" * 64)
+    print(f"AT-RISK CHURN RESULT (silence rule: {silence_days}+ days no bet)")
+    print("=" * 64)
+    print(f"Flagged at-risk ............................ {n_flagged:,}")
+    print(f"  Ever active in the data ................. {n_ever:,}")
+    if n_ever:
+        print(f"    -> Churned (silent {silence_days}+ days) ....... {n_churned:,}   ({n_churned / n_ever * 100:.1f}% of active)")
+        print(f"    -> Retained (bet within {silence_days} days) ... {n_retained:,}   ({n_retained / n_ever * 100:.1f}% of active)")
+    print(f"  Never seen in betting data ............. {n_never:,}")
+    print(f"\nSaved per-user result -> {out}")
+
+
 def main() -> None:
-    p = argparse.ArgumentParser(description="Check at-risk players against dashboard churn definition")
+    p = argparse.ArgumentParser(description="Check at-risk players against churn definitions")
     p.add_argument("--atrisk", required=True, help="Path to the at-risk userid file (.xlsx or .csv)")
-    p.add_argument("--flag-month", default="2026-06", help="Month the list was generated (YYYY-MM), default 2026-06")
+    p.add_argument("--rule", choices=["silence", "month"], default="silence",
+                   help="silence = N-day no-bet rule (default, matches at-risk model); "
+                        "month = dashboard calendar-month rule")
+    p.add_argument("--silence-days", type=int, default=21, help="Days of no bet = churned (silence rule), default 21")
+    p.add_argument("--as-of", default=None, help="Override 'as of' date (YYYY-MM-DD); default = latest date in data")
+    p.add_argument("--flag-month", default="2026-05", help="(month rule) Month list was generated (YYYY-MM)")
     p.add_argument("--out", default="data/serving/atrisk_churn_result.csv", help="Output CSV path")
     args = p.parse_args()
-
-    flag_month = args.flag_month
-    y, mn = map(int, flag_month.split("-"))
-    next_month = f"{y + (mn == 12):04d}-{(mn % 12) + 1:02d}"
 
     atrisk_path = Path(args.atrisk)
     flagged = _read_userids(atrisk_path)
     print(f"[atrisk] flagged users in list: {len(flagged):,}")
+
+    out = Path(args.out)
+
+    if args.rule == "silence":
+        _run_silence(flagged, args.silence_days, args.as_of, out)
+        return
+
+    # ---- month rule (dashboard definition) ----
+    flag_month = args.flag_month
+    y, mn = map(int, flag_month.split("-"))
+    next_month = f"{y + (mn == 12):04d}-{(mn % 12) + 1:02d}"
     print(f"[atrisk] flag month={flag_month}  resolves in next month={next_month}")
 
     sports, casino = _active_users_by_month(flag_month, next_month)
