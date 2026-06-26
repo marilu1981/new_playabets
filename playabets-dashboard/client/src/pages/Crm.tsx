@@ -92,16 +92,14 @@ export default function CrmPage() {
 
     // Average Deposit Value = deposits / deposit_count or deposits / depositors
     Promise.allSettled([
-      fetchJson<{ deposits?: number; deposit_count?: number }>(`/transactions/kpis?${query}`),
+      fetchJson<{ deposits?: number; deposit_count?: number; unique_depositors?: number }>(`/transactions/kpis?${query}`),
       fetchJson<{ deposits?: number; period_unique_depositors?: number }>(`/kpis?${query}`),
     ]).then(([txRes, kpisRes]) => {
       const tx = txRes.status === "fulfilled" ? txRes.value : null;
-      const kp = kpisRes.status === "fulfilled" ? kpisRes.value : null;
-      const dep = Number(tx?.deposits ?? kp?.deposits ?? 0);
-      const cnt = Number(tx?.deposit_count ?? 0);
-      const dep_unique = Number(kp?.period_unique_depositors ?? 0);
-      if (cnt > 0) setAvgDepositValue(dep / cnt);
-      else if (dep_unique > 0) setAvgDepositValue(dep / dep_unique);
+      const dep = Number(tx?.deposits ?? 0);
+      // unique_depositors from /transactions/kpis = players who made at least one deposit
+      const uniqueDepositors = Number(tx?.unique_depositors ?? 0);
+      if (dep > 0 && uniqueDepositors > 0) setAvgDepositValue(dep / uniqueDepositors);
       else setAvgDepositValue(null);
     }).catch(() => {});
 
@@ -193,8 +191,8 @@ export default function CrmPage() {
           <KpiCard
             title="Avg Deposit Value"
             value={avgDepositValue != null ? formatFull(avgDepositValue) : "Pending"}
-            subtitle="Total Deposits / Deposit Count"
-            tooltip="Average Deposit Value = Total Deposits / Number of deposit transactions. Measures the typical size of each deposit."
+            subtitle="Total Deposits / Unique Depositors"
+            tooltip="Average Deposit Value = Total Deposits / Unique Depositing Players. How much each depositing player deposited on average during the period."
             icon={<DollarSign size={18} />}
             accent="gold"
           />
