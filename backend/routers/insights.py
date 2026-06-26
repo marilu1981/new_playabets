@@ -137,10 +137,10 @@ VIP
     if bonus_issued > 0:
         bonus_conv_rate = (bonus_converted / bonus_issued * 100) if bonus_issued > 0 else 0
         bonus_lines = f"""
-BONUS
+BONUS (note: high conversion rate means higher cost to the house, not a positive)
 - Bonus Issued: R{bonus_issued:,.0f}
-- Bonus Converted: R{bonus_converted:,.0f}
-- Bonus Conversion Rate: {bonus_conv_rate:.1f}%"""
+- Bonus Converted (cost to house): R{bonus_converted:,.0f}
+- Bonus Conversion Rate: {bonus_conv_rate:.1f}% (higher = more cost, watch against NGR impact)"""
 
     tx_lines = ""
     if deposits > 0:
