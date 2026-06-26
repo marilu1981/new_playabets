@@ -203,8 +203,19 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         }>(`/kpis/summary?start=${filters.dateFrom}&end=${filters.dateTo}`),
       };
 
-      const [kpisRes, dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes, ftdDailyRes, ftdRegMonthDailyRes] = await Promise.allSettled([
-        requests.kpis,
+      // Fast path: resolve /kpis first so KPI tiles appear immediately (~400ms)
+      const kpisRes = await requests.kpis.then(
+        v => ({ status: "fulfilled" as const, value: v }),
+        () => ({ status: "rejected" as const, reason: null }),
+      );
+      if (cancelled) return;
+
+      const hasKpis = kpisRes.status === "fulfilled";
+      setDataMode(hasKpis ? "live" : "mock");
+      setIsLoading(false);
+
+      // Slow path: load the rest in parallel without blocking KPI tiles
+      const [dailyRes, casinoDailyRes, bonusDailyRes, regsRes, conversionCohortsRes, ftdDailyRes, ftdRegMonthDailyRes] = await Promise.allSettled([
         requests.daily,
         requests.casinoDaily,
         requests.bonusDaily,
@@ -214,16 +225,11 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         requests.ftdRegMonthDaily,
       ]);
 
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
 
-      const hasKpis = kpisRes.status === "fulfilled";
       const hasDaily = dailyRes.status === "fulfilled";
       const hasRegs = regsRes.status === "fulfilled";
-      const mode: DataMode = hasKpis && hasDaily && hasRegs ? "live" : hasKpis || hasDaily || hasRegs ? "partial" : "mock";
-      setDataMode(mode);
-      setIsLoading(false);
+      if (hasKpis && hasDaily && hasRegs) setDataMode("live");
 
       if (kpisRes.status === "fulfilled") {
         const k = kpisRes.value;
