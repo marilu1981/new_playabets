@@ -135,7 +135,9 @@ export default function CrmPage() {
 
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-    const estimatedNgr = arpu != null && totalActives != null ? arpu * totalActives : 0;
+    // Use ARPU * actives as NGR proxy — only if both are non-zero
+    const estimatedNgr = (arpu != null && arpu > 0 && totalActives != null && totalActives > 0)
+      ? arpu * totalActives : 0;
     const periodRegs = cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0);
     const periodFtds = cohortData.reduce((s, r) => s + (r.ftds_d7 ?? 0), 0);
     const params = new URLSearchParams({

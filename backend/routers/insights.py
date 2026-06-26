@@ -121,41 +121,60 @@ def ai_summary(
         return {**_CACHE[cache_key], "cached": True, "available": True}
 
     days = (end - start).days + 1
+
+    # Only include fields with meaningful (non-zero) values to prevent AI inventing insights
+    retention_lines = ""
+    if retention_d7 > 0:
+        retention_lines += f"\n- D7 Retention: {retention_d7:.1f}%"
+    if retention_d30 > 0:
+        retention_lines += f"\n- D30 Retention: {retention_d30:.1f}%"
+
+    vip_lines = ""
+    if total_vips > 0:
+        vip_lines = f"""
+VIP
+- Total VIPs: {total_vips:,}
+- VIP GGR Contribution: R{vip_ggr:,.0f}
+- VIP GGR as % of Total: {(vip_ggr/ggr*100) if ggr > 0 else 0:.1f}%"""
+
+    bonus_lines = ""
+    if bonus_issued > 0:
+        bonus_conv_rate = (bonus_converted / bonus_issued * 100) if bonus_issued > 0 else 0
+        bonus_lines = f"""
+BONUS
+- Bonus Issued: R{bonus_issued:,.0f}
+- Bonus Converted: R{bonus_converted:,.0f}
+- Bonus Conversion Rate: {bonus_conv_rate:.1f}%"""
+
+    tx_lines = ""
+    if deposits > 0:
+        tx_lines = f"""
+TRANSACTIONS
+- Total Deposits: R{deposits:,.0f}
+- Total Withdrawals: R{withdrawals:,.0f}
+- Net Cash: R{net_cash:,.0f}"""
+
+    avg_ftd_line = f"\n- Avg First Deposit Value: R{avg_ftd_value:,.0f}" if avg_ftd_value > 0 else ""
+
     prompt = f"""
 Playabets gaming operator performance report — {start} to {end} ({days} days).
 
 PLAYER ACQUISITION
 - New Registrations: {registrations:,}
 - First Time Depositors (FTDs): {ftds:,}
-- FTD Conversion Rate: {conv_rate:.1f}%
-- Avg First Deposit Value: R{avg_ftd_value:,.0f}
+- FTD Conversion Rate: {conv_rate:.1f}%{avg_ftd_line}
 
 REVENUE
 - GGR (Gross Gaming Revenue): R{ggr:,.0f}
 - NGR (Net Gaming Revenue): R{ngr:,.0f}
 - Total Turnover: R{turnover:,.0f}
 - Hold %: {hold_pct:.1f}%
-
-TRANSACTIONS
-- Total Deposits: R{deposits:,.0f}
-- Total Withdrawals: R{withdrawals:,.0f}
-- Net Cash: R{net_cash:,.0f}
-
+{tx_lines}
 PLAYER HEALTH
 - Active Players: {active_players:,}
-- Churn Rate: {churn_pct:.1f}%
-- D7 Retention: {retention_d7:.1f}%
-- D30 Retention: {retention_d30:.1f}%
-
-VIP
-- Total VIPs: {total_vips:,}
-- VIP GGR Contribution: R{vip_ggr:,.0f}
-- VIP GGR as % of Total: {(vip_ggr/ggr*100) if ggr > 0 else 0:.1f}%
-
-BONUS
-- Bonus Issued: R{bonus_issued:,.0f}
-- Bonus Converted: R{bonus_converted:,.0f}
-- Bonus Conversion Rate: {(bonus_converted/bonus_issued*100) if bonus_issued > 0 else 0:.1f}%
+- Churn Rate: {churn_pct:.1f}%{retention_lines}
+{vip_lines}
+{bonus_lines}
 
 Provide actionable insights in JSON format with wins, concerns, watch_list, and recommendations.
 """
