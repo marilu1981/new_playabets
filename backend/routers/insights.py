@@ -54,7 +54,8 @@ def _call_azure_openai(prompt: str) -> dict:
                     "\n- For churn: state what it means factually. 'Churn at 47.2% means one in two active players last month did not return.' Do not add 'which could lead to...' unless you can compute the exact ZAR cost from NGR and churn rate."
                     "\n- Currency in figures: R150k, R2.3m, R8,500."
                     "\n- British English throughout."
-                    "\n- No em dashes. No filler adverbs. No banned phrases: leverage, synergy, robust, seamless, transformative, holistic, delve, ecosystem, substantial, significant, at risk."
+                    "\n- No em dashes. No filler adverbs."
+                    "\n- Banned words (never use): leverage, synergy, robust, seamless, transformative, holistic, delve, ecosystem, substantial, significant, at risk, crucial, critical, essential, extremely."
                     "\n\nCRITICAL DATA RULES:"
                     "\n- ONLY use the exact metric values from the data. Never invent, round differently, or assume values not in the data."
                     "\n- If a field is 0 or absent, skip it entirely. Do not comment on zero values."
@@ -120,6 +121,7 @@ def ai_summary(
         ggr=round(ggr, -3), ngr=round(ngr, -3),
         registrations=registrations, ftds=ftds,
         bonus_converted=round(bonus_converted, -3),
+        prev_ggr=round(prev_ggr, -3),
     )
     if cache_key in _CACHE:
         return {**_CACHE[cache_key], "cached": True, "available": True}
