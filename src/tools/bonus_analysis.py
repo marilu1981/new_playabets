@@ -59,10 +59,13 @@ def _load_bonuses(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     df = df.dropna(subset=["userid", "insert_date"])
     df["userid"] = df["userid"].astype(int)
     df = df[(df["insert_date"] >= start) & (df["insert_date"] <= end)]
-    # Dedup: same BonusID can appear across increment files
+    # Dedup: same BonusID can appear across overlapping increment/compacted files
     bid = m.get("bonusid")
     if bid and bid in df.columns:
-        df = df.drop_duplicates(subset=[bid], keep="last")
+        df = df.sort_values("insert_date").drop_duplicates(subset=[bid], keep="last")
+    else:
+        # No BonusID — fall back to a row signature to avoid double-counting
+        df = df.drop_duplicates(subset=["userid", "campaignid", "amount", "insert_date"], keep="last")
     return df
 
 
@@ -76,28 +79,36 @@ def _load_campaigns() -> pd.DataFrame:
     keep = {k: v for k, v in keep.items() if k}
     df = df[list(keep)].rename(columns=keep)
     df["campaignid"] = to_num(df["campaignid"], default=np.nan)
-    return df.dropna(subset=["campaignid"])
+    df = df.dropna(subset=["campaignid"])
+    # Defensive: one row per campaign (compacted + latest files can overlap on the VM)
+    df = df.drop_duplicates(subset=["campaignid"], keep="last")
+    return df
 
 
 def _load_turnover(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
-    """Per-user real-money turnover/winnings/bets + per-user turnover linked to a bonus campaign."""
+    """
+    Per-bet turnover with credit_type kept (not filtered out):
+      - credit_type "User Account" = real-money wagering (commercial value).
+      - credit_type "Bonus"/"Freebets" = bonus-funded wagering; these carry
+        BonusCampaignID, so they attribute turnover to the funding campaign.
+    Casino has no credit type / campaign link, so it's treated as real money.
+    """
     frames = []
     bs_raw = read_all_parquets(raw_dir("betslips"), "betslips*.parquet")
     if not bs_raw.empty:
         bs, m = normalize_cols(bs_raw)
         uid, dcol, stake, win, credit, bcamp = (m.get("userid"), m.get("placementdate"),
             m.get("stake"), m.get("winnings"), m.get("credittype"), m.get("bonuscampaignid"))
-        if credit:
-            bs = bs[bs[credit].astype(str) == "User Account"]
         bs["userid"] = to_num(bs[uid], default=np.nan)
         bs["_dt"] = to_dt(bs[dcol])
         bs["stake"] = to_num(bs[stake], default=0.0)
         bs["win"] = to_num(bs[win], default=0.0)
+        bs["credit_type"] = bs[credit].astype(str) if credit else "User Account"
         bs["bonus_campaignid"] = to_num(bs[bcamp], default=np.nan) if bcamp else np.nan
         bs = bs.dropna(subset=["userid", "_dt"])
         bs = bs[(bs["_dt"] >= start) & (bs["_dt"] <= end)]
         bs["userid"] = bs["userid"].astype(int)
-        frames.append(bs[["userid", "_dt", "stake", "win", "bonus_campaignid"]].assign(product="sports"))
+        frames.append(bs[["userid", "_dt", "stake", "win", "credit_type", "bonus_campaignid"]].assign(product="sports"))
 
     ca_raw = read_all_parquets(raw_dir("casino"), "*.parquet")
     if not ca_raw.empty:
@@ -111,11 +122,12 @@ def _load_turnover(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         ca = ca.dropna(subset=["userid", "_dt"])
         ca = ca[(ca["_dt"] >= start) & (ca["_dt"] <= end)]
         ca["userid"] = ca["userid"].astype(int)
+        ca["credit_type"] = "User Account"
         ca["bonus_campaignid"] = np.nan
-        frames.append(ca[["userid", "_dt", "stake", "win", "bonus_campaignid"]].assign(product="casino"))
+        frames.append(ca[["userid", "_dt", "stake", "win", "credit_type", "bonus_campaignid"]].assign(product="casino"))
 
     if not frames:
-        return pd.DataFrame(columns=["userid", "_dt", "stake", "win", "bonus_campaignid", "product"])
+        return pd.DataFrame(columns=["userid", "_dt", "stake", "win", "credit_type", "bonus_campaignid", "product"])
     return pd.concat(frames, ignore_index=True)
 
 
@@ -166,9 +178,10 @@ def main() -> None:
     issued = bonuses[bonuses["bonus_status"] == ISSUED_STATUS].copy()
     print(f"[bonus] issued (Credited): {len(issued):,} bonuses, R{issued['amount'].sum():,.0f}")
 
-    # ---- per-player turnover/GGR ----
-    if not turnover.empty:
-        per_user = turnover.groupby("userid").agg(
+    # ---- per-player turnover/GGR (REAL MONEY only — User Account) ----
+    real = turnover[turnover["credit_type"] == "User Account"] if not turnover.empty else turnover
+    if not real.empty:
+        per_user = real.groupby("userid").agg(
             turnover=("stake", "sum"),
             winnings=("win", "sum"),
             bets=("stake", "size"),
@@ -201,7 +214,8 @@ def main() -> None:
         bonus_count=("amount", "size"),
         players=("userid", "nunique"),
     ).reset_index()
-    # Turnover linked to campaign via betslip BonusCampaignID (sports only carry it).
+    # Turnover linked to a campaign = bonus-funded betslips (CreditType Bonus/Freebets),
+    # which carry BonusCampaignID. This is the wagering the bonus directly drove.
     linked = turnover.dropna(subset=["bonus_campaignid"]).copy()
     if not linked.empty:
         linked["bonus_campaignid"] = linked["bonus_campaignid"].astype(int)
