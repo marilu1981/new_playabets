@@ -153,6 +153,8 @@ def main() -> None:
     p.add_argument("--end", default=None, help="End date YYYY-MM-DD (default: today)")
     p.add_argument("--outdir", default="data/serving/bonus_analysis", help="Output directory for CSVs")
     p.add_argument("--repeat-threshold", type=int, default=3, help="Bonuses count to be 'repeated' (default 3)")
+    p.add_argument("--exclude-campaigns", nargs="*", default=["100% First Deposit Bonus - Casino"],
+                   help="Campaign names to exclude from campaign-level funnel (turnover attribution unreliable for FTD bonuses)")
     args = p.parse_args()
 
     start = pd.Timestamp(args.start)
@@ -242,7 +244,18 @@ def main() -> None:
     camp.to_csv(outdir / "02_campaign_funnel.csv", index=False)
 
     # ---- highest / lowest performing campaigns (min spend to be meaningful) ----
-    meaningful = camp[camp["bonus_issued"] >= 1000].copy()
+    # Exclude FTD-type campaigns: their turnover is real-money (not BonusCampaignID-linked),
+    # so linked_turnover understates value and net_value_est is misleadingly negative.
+    excluded = set(args.exclude_campaigns) if args.exclude_campaigns else set()
+    if excluded and "campaign_name" in camp.columns:
+        excluded_rows = camp[camp["campaign_name"].isin(excluded)]
+        if not excluded_rows.empty:
+            names = excluded_rows["campaign_name"].unique().tolist()
+            print(f"[bonus] excluding from campaign rankings (FTD attribution gap): {names}")
+        camp_ranked = camp[~camp["campaign_name"].isin(excluded)].copy()
+    else:
+        camp_ranked = camp.copy()
+    meaningful = camp_ranked[camp_ranked["bonus_issued"] >= 1000].copy()
     ranked = meaningful.sort_values("turnover_per_bonus_rand", ascending=False)
     ranked.head(20).to_csv(outdir / "03_top_campaigns.csv", index=False)
     ranked.tail(20).to_csv(outdir / "04_bottom_campaigns.csv", index=False)
