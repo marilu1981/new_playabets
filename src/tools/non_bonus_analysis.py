@@ -152,9 +152,10 @@ def main() -> None:
     ).reset_index()
     per_user["ggr"] = per_user["turnover"] - per_user["winnings"]
 
-    # ---- merge FTD ----
+    # ---- merge FTD (window-scoped: only FTDs that occurred within the analysis window) ----
     ftd_nb = ftd[~ftd["userid"].isin(bonused_ids)]
-    player = per_user.merge(ftd_nb.assign(got_ftd=1)[["userid", "ftd_date", "got_ftd"]], on="userid", how="left")
+    ftd_nb_window = ftd_nb[(ftd_nb["ftd_date"] >= start) & (ftd_nb["ftd_date"] <= end)]
+    player = per_user.merge(ftd_nb_window.assign(got_ftd=1)[["userid", "ftd_date", "got_ftd"]], on="userid", how="left")
     player["got_ftd"] = player["got_ftd"].fillna(0).astype(int)
     player = player.sort_values("ggr", ascending=False)
     player.to_csv(outdir / "01_player_funnel.csv", index=False)
@@ -169,11 +170,11 @@ def main() -> None:
     high_value.to_csv(outdir / "02_high_value_players.csv", index=False)
     print(f"[non_bonus] 02_high_value_players: {len(high_value):,} players (GGR >= R{ggr_threshold:,.0f})")
 
-    # ---- FTD players with no bets (deposited but not engaged) ----
-    ftd_no_bet_ids = set(ftd_nb["userid"]) - set(per_user["userid"])
-    ftd_no_bet = ftd_nb[ftd_nb["userid"].isin(ftd_no_bet_ids)].copy()
+    # ---- FTD players (within window) with no bets — genuinely deposited and didn't engage ----
+    ftd_no_bet_ids = set(ftd_nb_window["userid"]) - set(per_user["userid"])
+    ftd_no_bet = ftd_nb_window[ftd_nb_window["userid"].isin(ftd_no_bet_ids)].copy()
     ftd_no_bet.to_csv(outdir / "03_ftd_no_bets.csv", index=False)
-    print(f"[non_bonus] 03_ftd_no_bets: {len(ftd_no_bet):,} players deposited but never bet")
+    print(f"[non_bonus] 03_ftd_no_bets: {len(ftd_no_bet):,} players deposited in window but never bet")
 
     # ---- product split: sports-only / casino-only / both ----
     player["has_sports"] = player["sports_bets"] > 0
@@ -196,7 +197,7 @@ def main() -> None:
         "window_end": (end - pd.Timedelta(days=1)).date(),
         "bonused_players_excluded": len(bonused_ids),
         "non_bonus_players_with_turnover": len(player),
-        "non_bonus_players_with_ftd": int(player["got_ftd"].sum()),
+        "non_bonus_players_with_ftd_in_window": int(player["got_ftd"].sum()),
         "ftd_players_never_bet": len(ftd_no_bet),
         "total_turnover": round(real["stake"].sum(), 2),
         "total_ggr": round(per_user["ggr"].sum(), 2),
