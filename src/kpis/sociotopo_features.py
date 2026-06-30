@@ -933,13 +933,23 @@ def main():
     p = argparse.ArgumentParser(description="Build SocioTopography axis features.")
     p.add_argument("--window", type=int, default=30)
     p.add_argument("--no-normalize", dest="normalize", action="store_false")
+    p.add_argument("--as-of", default=None,
+                   help="Historical cutoff date YYYY-MM-DD for betslips/casino/sessions/bonus/tx "
+                        "windows. NOTE: rfm_users.parquet is not date-versioned, so segment/recency/"
+                        "monetary_30d fields still reflect TODAY's RFM snapshot, not this date.")
+    p.add_argument("--out", default=None, help="Override output path (default: data/serving/sociotopo_features.parquet)")
     args = p.parse_args()
+    as_of = pd.Timestamp(args.as_of) if args.as_of else None
+    out_file = Path(args.out) if args.out else OUT_FILE
     SERVING_ROOT.mkdir(parents=True, exist_ok=True)
-    features = build_sociotopo_features(window_days=args.window, normalize=args.normalize)
-    features.to_parquet(OUT_FILE, index=False)
+    features = build_sociotopo_features(window_days=args.window, as_of=as_of, normalize=args.normalize)
+    features.to_parquet(out_file, index=False)
     n = len(features)
-    msg = "[sociotopo] Saved {:,} users -> {}".format(n, OUT_FILE)
+    msg = "[sociotopo] Saved {:,} users -> {}".format(n, out_file)
     print(msg)
+    if as_of is not None:
+        print(f"[sociotopo] CAVEAT: activity windows used as_of={as_of.date()}, but segment/recency/"
+              f"monetary_30d came from TODAY's rfm_users.parquet snapshot (not date-versioned).")
     print("[sociotopo] Risk tier distribution:")
     print(features["risk_tier"].value_counts().sort_index().to_string())
     print("[sociotopo] Axis score summary:")
