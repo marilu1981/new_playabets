@@ -37,10 +37,10 @@ def _sports_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     dcol = col.get("placementdate")
     credit = col.get("credittype")
     stake = col.get("stake")
-    payout = col.get("payout")
+    winnings = col.get("winnings")
 
-    if not all([uid, dcol, stake, payout]):
-        missing = [k for k, v in {"userid": uid, "placementdate": dcol, "stake": stake, "payout": payout}.items() if not v]
+    if not all([uid, dcol, stake, winnings]):
+        missing = [k for k, v in {"userid": uid, "placementdate": dcol, "stake": stake, "winnings": winnings}.items() if not v]
         print(f"[ggr] WARNING: missing betslip columns: {missing}")
         return pd.DataFrame(columns=["userid", "sports_ggr"])
 
@@ -56,8 +56,8 @@ def _sports_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     df = df[df["_uid"].isin(user_ids)]
 
     df["_stake"] = to_num(df[stake], default=0.0)
-    df["_payout"] = to_num(df[payout], default=0.0)
-    df["_ggr"] = df["_stake"] - df["_payout"]
+    df["_winnings"] = to_num(df[winnings], default=0.0)
+    df["_ggr"] = df["_stake"] - df["_winnings"]
 
     result = df.groupby("_uid")["_ggr"].sum().reset_index()
     result.columns = ["userid", "sports_ggr"]
@@ -74,10 +74,10 @@ def _casino_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     uid = col.get("userid")
     dcol = col.get("placementdate")
     stake = col.get("stake")
-    payout = col.get("payout")
+    winnings = col.get("winnings")
 
-    if not all([uid, dcol, stake, payout]):
-        missing = [k for k, v in {"userid": uid, "placementdate": dcol, "stake": stake, "payout": payout}.items() if not v]
+    if not all([uid, dcol, stake, winnings]):
+        missing = [k for k, v in {"userid": uid, "placementdate": dcol, "stake": stake, "winnings": winnings}.items() if not v]
         print(f"[ggr] WARNING: missing casino columns: {missing}")
         return pd.DataFrame(columns=["userid", "casino_ggr"])
 
@@ -92,8 +92,8 @@ def _casino_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     df["_uid"] = df["_uid"].astype(int)
     df = df[df["_uid"].isin(user_ids)]
 
-    df["_payout"] = to_num(df[payout], default=0.0)
-    df["_ggr"] = df["_stake"] - df["_payout"]
+    df["_winnings"] = to_num(df[winnings], default=0.0)
+    df["_ggr"] = df["_stake"] - df["_winnings"]
 
     result = df.groupby("_uid")["_ggr"].sum().reset_index()
     result.columns = ["userid", "casino_ggr"]
