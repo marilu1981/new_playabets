@@ -93,7 +93,22 @@ def _casino_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     df = df[df["_uid"].isin(user_ids)]
 
     df["_winnings"] = to_num(df[winnings], default=0.0)
-    df["_ggr"] = df["_stake"] - df["_winnings"]
+
+    # Strip bonus rounds: use real-money stake/winnings only (matches dashboard casino_real_ggr)
+    bonus_stake_col    = col.get("bonusstake")
+    bonus_winnings_col = col.get("bonuswinnings")
+    if bonus_stake_col and bonus_winnings_col:
+        df["_bonus_stake"]    = to_num(df[bonus_stake_col],    default=0.0)
+        df["_bonus_winnings"] = to_num(df[bonus_winnings_col], default=0.0)
+        df["_real_stake"]     = (df["_stake"]    - df["_bonus_stake"]).clip(lower=0)
+        df["_real_winnings"]  = (df["_winnings"] - df["_bonus_winnings"]).clip(lower=0)
+        print("[ggr] Casino: using real-money stake/winnings (bonus rounds excluded)")
+    else:
+        df["_real_stake"]    = df["_stake"]
+        df["_real_winnings"] = df["_winnings"]
+        print("[ggr] Casino: bonusstake/bonuswinnings columns not found — using total stake/winnings")
+
+    df["_ggr"] = df["_real_stake"] - df["_real_winnings"]
 
     result = df.groupby("_uid")["_ggr"].sum().reset_index()
     result.columns = ["userid", "casino_ggr"]
