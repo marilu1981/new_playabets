@@ -83,12 +83,8 @@ def main() -> None:
     )
 
     # Efficient-ish rolling distinct using cumulative sets is tricky; simpler approach:
-    # Use a per-user daily presence table only on days where user appears (sparse), then rolling nunique via pandas:
+    # Exact rolling distinct via day-by-day set union over a sparse presence table.
     presence = bs[["userid", "place_day"]].drop_duplicates()
-    # Create a boolean pivot-like table? Too big. Instead compute rolling distinct by expanding window using groupby+rolling on counts per user:
-    # We'll approximate "rolling active bettors" as rolling sum of daily unique bettors (not exact distinct across window).
-    # If you want exact distinct 30d, best is in SQL. For now: exact using python can be heavy.
-    # We'll do an exact-but-acceptable approach for your scale by using day-by-day set union.
     active_30d = []
     day_to_users = {d: set(grp["userid"].tolist()) for d, grp in presence.groupby("place_day")}
     for d in days:

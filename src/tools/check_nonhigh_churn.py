@@ -1,7 +1,7 @@
 """
 check_nonhigh_churn.py
 -----------------------
-Companion to check_atrisk_churn.py — checks churn for the players NOT flagged
+Companion to check_atrisk_churn.py - checks churn for the players NOT flagged
 High or Critical risk on 5 June 2026 (i.e. the Moderate/Low population), using
 the exact same methodology as the validated High-risk result:
 
@@ -38,7 +38,7 @@ def main() -> None:
     p.add_argument("--critical", required=True, help="Path to the CRITICAL risk userid file")
     p.add_argument("--since", default="2026-06-05", help="Flag date; churned = no bet after this date")
     p.add_argument("--require-active-in", default="2026-05",
-                   help="Comma months e.g. 2026-05 — restrict baseline to players active in these months")
+                   help="Comma months e.g. 2026-05 - restrict baseline to players active in these months")
     p.add_argument("--out", default="data/serving/nonhigh_churn_result.csv", help="Output CSV path")
     args = p.parse_args()
 
@@ -51,7 +51,7 @@ def main() -> None:
     require_months = {m.strip() for m in args.require_active_in.split(",") if m.strip()}
     since = pd.Timestamp(args.since)
 
-    # _last_activity_per_user needs a "flagged" set to restrict the per-user lookup to —
+    # _last_activity_per_user needs a "flagged" set to restrict the per-user lookup to -
     # but here we want everyone EXCEPT high/critical, which is the full user population
     # minus a known set. We can't pre-enumerate "everyone" cheaply, so instead pull
     # activity for ALL users active in the required months, then exclude high/critical.

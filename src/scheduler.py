@@ -1,7 +1,7 @@
 """
-scheduler.py — Playa Bets 2-hourly Data Pipeline Scheduler
+scheduler.py - Playa Bets 2-hourly Data Pipeline Scheduler
 ============================================================
-Runs the full extract → transform pipeline on a 2-hour interval.
+Runs the full extract -> transform pipeline on a 2-hour interval.
 
 Usage:
     # Run once immediately, then every 2 hours:
@@ -11,13 +11,13 @@ Usage:
     SCHEDULE_INTERVAL_MINUTES=60 python -m src.scheduler
 
 Environment variables required:
-    DWH_USER  – SQL Server login
-    DWH_PASS  – SQL Server password
+    DWH_USER  - SQL Server login
+    DWH_PASS  - SQL Server password
 
 Optional:
-    SCHEDULE_INTERVAL_MINUTES  – override the default 120-minute interval
-    SKIP_EXTRACT               – set to "1" to skip extract (transform only)
-    LOG_LEVEL                  – DEBUG | INFO | WARNING (default: INFO)
+    SCHEDULE_INTERVAL_MINUTES  - override the default 120-minute interval
+    SKIP_EXTRACT               - set to "1" to skip extract (transform only)
+    LOG_LEVEL                  - DEBUG | INFO | WARNING (default: INFO)
 """
 from __future__ import annotations
 
@@ -61,8 +61,8 @@ EXTRACT_MODULES = [
     "src.extract.incremental_first_deposits",
     "src.extract.incremental_bonus",
     "src.extract.incremental_casino",
-    "src.extract.incremental_taxes",              # always run — independent of transactions pipeline
-    "src.extract.incremental_payment_providers",  # always run — independent of transactions pipeline
+    "src.extract.incremental_taxes",              # always run - independent of transactions pipeline
+    "src.extract.incremental_payment_providers",  # always run - independent of transactions pipeline
     "src.extract.raventrack_affiliates",          # RavenTrack affiliate + player reporting
 ]
 if ENABLE_TRANSACTIONS:
@@ -72,7 +72,7 @@ if ENABLE_TRANSACTIONS:
 TRANSFORM_MODULES = [
     "src.kpis.build_daily_kpis",      # builds daily_kpis.parquet + rfm_users.parquet
     "src.kpis.build_domain_kpis",     # builds transactions/bonus/casino serving files
-    # "src.kpis.sociotopo_features",  # DISABLED — ~12 min UMAP run, not yet in production use
+    # "src.kpis.sociotopo_features",  # DISABLED - ~12 min UMAP run, not yet in production use
 ]
 
 TRANSFORM_DEPENDENCIES = {
@@ -94,7 +94,7 @@ TRANSFORM_DEPENDENCIES = {
 if ENABLE_TRANSACTIONS:
     # incremental_transactions_simple is NOT a hard dependency of build_domain_kpis:
     # casino/bonus/payment_providers must keep rebuilding even when transactions extract fails.
-    pass  # sociotopo_features disabled — user_transactions dependency removed
+    pass  # sociotopo_features disabled - user_transactions dependency removed
 
 
 def _run_module(module: str) -> bool:
@@ -124,7 +124,7 @@ def _run_module(module: str) -> bool:
 
 
 def run_pipeline() -> None:
-    """Execute the full extract → transform pipeline."""
+    """Execute the full extract -> transform pipeline."""
     started = datetime.now(UTC)
     log.info("=" * 60)
     log.info("Pipeline started at %s", started.isoformat())
@@ -146,7 +146,7 @@ def run_pipeline() -> None:
                 errors.append(f"extract:{module}:{exc}")
                 failed_extracts.add(module)
     else:
-        log.info("SKIP_EXTRACT=1 — skipping extract phase")
+        log.info("SKIP_EXTRACT=1 - skipping extract phase")
 
     # --- Transform ---
     log.info("--- TRANSFORM PHASE ---")
@@ -186,7 +186,7 @@ def _compact() -> None:
 
 
 def main() -> None:
-    log.info("Playa Bets Scheduler starting — interval: %d minutes", INTERVAL_MINUTES)
+    log.info("Playa Bets Scheduler starting - interval: %d minutes", INTERVAL_MINUTES)
     log.info("Project root: %s", PROJECT_ROOT)
     log.info("Run once: %s", RUN_ONCE)
     log.info("Transactions enabled: %s", ENABLE_TRANSACTIONS)

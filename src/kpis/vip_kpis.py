@@ -10,13 +10,13 @@ under a given account manager and lifecycle stage:
 
 Offboard Date = "-" means the stint is currently active (no end date yet).
 A user may appear multiple times if they were onboarded/offboarded more
-than once — each row is a distinct stint with its own date range.
+than once - each row is a distinct stint with its own date range.
 
 Output: serving/vip_roster.parquet
 Columns:
     userid, account_manager, vip_lifecycle_stage,
     onboard_date, offboard_date (NaT if currently active),
-    is_current (bool), is_date_error (bool — offboard < onboard)
+    is_current (bool), is_date_error (bool - offboard < onboard)
 
 Run from the project root:
     python -m src.kpis.vip_kpis
@@ -62,7 +62,7 @@ def build_vip_roster() -> pd.DataFrame:
     )
     df["is_current"] = df["offboard_date"].isna()
 
-    # Data quality flag — Offboard Date earlier than Onboard Date.
+    # Data quality flag - Offboard Date earlier than Onboard Date.
     # Kept in the roster (not dropped) but flagged so KPI queries can
     # exclude these stints from period-overlap calculations if needed.
     df["is_date_error"] = df["offboard_date"].notna() & (df["offboard_date"] < df["onboard_date"])

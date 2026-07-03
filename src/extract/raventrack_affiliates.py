@@ -6,33 +6,33 @@ at https://affiliates.playabets.co.za and saves daily aggregate Parquet
 files for use by build_domain_kpis.py.
 
 Required env vars:
-    RAVENTRACK_AFFILIATE_TOKEN  — Bearer token with affiliate-list ability
-    RAVENTRACK_PLAYER_TOKEN     — Bearer token with player-reporting ability
-    RAVENTRACK_VENDOR_ID        — Playabets vendor/operator ID in RavenTrack
-                                  (ask Max — needed for player reporting endpoint)
+    RAVENTRACK_AFFILIATE_TOKEN  - Bearer token with affiliate-list ability
+    RAVENTRACK_PLAYER_TOKEN     - Bearer token with player-reporting ability
+    RAVENTRACK_VENDOR_ID        - Playabets vendor/operator ID in RavenTrack
+                                  (ask Max - needed for player reporting endpoint)
 
 Optional env vars:
-    RT_BACKFILL_START   — Start date, e.g. "2026-05-01" (default: 90 days ago)
-    RT_BACKFILL_END     — End date, e.g. "2026-05-31" (default: yesterday)
-    RT_PAGE_SIZE        — Results per page: 50,100,150,200,250 (default: 100)
-    RT_CURRENCY         — ISO 4217 currency code (default: ZAR)
+    RT_BACKFILL_START   - Start date, e.g. "2026-05-01" (default: 90 days ago)
+    RT_BACKFILL_END     - End date, e.g. "2026-05-31" (default: yesterday)
+    RT_PAGE_SIZE        - Results per page: 50,100,150,200,250 (default: 100)
+    RT_CURRENCY         - ISO 4217 currency code (default: ZAR)
 
 Confirmed endpoints (from Postman collection dce86e95):
     GET /network/api/affiliate/search
         params: created_at_from, created_at_to, paginate, per_page, page, detailed
         token:  RAVENTRACK_AFFILIATE_TOKEN  (needs 'Affiliate List' ability)
-        status: 403 — token scope not yet granted in RavenTrack admin
+        status: 403 - token scope not yet granted in RavenTrack admin
 
     GET /network/api/reporting/player
         params: date_range=custom, start_date, end_date, currency, grouping,
                 vendor, paginate, per_page, page, new_players_only
         token:  RAVENTRACK_PLAYER_TOKEN  (token authenticates, needs vendor ID)
         grouping options: player | player_by_day | player_by_month
-        status: 500/timeout — vendor ID required, ask Max for Playabets vendor ID
+        status: 500/timeout - vendor ID required, ask Max for Playabets vendor ID
 
 Token abilities to request from Max in RavenTrack admin:
-    Affiliate token → 'Affiliate List' ability
-    Player token    → 'Player Activity By Date Range' ability
+    Affiliate token -> 'Affiliate List' ability
+    Player token    -> 'Player Activity By Date Range' ability
 
 Run:
     RAVENTRACK_AFFILIATE_TOKEN=... RAVENTRACK_PLAYER_TOKEN=... RAVENTRACK_VENDOR_ID=... \\
@@ -53,7 +53,7 @@ from src.app_config import RAW_ROOT
 BASE_URL        = os.environ.get("RAVENTRACK_BASE_URL", "https://affiliates.playabets.co.za")
 AFFILIATE_TOKEN = os.environ.get("RAVENTRACK_AFFILIATE_TOKEN", "")
 PLAYER_TOKEN    = os.environ.get("RAVENTRACK_PLAYER_TOKEN", "")
-VENDOR_ID       = os.environ.get("RAVENTRACK_VENDOR_ID", "")   # Playabets operator ID — ask Max
+VENDOR_ID       = os.environ.get("RAVENTRACK_VENDOR_ID", "")   # Playabets operator ID - ask Max
 CURRENCY        = os.environ.get("RT_CURRENCY", "ZAR")
 PAGE_SIZE       = int(os.environ.get("RT_PAGE_SIZE", "100"))   # valid: 50,100,150,200,250
 
@@ -102,7 +102,7 @@ def _fetch_paginated(token: str, path: str, params: dict) -> list[dict]:
             break
         if resp.status_code == 403:
             _log(f"  ERROR 403: Token lacks required scope for {path}.")
-            _log("  → Ask Max (RavenTrack) to grant the correct API ability to this token.")
+            _log("  -> Ask Max (RavenTrack) to grant the correct API ability to this token.")
             break
         if resp.status_code == 404:
             _log(f"  ERROR 404: Endpoint {path} not found. Confirm exact URL with Max.")
@@ -141,10 +141,10 @@ def _fetch_paginated(token: str, path: str, params: dict) -> list[dict]:
 def fetch_affiliates(date_from: date, date_to: date) -> pd.DataFrame:
     """Pull affiliate activity from /network/api/reporting/affiliate."""
     if not AFFILIATE_TOKEN:
-        _log("RAVENTRACK_AFFILIATE_TOKEN not set — skipping affiliate fetch")
+        _log("RAVENTRACK_AFFILIATE_TOKEN not set - skipping affiliate fetch")
         return pd.DataFrame()
 
-    _log(f"Fetching affiliates {date_from} → {date_to}")
+    _log(f"Fetching affiliates {date_from} -> {date_to}")
     params = {
         "start_date":    str(date_from),
         "end_date":      str(date_to),
@@ -195,15 +195,15 @@ def fetch_affiliates(date_from: date, date_to: date) -> pd.DataFrame:
 def fetch_players(date_from: date, date_to: date) -> pd.DataFrame:
     """Pull player-level activity data for the given date range."""
     if not PLAYER_TOKEN:
-        _log("RAVENTRACK_PLAYER_TOKEN not set — skipping player fetch")
+        _log("RAVENTRACK_PLAYER_TOKEN not set - skipping player fetch")
         return pd.DataFrame()
 
     if not VENDOR_ID:
-        _log("RAVENTRACK_VENDOR_ID not set — skipping player fetch")
+        _log("RAVENTRACK_VENDOR_ID not set - skipping player fetch")
         _log("  Ask Max (RavenTrack) for the Playabets operator/vendor ID")
         return pd.DataFrame()
 
-    _log(f"Fetching players {date_from} → {date_to} (vendor={VENDOR_ID}, currency={CURRENCY})")
+    _log(f"Fetching players {date_from} -> {date_to} (vendor={VENDOR_ID}, currency={CURRENCY})")
     params = {
         "date_range": "custom",
         "start_date": str(date_from),
@@ -248,7 +248,7 @@ def fetch_players(date_from: date, date_to: date) -> pd.DataFrame:
 
 
 def _month_windows(start: date, end: date):
-    """Yield (month_start, month_end) pairs covering start→end."""
+    """Yield (month_start, month_end) pairs covering start->end."""
     from calendar import monthrange
     cur = start.replace(day=1)
     while cur <= end:
@@ -270,22 +270,22 @@ def main() -> None:
         _log("Set them as environment variables and re-run.")
         return
 
-    _log(f"Backfill range: {BACKFILL_START} → {BACKFILL_END}")
+    _log(f"Backfill range: {BACKFILL_START} -> {BACKFILL_END}")
     _log(f"Base URL: {BASE_URL}")
 
     # Pull affiliate data month-by-month so each file covers exactly one month.
     # This ensures the date filter in the dashboard works correctly per period.
     all_frames = []
     for month_start, month_end in _month_windows(BACKFILL_START, BACKFILL_END):
-        _log(f"Fetching affiliates {month_start} → {month_end}")
+        _log(f"Fetching affiliates {month_start} -> {month_end}")
         aff_df = fetch_affiliates(month_start, month_end)
         if not aff_df.empty:
             out = OUT_DIR / f"affiliates_{month_start}_{month_end}.parquet"
             aff_df.to_parquet(out, index=False)
-            _log(f"  Saved {len(aff_df)} rows → {out.name}")
+            _log(f"  Saved {len(aff_df)} rows -> {out.name}")
             all_frames.append(aff_df)
         else:
-            _log(f"  No data for {month_start} → {month_end}")
+            _log(f"  No data for {month_start} -> {month_end}")
         time.sleep(1)  # be polite
 
     if all_frames:
@@ -302,7 +302,7 @@ def main() -> None:
         ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         out = OUT_DIR / f"players_{BACKFILL_START}_{BACKFILL_END}_{ts}.parquet"
         player_df.to_parquet(out, index=False)
-        _log(f"Saved {len(player_df)} player rows → {out}")
+        _log(f"Saved {len(player_df)} player rows -> {out}")
         _log(f"Columns: {list(player_df.columns)}")
     else:
         _log("No player data returned (check token scope / endpoint path).")

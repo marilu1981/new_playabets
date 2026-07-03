@@ -1,11 +1,11 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * Mock Data Layer — mirrors DWH view structures
+ * Mock Data Layer - mirrors DWH view structures
  * All data is fictional and for UI development only.
  * Replace with real API calls when VPN is available.
  */
 
-// ─── KPI Overview ────────────────────────────────────────────────────────────
+// --- KPI Overview ------------------------------------------------------------
 export const overviewKPIs = {
   totalUsers: 142_830,
   activeUsers: 98_420,
@@ -20,7 +20,7 @@ export const overviewKPIs = {
   currency: "NGN",
 };
 
-// ─── Revenue Trend (last 30 days) ────────────────────────────────────────────
+// --- Revenue Trend (last 30 days) --------------------------------------------
 export const revenueTrend = Array.from({ length: 30 }, (_, i) => {
   const date = new Date(2026, 1, i + 1);
   const base = 40_000 + Math.sin(i / 3) * 8_000;
@@ -34,7 +34,7 @@ export const revenueTrend = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
-// ─── Betslips by Status ───────────────────────────────────────────────────────
+// --- Betslips by Status -------------------------------------------------------
 export const betslipsByStatus = [
   { status: "Paid - Closed", count: 1_842_100, statusId: 50 },
   { status: "In Progress", count: 412_300, statusId: 10 },
@@ -43,14 +43,14 @@ export const betslipsByStatus = [
   { status: "Cancelled", count: 460_391, statusId: 6 },
 ];
 
-// ─── Betslips by Type ─────────────────────────────────────────────────────────
+// --- Betslips by Type ---------------------------------------------------------
 export const betslipsByType = [
   { type: "Normal", count: 1_920_000, typeId: 1 },
   { type: "Live", count: 680_000, typeId: 2 },
   { type: "Mixed", count: 247_391, typeId: 3 },
 ];
 
-// ─── Bet Types (Single, Multiple, etc.) ──────────────────────────────────────
+// --- Bet Types (Single, Multiple, etc.) --------------------------------------
 export const betsByType = [
   { betType: "Single", count: 1_540_000, stake: 4_200_000 },
   { betType: "Multiple", count: 820_000, stake: 3_100_000 },
@@ -58,7 +58,7 @@ export const betsByType = [
   { betType: "Split", count: 107_391, stake: 382_100 },
 ];
 
-// ─── Application Type Breakdown ──────────────────────────────────────────────
+// --- Application Type Breakdown ----------------------------------------------
 export const betsByApplication = [
   { app: "Mobile", count: 1_820_000, percentage: 63.9 },
   { app: "Web Site", count: 780_000, percentage: 27.4 },
@@ -66,7 +66,7 @@ export const betsByApplication = [
   { app: "Cashier", count: 67_391, percentage: 2.4 },
 ];
 
-// ─── Top Sports ───────────────────────────────────────────────────────────────
+// --- Top Sports ---------------------------------------------------------------
 export const topSports = [
   { sport: "Soccer", sportId: 1, bets: 1_420_000, stake: 5_200_000, revenue: 480_000 },
   { sport: "Basketball", sportId: 2, bets: 380_000, stake: 1_400_000, revenue: 130_000 },
@@ -78,7 +78,7 @@ export const topSports = [
   { sport: "Boxing", sportId: 17, bets: 62_000, stake: 180_000, revenue: 22_000 },
 ];
 
-// ─── Users by Status ──────────────────────────────────────────────────────────
+// --- Users by Status ----------------------------------------------------------
 export const usersByStatus = [
   { status: "Enabled", count: 98_420, statusId: 1 },
   { status: "Disabled", count: 28_310, statusId: 2 },
@@ -87,7 +87,7 @@ export const usersByStatus = [
   { status: "Deleted", count: 2_540, statusId: 3 },
 ];
 
-// ─── User Registrations (last 12 months) ─────────────────────────────────────
+// --- User Registrations (last 12 months) -------------------------------------
 export const userRegistrations = [
   { month: "Mar 2025", registrations: 3_420, churned: 820 },
   { month: "Apr 2025", registrations: 3_810, churned: 740 },
@@ -103,7 +103,7 @@ export const userRegistrations = [
   { month: "Feb 2026", registrations: 5_480, churned: 980 },
 ];
 
-// ─── Users by Currency ────────────────────────────────────────────────────────
+// --- Users by Currency --------------------------------------------------------
 export const usersByCurrency = [
   { currency: "Naira (NGN)", currencyId: 11, users: 89_420 },
   { currency: "Ghanian Cedi (GHS)", currencyId: 13, users: 24_810 },
@@ -112,7 +112,7 @@ export const usersByCurrency = [
   { currency: "Zambian Kwacha (ZMW)", currencyId: 18, users: 4_440 },
 ];
 
-// ─── Recent User Sessions ─────────────────────────────────────────────────────
+// --- Recent User Sessions -----------------------------------------------------
 export const recentSessions = [
   { sessionId: 10042891, userId: 284710, username: "player_ng_4821", loginDate: "2026-02-22 08:14:22", ip: "41.184.x.x", app: "Mobile", state: "Active" },
   { sessionId: 10042890, userId: 198432, username: "agent_gh_0921", loginDate: "2026-02-22 08:12:10", ip: "154.120.x.x", app: "Web Site", state: "Active" },
@@ -121,7 +121,7 @@ export const recentSessions = [
   { sessionId: 10042887, userId: 441820, username: "player_ug_5512", loginDate: "2026-02-22 08:01:18", ip: "41.210.x.x", app: "Mobile", state: "Ended" },
 ];
 
-// ─── Self-Exclusions ──────────────────────────────────────────────────────────
+// --- Self-Exclusions ----------------------------------------------------------
 export const selfExclusionSummary = {
   total: 287,
   inProgress: 198,
@@ -146,7 +146,7 @@ export const selfExclusionTrend = [
   { date: "2026-03-01", active: 205, started: 25, completed: 18 },
 ];
 
-// ─── Transactions ─────────────────────────────────────────────────────────────
+// --- Transactions -------------------------------------------------------------
 export const transactionSummary = {
   totalDeposits: 12_840_200,
   totalWithdrawals: 9_420_100,
@@ -176,7 +176,7 @@ export const transactionTrend = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
-// ─── Bonus & Campaigns ────────────────────────────────────────────────────────
+// --- Bonus & Campaigns --------------------------------------------------------
 export const bonusCampaigns = [
   { campaignId: 1042, name: "Welcome Bonus Q1 2026", status: "Active", bonusType: "Deposit Match", startDate: "2026-01-01", endDate: "2026-03-31", usersEnrolled: 8_420, totalPaid: 842_000, roi: -12.4 },
   { campaignId: 1038, name: "Super Sunday Soccer", status: "Active", bonusType: "Freebet", startDate: "2026-01-15", endDate: "2026-02-28", usersEnrolled: 3_210, totalPaid: 321_000, roi: 8.2 },
@@ -194,7 +194,7 @@ export const bonusKPIs = {
   avgBonusPerUser: 67.4,
 };
 
-// ─── Casino / Games ───────────────────────────────────────────────────────────
+// --- Casino / Games -----------------------------------------------------------
 export const casinoProviders = [
   { provider: "Evolution Gaming", casinoType: "Casino", bets: 284_100, stake: 2_840_100, winnings: 2_412_085, profit: 428_015 },
   { provider: "Pragmatic Play", casinoType: "Casino", bets: 198_400, stake: 1_984_000, winnings: 1_706_240, profit: 277_760 },
@@ -212,7 +212,7 @@ export const casinoKPIs = {
   totalBets: 870_000,
 };
 
-// ─── Top Agents (Hierarchy) ──────────────────────────────────────────────────
+// --- Top Agents (Hierarchy) --------------------------------------------------
 export const topAgents = [
   { agentId: 10042, username: "agent_ng_master", directUsers: 842, stake: 4_200_000 },
   { agentId: 10038, username: "agent_gh_west", directUsers: 621, stake: 3_105_000 },
@@ -221,7 +221,7 @@ export const topAgents = [
   { agentId: 10024, username: "agent_ng_lagos2", directUsers: 312, stake: 1_560_000 },
 ];
 
-// ─── Compliance / Audit ───────────────────────────────────────────────────────
+// --- Compliance / Audit -------------------------------------------------------
 export const complianceKPIs = {
   selfExclusionsActive: 198,
   frozenAccounts: 8_740,
@@ -238,7 +238,7 @@ export const importStatus = [
   { package: "Bonus Import", status: "Success", lastRun: "2026-02-22 08:02:00", duration: "1m 52s", executions24h: 24, successes24h: 24 },
 ];
 
-// ─── Hierarchy ────────────────────────────────────────────────────────────────
+// --- Hierarchy ----------------------------------------------------------------
 export const hierarchySummary = {
   totalAgents: 2_840,
   masterAgents: 142,
@@ -247,7 +247,7 @@ export const hierarchySummary = {
   avgUsersPerAgent: 50.3,
 };
 
-// ─── Player Acquisition (Registrations vs FTDs) ─────────────────────────────
+// --- Player Acquisition (Registrations vs FTDs) -----------------------------
 export const playerAcquisition = Array.from({ length: 12 }, (_, i) => {
   const months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb"];
   const regs = [3_420, 3_810, 4_120, 3_980, 4_540, 5_210, 4_890, 5_640, 6_120, 7_840, 6_920, 5_480][i];
@@ -255,7 +255,7 @@ export const playerAcquisition = Array.from({ length: 12 }, (_, i) => {
   return { month: months[i], registrations: regs, ftds, vftds: Math.round(ftds * 0.12), topFtds: Math.round(ftds * 0.04) };
 });
 
-// ─── GGR / NGR / Turnover Trend ───────────────────────────────────────────────
+// --- GGR / NGR / Turnover Trend -----------------------------------------------
 export const revenueMetricsTrend = Array.from({ length: 30 }, (_, i) => {
   const date = new Date(2026, 1, i + 1);
   const turnover = Math.round(300_000 + Math.sin(i / 4) * 60_000 + Math.random() * 40_000);
@@ -265,7 +265,7 @@ export const revenueMetricsTrend = Array.from({ length: 30 }, (_, i) => {
   return { date: date.toISOString().split("T")[0], turnover, ggr, ngr };
 });
 
-// ─── Segment Distribution (Actives) ──────────────────────────────────────────
+// --- Segment Distribution (Actives) ------------------------------------------
 export const segmentDistribution = [
   { segment: "Champions", count: 1_942, pct: 5.0, color: "oklch(0.72 0.17 60)" },
   { segment: "Loyal", count: 4_210, pct: 11.0, color: "oklch(0.65 0.15 195)" },
@@ -275,7 +275,7 @@ export const segmentDistribution = [
   { segment: "Dormant", count: 760, pct: 2.0, color: "oklch(0.45 0.05 0)" },
 ];
 
-// ─── Deposit vs Withdrawal Flow ───────────────────────────────────────────────
+// --- Deposit vs Withdrawal Flow -----------------------------------------------
 export const depositWithdrawalFlow = Array.from({ length: 12 }, (_, i) => {
   const months = ["Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb"];
   const deposits = Math.round(900_000 + Math.random() * 400_000);
@@ -283,7 +283,7 @@ export const depositWithdrawalFlow = Array.from({ length: 12 }, (_, i) => {
   return { month: months[i], deposits, withdrawals, net: deposits - withdrawals };
 });
 
-// ─── Conversion Rate Trend ────────────────────────────────────────────────────
+// --- Conversion Rate Trend ----------------------------------------------------
 export const conversionRateTrend = Array.from({ length: 30 }, (_, i) => {
   const date = new Date(2026, 1, i + 1);
   const base = 38 + Math.sin(i / 5) * 4 + Math.random() * 3;
@@ -294,7 +294,7 @@ export const conversionRateTrend = Array.from({ length: 30 }, (_, i) => {
   };
 });
 
-// ─── Summary Metrics Table ────────────────────────────────────────────────────
+// --- Summary Metrics Table ----------------------------------------------------
 export const summaryMetrics = {
   overview: [
     { metric: "Registrations", current: 5_480, previous: 6_920, ytd: 57_220 },
@@ -323,7 +323,7 @@ export const summaryMetrics = {
   ],
 };
 
-// ─── Event Program ────────────────────────────────────────────────────────────
+// --- Event Program ------------------------------------------------------------
 export const upcomingEvents = [
   { eventId: 48291, sport: "Soccer", event: "Arsenal vs Chelsea", startDate: "2026-02-22 15:00:00", status: "Enabled", openBets: 8_420 },
   { eventId: 48290, sport: "Soccer", event: "Real Madrid vs Barcelona", startDate: "2026-02-22 17:00:00", status: "Enabled", openBets: 12_840 },
@@ -332,7 +332,7 @@ export const upcomingEvents = [
   { eventId: 48287, sport: "Horse Racing", event: "Cheltenham Gold Cup", startDate: "2026-02-22 13:30:00", status: "Enabled", openBets: 2_140 },
 ];
 
-// ─── Geographic Distribution (Territory / Country) ────────────────────────────
+// --- Geographic Distribution (Territory / Country) ----------------------------
 export const geographicDistribution = [
   { name: "Nigeria",  territory: "West Africa",     players: 68_420, ggr: 842_100, pct: 47.9 },
   { name: "Ghana",    territory: "West Africa",     players: 24_180, ggr: 298_400, pct: 16.9 },
@@ -341,7 +341,7 @@ export const geographicDistribution = [
   { name: "Zambia",   territory: "Southern Africa", players: 12_470, ggr: 153_400, pct: 8.7 },
 ];
 
-// ─── Traffic Source Breakdown ─────────────────────────────────────────────────
+// --- Traffic Source Breakdown -------------------------------------------------
 export const trafficSourceBreakdown = [
   { source: "Organic",   count: 48_200, pct: 33.8, color: "oklch(0.62 0.17 145)" },
   { source: "Paid",      count: 34_100, pct: 23.9, color: "oklch(0.72 0.14 85)"  },
@@ -350,7 +350,7 @@ export const trafficSourceBreakdown = [
   { source: "Social",    count: 8_830,  pct: 6.2,  color: "oklch(0.55 0.22 25)"  },
 ];
 
-// ─── Trend by Segment (GGR per segment, monthly) ─────────────────────────────
+// --- Trend by Segment (GGR per segment, monthly) -----------------------------
 export const trendBySegment = Array.from({ length: 12 }, (_, i) => {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return {
@@ -364,7 +364,7 @@ export const trendBySegment = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
-// ─── Daily Trend with 7-day Moving Average ────────────────────────────────────
+// --- Daily Trend with 7-day Moving Average ------------------------------------
 const rawDailyValues = Array.from({ length: 30 }, (_, i) => {
   const base = 45_000 + Math.sin(i / 4) * 10_000;
   return Math.round(base + (Math.random() - 0.5) * 12_000);
@@ -377,7 +377,7 @@ export const dailyTrendWithMA = rawDailyValues.map((val, i) => {
   return { date, value: val, ma7 };
 });
 
-// ─── Detailed Breakdown Table ─────────────────────────────────────────────────
+// --- Detailed Breakdown Table -------------------------------------------------
 const brands    = ["PlayaBets NG", "PlayaBets GH", "PlayaBets KE", "PlayaBets UG", "PlayaBets ZM"];
 const segments  = ["Champions", "Loyal", "Big Spenders", "Mid", "At Risk", "Dormant"];
 const territories = ["West Africa", "East Africa", "Southern Africa"];

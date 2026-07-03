@@ -13,14 +13,14 @@ Run from the project root:
     python -m src.extract.incremental_transactions
 
 Environment variables:
-    DWH_USER  – SQL Server login
-    DWH_PASS  – SQL Server password
+    DWH_USER  - SQL Server login
+    DWH_PASS  - SQL Server password
 
     Optional overrides:
-    TX_BACKFILL_START_DATE  – explicit start date (e.g. "2026-03-20")
-    TX_BACKFILL_END_DATE    – explicit end date
-    TX_BACKFILL_UPDATE_WATERMARK=1  – advance watermark after backfill
-    TX_WINDOW_DAYS          – days per window (default: 1)
+    TX_BACKFILL_START_DATE  - explicit start date (e.g. "2026-03-20")
+    TX_BACKFILL_END_DATE    - explicit end date
+    TX_BACKFILL_UPDATE_WATERMARK=1  - advance watermark after backfill
+    TX_WINDOW_DAYS          - days per window (default: 1)
 """
 from __future__ import annotations
 

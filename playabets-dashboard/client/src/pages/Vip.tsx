@@ -235,7 +235,7 @@ export default function VipPage() {
     return () => { cancelled = true; };
   }, [debouncedQuery]);
 
-  // VIP AI Insights — fires once revenue data is loaded, cached per period
+  // VIP AI Insights - fires once revenue data is loaded, cached per period
   useEffect(() => {
     if (!revenue?.has_data) return;
     const rev = revenue;
@@ -316,7 +316,7 @@ export default function VipPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-colors ${uploading ? "opacity-50 pointer-events-none" : "hover:opacity-90"}`}
             style={{ background: "#7ab800", color: "#fff" }}
           >
-            {uploading ? "Uploading…" : "Choose CSV"}
+            {uploading ? "Uploading..." : "Choose CSV"}
             <input
               ref={fileInputRef}
               type="file"
@@ -333,7 +333,7 @@ export default function VipPage() {
               <span className="text-green-700">+{uploadResult.added} added</span>
               <span className="text-amber-700">{uploadResult.updated} updated</span>
               <span className="text-gray-500">{uploadResult.unchanged} unchanged</span>
-              <span className="text-gray-500">· {uploadResult.total_in_roster.toLocaleString()} total in roster</span>
+              <span className="text-gray-500">. {uploadResult.total_in_roster.toLocaleString()} total in roster</span>
             </div>
           )}
           {uploadError && (
@@ -368,22 +368,22 @@ export default function VipPage() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KpiCard title="VIP Users" value={summary ? formatFull(summary.total) : "—"} subtitle="Distinct users in period" icon={<Users size={18} />} accent="teal" loading={loading} />
-          <KpiCard title="Active VIP" value={summary ? formatFull(summary.active_as_of_end) : "—"} subtitle="Active as of end date" icon={<Crown size={18} />} accent="gold" loading={loading} />
-          <KpiCard title="Onboarded" value={summary ? formatFull(summary.onboarded_in_period) : "—"} subtitle="Users onboarded in period" icon={<Users size={18} />} accent="green" loading={loading} />
-          <KpiCard title="Offboarded" value={summary ? formatFull(summary.offboarded_in_period) : "—"} subtitle="Users offboarded in period" icon={<Users size={18} />} accent="amber" loading={loading} />
-          <KpiCard title="VIP Stints" value={summary ? formatFull(summary.stints) : "—"} subtitle="Lifecycle stint rows" icon={<Wallet size={18} />} accent="teal" loading={loading} />
-          <KpiCard title="Date Errors" value={summary ? formatFull(summary.date_errors) : "—"} subtitle="Offboard before onboard" icon={<Gift size={18} />} accent="red" loading={loading} />
+          <KpiCard title="VIP Users" value={summary ? formatFull(summary.total) : "-"} subtitle="Distinct users in period" icon={<Users size={18} />} accent="teal" loading={loading} />
+          <KpiCard title="Active VIP" value={summary ? formatFull(summary.active_as_of_end) : "-"} subtitle="Active as of end date" icon={<Crown size={18} />} accent="gold" loading={loading} />
+          <KpiCard title="Onboarded" value={summary ? formatFull(summary.onboarded_in_period) : "-"} subtitle="Users onboarded in period" icon={<Users size={18} />} accent="green" loading={loading} />
+          <KpiCard title="Offboarded" value={summary ? formatFull(summary.offboarded_in_period) : "-"} subtitle="Users offboarded in period" icon={<Users size={18} />} accent="amber" loading={loading} />
+          <KpiCard title="VIP Stints" value={summary ? formatFull(summary.stints) : "-"} subtitle="Lifecycle stint rows" icon={<Wallet size={18} />} accent="teal" loading={loading} />
+          <KpiCard title="Date Errors" value={summary ? formatFull(summary.date_errors) : "-"} subtitle="Offboard before onboard" icon={<Gift size={18} />} accent="red" loading={loading} />
         </div>
       </div>
 
       {/* VIP Revenue KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-        <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "—"} subtitle="VIPs / total players" tooltip="VIP Conversion Rate = Total VIPs / Total Players x 100. What percentage of the player base holds VIP status." icon={<Percent size={18} />} accent="teal" loading={loading} />
-        <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "—"} subtitle="VIP GGR / days" tooltip="Average Per Day = Total VIP GGR / Number of days in period. Daily revenue contribution from VIP players." icon={<TrendingUp size={18} />} accent="green" loading={loading} />
-        <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "—"} subtitle="GGR / VIP count" tooltip="Average Revenue Per VIP = Total VIP GGR / Number of active VIPs. Measures individual VIP player value." icon={<DollarSign size={18} />} accent="gold" loading={loading} />
-        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "—"} subtitle="Selected period" tooltip="Total amount staked by VIP players (Sports + Casino) during the selected period." icon={<Wallet size={18} />} accent="teal" loading={loading} />
-        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "—"} subtitle="Selected period" tooltip="Gross Gaming Revenue from VIP players = VIP Stakes - VIP Payouts (Sports + Casino) for the selected period." icon={<DollarSign size={18} />} accent="green" loading={loading} />
+        <KpiCard title="VIP Conversion" value={rev ? `${rev.vip_conversion_rate?.toFixed(2)}%` : "-"} subtitle="VIPs / total players" tooltip="VIP Conversion Rate = Total VIPs / Total Players x 100. What percentage of the player base holds VIP status." icon={<Percent size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="APD" value={rev ? fmtZar(rev.apd ?? 0) : "-"} subtitle="VIP GGR / days" tooltip="Average Per Day = Total VIP GGR / Number of days in period. Daily revenue contribution from VIP players." icon={<TrendingUp size={18} />} accent="green" loading={loading} />
+        <KpiCard title="Avg Revenue / VIP" value={rev ? fmtZar(rev.avg_revenue_per_vip ?? 0) : "-"} subtitle="GGR / VIP count" tooltip="Average Revenue Per VIP = Total VIP GGR / Number of active VIPs. Measures individual VIP player value." icon={<DollarSign size={18} />} accent="gold" loading={loading} />
+        <KpiCard title="VIP Turnover" value={rev ? fmtZar(rev.total_turnover ?? 0) : "-"} subtitle="Selected period" tooltip="Total amount staked by VIP players (Sports + Casino) during the selected period." icon={<Wallet size={18} />} accent="teal" loading={loading} />
+        <KpiCard title="VIP GGR" value={rev ? fmtZar(rev.total_ggr ?? 0) : "-"} subtitle="Selected period" tooltip="Gross Gaming Revenue from VIP players = VIP Stakes - VIP Payouts (Sports + Casino) for the selected period." icon={<DollarSign size={18} />} accent="green" loading={loading} />
       </div>
 
       <p className="text-[11px] text-gray-400 mb-4">
@@ -392,10 +392,10 @@ export default function VipPage() {
         (Hosted / Unhosted / Time-Out / Self Excluded).
       </p>
       {refreshing && (
-        <p className="text-[11px] text-amber-600 mb-4">Updating VIP data for new filters…</p>
+        <p className="text-[11px] text-amber-600 mb-4">Updating VIP data for new filters...</p>
       )}
 
-      {/* VIP AI Insights — directly below KPI cards */}
+      {/* VIP AI Insights - directly below KPI cards */}
       <AiInsightsPanel insights={aiInsights} loading={aiLoading} title="VIP Insights" />
 
       {/* By stage + Product share */}
@@ -437,7 +437,7 @@ export default function VipPage() {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="text-xs text-gray-400 py-10 text-center">{loading ? "Loading…" : "No product data."}</div>
+            <div className="text-xs text-gray-400 py-10 text-center">{loading ? "Loading..." : "No product data."}</div>
           )}
         </div>
 
@@ -461,7 +461,7 @@ export default function VipPage() {
               </div>
             </div>
           ) : (
-            <div className="text-xs text-gray-400">{loading ? "Loading…" : "No revenue data."}</div>
+            <div className="text-xs text-gray-400">{loading ? "Loading..." : "No revenue data."}</div>
           )}
         </div>
       </div>
@@ -488,7 +488,7 @@ export default function VipPage() {
               );
             })}
             {(!demographics?.age_bands || demographics.age_bands.length === 0) && (
-              <div className="text-xs text-gray-400">{loading ? "Loading…" : "No age data available."}</div>
+              <div className="text-xs text-gray-400">{loading ? "Loading..." : "No age data available."}</div>
             )}
           </div>
           <p className="text-[10px] text-gray-400 mt-3">Gender breakdown is not available in the source data.</p>
@@ -514,7 +514,7 @@ export default function VipPage() {
               );
             })}
             {(!demographics?.countries || demographics.countries.length === 0) && (
-              <div className="text-xs text-gray-400">{loading ? "Loading…" : "No country data available."}</div>
+              <div className="text-xs text-gray-400">{loading ? "Loading..." : "No country data available."}</div>
             )}
           </div>
         </div>
@@ -526,7 +526,7 @@ export default function VipPage() {
         <DataTable<ManagerRow>
           light
           compact
-          emptyMessage={loading ? "Loading…" : "No manager data."}
+          emptyMessage={loading ? "Loading..." : "No manager data."}
           columns={[
             { key: "account_manager", header: "Manager" },
             { key: "vip_count", header: "VIPs", align: "right", render: (r) => formatFull(r.vip_count) },
@@ -547,10 +547,10 @@ export default function VipPage() {
         <DataTable<TopPlayer & { rank: number }>
           light
           compact
-          emptyMessage={loading ? "Loading…" : "No player data."}
+          emptyMessage={loading ? "Loading..." : "No player data."}
           columns={[
             { key: "rank", header: "#", render: (r) => String(r.rank) },
-            { key: "user_id", header: "User ID", mono: true, render: (r) => r.user_id ?? "—" },
+            { key: "user_id", header: "User ID", mono: true, render: (r) => r.user_id ?? "-" },
             { key: "account_manager", header: "Manager" },
             { key: "vip_lifecycle_stage", header: "Stage" },
             { key: "turnover", header: "Turnover", align: "right", render: (r) => fmtZar(r.turnover) },
@@ -561,11 +561,11 @@ export default function VipPage() {
         />
       </div>
 
-      {/* ── Revenue Trends (31-day) ─────────────────────────────────────── */}
+      {/* -- Revenue Trends (31-day) --------------------------------------- */}
       {aggregatedTrends.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue Trends</h3>
-          <p className="text-xs text-gray-500 mb-4">GGR and Turnover — {filters.granularity} view</p>
+          <p className="text-xs text-gray-500 mb-4">GGR and Turnover - {filters.granularity} view</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={aggregatedTrends} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
@@ -593,7 +593,7 @@ export default function VipPage() {
         </div>
       )}
 
-      {/* ── 6-Month Performance ─────────────────────────────────────────── */}
+      {/* -- 6-Month Performance ------------------------------------------- */}
       {monthly.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">6-Month Performance</h3>
@@ -635,11 +635,11 @@ export default function VipPage() {
         </div>
       )}
 
-      {/* ── Hourly Activity Analysis ────────────────────────────────────── */}
+      {/* -- Hourly Activity Analysis -------------------------------------- */}
       {hourly.length > 0 && hourly.some((h) => h.bets > 0) && (
         <div className="rounded-xl p-5 mb-4" style={CARD}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Hourly Activity</h3>
-          <p className="text-xs text-gray-500 mb-4">Peak betting hours (SAST) — aggregated across selected period</p>
+          <p className="text-xs text-gray-500 mb-4">Peak betting hours (SAST) - aggregated across selected period</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={hourly} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" vertical={false} />
@@ -655,7 +655,7 @@ export default function VipPage() {
             const peak = hourly.reduce((best, h) => h.bets > best.bets ? h : best, hourly[0]);
             return (
               <p className="text-xs text-gray-500 mt-3">
-                Peak hour: <span className="font-semibold text-gray-700">{peak.label}</span> — {formatCompact(peak.bets)} bets
+                Peak hour: <span className="font-semibold text-gray-700">{peak.label}</span> - {formatCompact(peak.bets)} bets
               </p>
             );
           })()}

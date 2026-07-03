@@ -1,9 +1,9 @@
 /**
- * Persistent insights cache — stores AI insights in localStorage per page+period+metrics.
+ * Persistent insights cache - stores AI insights in localStorage per page+period+metrics.
  *
  * Cache key = page + dateFrom + dateTo + rounded metric values.
- * - Date changes → new key → new fetch automatically.
- * - Metric values change (new pipeline run) → new key → new fetch automatically.
+ * - Date changes -> new key -> new fetch automatically.
+ * - Metric values change (new pipeline run) -> new key -> new fetch automatically.
  * - No manual version bumping needed.
  *
  * Old keys accumulate silently in localStorage but are small (< 2KB each) and

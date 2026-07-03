@@ -4,8 +4,8 @@ import pandas as pd
 from .io_utils import normalize_cols, ensure_cols, to_date, to_dt, to_num
 
 
-SETTLED_STATUS = "Paid - Closed"   # from your sample pivot
-OPEN_STATUS = "In Progress"        # from your sample pivot
+SETTLED_STATUS = "Paid - Closed"
+OPEN_STATUS = "In Progress"
 
 
 def dedupe_betslips(betslips: pd.DataFrame) -> pd.DataFrame:
@@ -84,7 +84,7 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
 
     status_col = bcol.get("betslipstatus")
     outcome_col = bcol.get("outcometype")
-    payment_col = bcol.get("paymentdate")  # you do have this in your head()
+    payment_col = bcol.get("paymentdate")
 
     betslips["stake_num"] = to_num(betslips[stake], default=0.0)
     betslips["winnings_num"] = to_num(betslips[winnings], default=0.0)
@@ -273,7 +273,7 @@ def compute_betslips_daily_kpis(betslips: pd.DataFrame) -> pd.DataFrame:
             settled_daily["betslips_settled_count"] = 0
 
     else:
-        # If you don’t have paymentdate or betslipstatus, we can’t compute settled metrics reliably
+        # Settled metrics need paymentdate and betslipstatus columns
         settled_daily = pd.DataFrame(columns=[
             "date", "settled_stake", "settled_winnings", "ggr", "hold_pct", "win_rate", "cancel_rate"
         ])

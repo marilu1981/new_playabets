@@ -1,5 +1,5 @@
 """
-routers/transactions.py — Transaction KPI, trend, and provider endpoints.
+routers/transactions.py - Transaction KPI, trend, and provider endpoints.
 """
 from __future__ import annotations
 
@@ -203,7 +203,7 @@ def transactions_providers(
         return cached[1]
 
     # Use the pre-computed serving file (payment_providers_daily.parquet).
-    # The Container App has no DWH connection — file is the only source.
+    # The Container App has no DWH connection - file is the only source.
     by_file = _from_provider_daily(start, end)
     if by_file is not None:
         _PROVIDER_CACHE[cache_key] = (time.time(), by_file)

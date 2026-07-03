@@ -37,7 +37,7 @@ def main() -> None:
     engine = build_engine()
     with engine.connect() as conn:
 
-        # ── 1. Columns available in view_casino ───────────────────────────
+        # -- 1. Columns available in view_casino ---------------------------
         print("\n" + "="*60)
         print("COLUMNS in Dwh_en.view_casino")
         print("="*60)
@@ -55,7 +55,7 @@ def main() -> None:
         except Exception as e:
             print(f"  Column list failed (may be a view): {e}")
 
-        # ── 2. Per-provider: all money columns summed for May ─────────────
+        # -- 2. Per-provider: all money columns summed for May -------------
         print("\n" + "="*60)
         print(f"PER-PROVIDER BREAKDOWN  ({START} to {END})")
         print("="*60)
@@ -158,7 +158,7 @@ def main() -> None:
         print(f"  Our current dashboard:                                        =      14,214,901")
         print(f"  Gap:                                                          =      12,075,088")
 
-        # ── 3. Top-10 rows for Hacksaw (spot check) ───────────────────────
+        # -- 3. Top-10 rows for Hacksaw (spot check) -----------------------
         print("\n" + "="*60)
         print(f"HACKSAW: sample of 10 rows")
         print("="*60)
@@ -184,7 +184,7 @@ def main() -> None:
         except Exception as e:
             print(f"Hacksaw sample failed: {e}")
 
-        # ── 4. Hacksaw summary: are BonusWinnings in Winnings? ────────────
+        # -- 4. Hacksaw summary: are BonusWinnings in Winnings? ------------
         print("\n" + "="*60)
         print(f"HACKSAW GGR FORMULA TEST")
         print("="*60)

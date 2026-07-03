@@ -1,5 +1,5 @@
 /**
- * Supabase client — used for Auth only on the frontend.
+ * Supabase client - used for Auth only on the frontend.
  * Data queries go through the Vercel API routes (server-side, service key).
  * The anon key is safe to expose in the browser.
  */

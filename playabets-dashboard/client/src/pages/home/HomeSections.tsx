@@ -64,7 +64,7 @@ export function HomeHeroBanner({
           Gaming Activity Dashboard
         </h2>
         <p className="text-sm mb-0" style={{ color: "rgba(255,255,255,0.70)" }}>
-          Executive KPI Analytics — {filters.dateFrom} to {filters.dateTo} · {granularityLabel} view
+          Executive KPI Analytics - {filters.dateFrom} to {filters.dateTo} | {granularityLabel} view
         </p>
         {latestDataDate && (
           <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.50)" }}>Data available through {latestDataDate}</p>
@@ -74,7 +74,7 @@ export function HomeHeroBanner({
             <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
             {dataMode === "live" ? "Data Connected" : dataMode === "partial" ? "Partial Live" : "Mock Data"}
           </div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Last refresh: {latestDataDate ?? "…"}</div>
+          <div className="text-xs" style={{ color: "rgba(255,255,255,0.45)" }}>Last refresh: {latestDataDate ?? "..."}</div>
         </div>
       </div>
     </div>
@@ -141,11 +141,11 @@ export function HomePrimaryKpis({
           loading={isLoading}
         />
         <KpiCard title="Total Turnover" value={formatFull(overviewKpis.totalStake)} subtitle="Sports + Casino" tooltip="Total amount staked by players across Sports and Casino. Does not include Horse Racing or Lotto." icon={<TrendingUp size={18} />} accent="teal" loading={isLoading} />
-        <KpiCard title="GGR" value={formatFull(overviewKpis.grossRevenue)} subtitle={`Sports + Casino · ${margin}% margin`} tooltip="Gross Gaming Revenue = Total Stakes minus Total Payouts. Can be negative when players win more than they wager." icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
+        <KpiCard title="GGR" value={formatFull(overviewKpis.grossRevenue)} subtitle={`Sports + Casino | ${margin}% margin`} tooltip="Gross Gaming Revenue = Total Stakes minus Total Payouts. Can be negative when players win more than they wager." icon={<BarChart2 size={18} />} accent="gold" loading={isLoading} />
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <KpiCard title="NGR" value={ngrCardValue} subtitle={ngrCardSubtitle} tooltip="Net Gaming Revenue = GGR minus Bonuses minus Adjustments. The cleanest measure of actual revenue retained." icon={<Percent size={18} />} accent="green" loading={isLoading} />
-        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg → FTD" tooltip="Conversion Rate = FTDs / Registrations x 100. Percentage of newly registered players who made their first deposit." icon={<Percent size={18} />} accent="amber" loading={isLoading} />
+        <KpiCard title="Conversion Rate" value={`${periodConvRate}%`} subtitle="Reg -> FTD" tooltip="Conversion Rate = FTDs / Registrations x 100. Percentage of newly registered players who made their first deposit." icon={<Percent size={18} />} accent="amber" loading={isLoading} />
       </div>
     </>
   );
@@ -234,10 +234,10 @@ export function SummaryMetricsTable({
                   <td className="py-2.5 pr-4 text-gray-700 text-xs font-medium">{row.metric}</td>
                   <td className="py-2.5 pr-4 text-gray-900 text-xs font-mono" style={fontMono}>{fmtMetric(row.current, row)}</td>
                   <td className={`py-2.5 pr-4 text-xs font-mono ${reliable ? "text-gray-500" : "text-gray-300"}`} style={fontMono}>
-                    {reliable ? fmtMetric(row.previous, row) : "—"}
+                    {reliable ? fmtMetric(row.previous, row) : "-"}
                   </td>
                   <td className="py-2.5 pr-4 text-xs font-semibold font-mono" style={{ ...fontMono, color: reliable ? (chg >= 0 ? chartColors.green : chartColors.red) : "oklch(0.45 0.01 155)" }}>
-                    {reliable ? `${chg >= 0 ? "+" : ""}${chg}%` : "—"}
+                    {reliable ? `${chg >= 0 ? "+" : ""}${chg}%` : "-"}
                   </td>
                   <td className="py-2.5 text-gray-500 text-xs font-mono" style={fontMono}>{fmtMetric(row.ytd, row)}</td>
                 </tr>
@@ -352,7 +352,7 @@ export function DetailedBreakdownTable({
             <h3 className="text-sm font-semibold text-white" style={fontSerif}>Detailed Breakdown</h3>
             <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400">Mock Data - TBC</span>
           </div>
-          <p className="text-xs text-white/40">Date · Brand · Segment · Territory · Value · % Change</p>
+          <p className="text-xs text-white/40">Date | Brand | Segment | Territory | Value | % Change</p>
         </div>
         <button
           className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold transition-colors"

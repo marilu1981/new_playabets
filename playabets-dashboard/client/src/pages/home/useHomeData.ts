@@ -99,7 +99,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
   }, [setFilters]);
 
   useEffect(() => {
-    // Don't gate on latestDataDate — fire immediately using persisted filter dates.
+    // Don't gate on latestDataDate - fire immediately using persisted filter dates.
     // latestDataDate from /kpis/latest will clamp the dates if needed once it arrives.
     let cancelled = false;
 
@@ -385,7 +385,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
         const turnover = sportsbook.settledStake + casino.stake;
         const winnings = sportsbook.settledWinnings + casino.winnings;
         const ggr = sportsbook.ggr + casino.ggr;
-        // Scale daily GGR by period NGR/GGR ratio → daily NGR sums to the correct period total
+        // Scale daily GGR by period NGR/GGR ratio -> daily NGR sums to the correct period total
         const ngr = ngrRatio != null
           ? Number((ggr * ngrRatio).toFixed(2))
           : ggr - Number(bonusByDate.get(date) ?? 0);
@@ -504,7 +504,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
           }));
         setLivePlayerAcquisitionDaily(dailyAcq.length > 0 ? dailyAcq : null);
 
-        // Conv rate trend: daily FTD Reg Month ÷ registrations
+        // Conv rate trend: daily FTD Reg Month / registrations
         const convDates = Array.from(
           new Set([...Array.from(regByDate.keys()), ...Array.from(ftdRegMonthByDate.keys())])
         ).filter((d) => d >= filters.dateFrom && d <= filters.dateTo).sort();
@@ -648,7 +648,7 @@ export function useHomeData({ filters, setFilters }: UseHomeDataArgs) {
     filters.granularity,
   ]);
 
-  // ── Fetch today's (latest date) snapshot independently of the date filter ──
+  // -- Fetch today's (latest date) snapshot independently of the date filter --
   useEffect(() => {
     if (!latestDataDate) return;
     let cancelled = false;

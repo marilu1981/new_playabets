@@ -1,8 +1,7 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * FiltersPanel — Collapsible left-side filter & controls panel
- * Matches the client's Claude demo spec exactly.
- * Savanna Gold design system — dark green sidebar, gold accents.
+ * FiltersPanel - Collapsible left-side filter & controls panel
+ * Savanna Gold design system - dark green sidebar, gold accents.
  */
 
 import { useState } from "react";

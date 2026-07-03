@@ -3,8 +3,8 @@ commissions_kpis.py
 --------------------
 Transforms commission Parquet snapshots into summary KPIs.
 
-compute_commissions_summary() → total_commissions, by_product, top_agents
-compute_commissions_by_period() → date (CreationDate), commissions, stake, winnings
+compute_commissions_summary() -> total_commissions, by_product, top_agents
+compute_commissions_by_period() -> date (CreationDate), commissions, stake, winnings
 """
 from __future__ import annotations
 import pandas as pd

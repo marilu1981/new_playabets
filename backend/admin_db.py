@@ -1,5 +1,5 @@
 """
-admin_db.py — JSON file persistence for dashboard user-permission management.
+admin_db.py - JSON file persistence for dashboard user-permission management.
 
 Switched from SQLite (unusable on Azure File Share due to SMB locking) to a
 JSON file. Reads/writes are atomic via write-then-rename on Linux.

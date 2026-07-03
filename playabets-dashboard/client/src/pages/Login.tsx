@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * Login Page — Supabase email/password authentication.
+ * Login Page - Supabase email/password authentication.
  * Invite-only: accounts are created by admin in Supabase dashboard.
  */
 
@@ -147,7 +147,7 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 style={INPUT_STYLE}
-                placeholder="••••••••"
+                placeholder="--------"
               />
             </div>
 
@@ -169,14 +169,14 @@ export default function Login({ onLogin }: { onLogin: () => void }) {
               disabled={loading}
               style={{ ...BTN_STYLE, opacity: loading ? 0.6 : 1 }}
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </form>
         </div>
       </div>
 
       <p className="mt-6 text-xs text-white/20">
-        © {new Date().getFullYear()} PlayaBets · Confidential
+        © {new Date().getFullYear()} PlayaBets | Confidential
       </p>
     </div>
   );

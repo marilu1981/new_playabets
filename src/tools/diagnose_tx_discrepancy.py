@@ -8,7 +8,7 @@ Run from project root:
     python -m src.tools.diagnose_tx_discrepancy
 
 Output:
-  1. All deposit ReasonIDs for the period, with amounts — highlights any
+  1. All deposit ReasonIDs for the period, with amounts - highlights any
      ReasonID NOT in our current whitelist.
   2. All withdrawal + cancel-withdrawal ReasonIDs with amounts.
   3. FTD count under different causale filters.
@@ -20,7 +20,7 @@ from datetime import date
 from sqlalchemy import text
 from src.extract.db_utils import build_engine
 
-# ── Date range to diagnose ─────────────────────────────────────────────────
+# -- Date range to diagnose -------------------------------------------------
 START = os.environ.get("DIAG_START", "2026-05-01")
 END   = os.environ.get("DIAG_END",   "2026-05-30")
 
@@ -48,7 +48,7 @@ def main() -> None:
     engine = build_engine()
     with engine.connect() as conn:
 
-        # ── 1. Deposits by ReasonID ─────────────────────────────────────────
+        # -- 1. Deposits by ReasonID -----------------------------------------
         print("\n" + "="*60)
         print(f"DEPOSITS by ReasonID  ({START} to {END})")
         print("="*60)
@@ -89,7 +89,7 @@ def main() -> None:
         print(f"{'TOTAL NOT IN WHITELIST':>30}: {total_not_in_wl:>15,.2f}")
         print(f"{'GRAND TOTAL':>30}: {total_in_wl + total_not_in_wl:>15,.2f}")
 
-        # ── 2. Withdrawals by ReasonID ──────────────────────────────────────
+        # -- 2. Withdrawals by ReasonID --------------------------------------
         print("\n" + "="*60)
         print(f"WITHDRAWALS by ReasonID  ({START} to {END})")
         print("="*60)
@@ -139,7 +139,7 @@ def main() -> None:
         print(f"{'NET WITHDRAWALS (wds - cancels)':>35}: {total_wd_wl - total_cancel_wl:>15,.2f}")
         print(f"{'EXTRA WITHDRAWALS (not in WL)':>35}: {total_not_wl:>15,.2f}")
 
-        # ── 3. FTD analysis ────────────────────────────────────────────────────
+        # -- 3. FTD analysis ----------------------------------------------------
         print("\n" + "="*60)
         print(f"FTD ANALYSIS  ({START} to {END})")
         print("="*60)
@@ -160,7 +160,7 @@ def main() -> None:
         except Exception as e:
             print(f"  Column list failed: {e}")
 
-        # Method A: current pipeline approach — MIN per user, count users in period
+        # Method A: current pipeline approach - MIN per user, count users in period
         q_ftd_current = text(f"""
             SELECT COUNT(*) AS ftds
             FROM (
@@ -199,20 +199,20 @@ def main() -> None:
 
         try:
             ftds_current = conn.execute(q_ftd_current).fetchone()[0]
-            print(f"Method A — current (MIN per user, Transazioni_DepositiUtente): {ftds_current:,}")
+            print(f"Method A - current (MIN per user, Transazioni_DepositiUtente): {ftds_current:,}")
         except Exception as e:
             print(f"Method A failed: {e}")
             ftds_current = None
 
         try:
             ftds_vt = conn.execute(q_ftd_vt).fetchone()[0]
-            print(f"Method B — view_transactions with whitelist ReasonIDs:         {ftds_vt:,}")
+            print(f"Method B - view_transactions with whitelist ReasonIDs:         {ftds_vt:,}")
         except Exception as e:
             print(f"Method B failed: {e}")
             ftds_vt = None
 
         # Method C: same as A but excluding users whose ONLY deposits were bonus types
-        # (ReasonIDs 64, 65, 143 = bonus issued/reversed — if in Transazioni_DepositiUtente)
+        # (ReasonIDs 64, 65, 143 = bonus issued/reversed - if in Transazioni_DepositiUtente)
         print(f"\nNote: if Method B is closer to 13,133, switch FTD source to view_transactions")
 
     print("\n[diagnose] Done.")

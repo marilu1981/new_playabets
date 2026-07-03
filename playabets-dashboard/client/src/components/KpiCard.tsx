@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — KPI Card Component
+ * PLAYA BETS - KPI Card Component
  * Brand design: light card, Playa Green accent, Roboto Slab headings
  */
 

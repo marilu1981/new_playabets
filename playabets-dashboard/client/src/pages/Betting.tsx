@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Betting & Events Page
+ * PLAYA BETS - Betting & Events Page
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -210,7 +210,7 @@ export default function BettingPage() {
           <KpiCard title="Total Betslips"  value={formatFull(overviewKPIs.totalBetslips)} subtitle="Selected range" icon={<TrendingUp size={18} />} accent="gold" />
           <KpiCard title="Total Stake"     value={formatFull(overviewKPIs.totalStake)}    subtitle="Selected range" icon={<Zap size={18} />}         accent="teal" />
           <KpiCard title="Total Winnings"  value={formatFull(overviewKPIs.totalWinnings)} subtitle="Paid to players" icon={<Activity size={18} />}  accent="amber" />
-          <KpiCard title="Gross Margin"    value={`${margin}%`}                           subtitle="(Stake − Winnings) / Stake" icon={<Target size={18} />} accent="green" />
+          <KpiCard title="Gross Margin"    value={`${margin}%`}                           subtitle="(Stake - Winnings) / Stake" icon={<Target size={18} />} accent="green" />
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export default function BettingPage() {
       {/* Stake trend */}
       <div className="rounded-xl p-5 mb-6" style={CARD_BG}>
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake vs Winnings vs GGR</h3>
-        <p className="text-xs text-gray-400 mb-4">Sportsbook activity — {filters.granularity} view</p>
+        <p className="text-xs text-gray-400 mb-4">Sportsbook activity - {filters.granularity} view</p>
         {aggregatedStakeTrend.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={aggregatedStakeTrend} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -276,7 +276,7 @@ export default function BettingPage() {
         <div className="relative rounded-xl p-5" style={CARD_BG}>
           <MockOverlay active={!liveBetslipsByStatus} badge label="Loading" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">By Betslip Status</h3>
-          <p className="text-xs text-gray-400 mb-4">Count by status — selected period</p>
+          <p className="text-xs text-gray-400 mb-4">Count by status - selected period</p>
           <div className="space-y-2">
             {betslipsByStatus.map((s) => {
               const pct = (s.count / totalBetslipsSafe * 100).toFixed(1);
@@ -324,7 +324,7 @@ export default function BettingPage() {
         {/* Win/Cancel breakdown */}
         <div className="rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Outcome Breakdown</h3>
-          <p className="text-xs text-gray-400 mb-4">Settled betslip outcomes — selected period</p>
+          <p className="text-xs text-gray-400 mb-4">Settled betslip outcomes - selected period</p>
           {liveSettlementMetrics ? (
             <div className="space-y-4">
               {[

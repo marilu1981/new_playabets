@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 /**
- * PLAYA BETS — Bonus & Campaigns Page
+ * PLAYA BETS - Bonus & Campaigns Page
  * DWH Views: view_BonusCampaigns, view_BonusBalances, view_Freebets
  * Data source: Supabase bonus_daily table via /api/bonus/kpis
  */
@@ -122,7 +122,7 @@ export default function BonusPage() {
       {/* Campaign Performance */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Campaign Performance</h3>
-        <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns — recent campaigns</p>
+        <p className="text-xs text-gray-400 mb-4">view_BonusCampaigns - recent campaigns</p>
         {bonusCampaigns.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -140,11 +140,11 @@ export default function BonusPage() {
                     <td className="py-2.5 pr-4 text-gray-800 font-medium text-sm max-w-[180px] truncate">{c.name}</td>
                     <td className="py-2.5 pr-4 text-gray-500 text-xs">{c.bonusType}</td>
                     <td className="py-2.5 pr-4"><StatusBadge status={c.status} dot /></td>
-                    <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{c.usersEnrolled == null ? "—" : formatCompact(c.usersEnrolled)}</td>
-                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{c.totalPaid == null ? "—" : formatCompact(c.totalPaid)}</td>
+                    <td className="py-2.5 pr-4 text-gray-500 text-xs font-mono">{c.usersEnrolled == null ? "-" : formatCompact(c.usersEnrolled)}</td>
+                    <td className="py-2.5 pr-4 text-xs font-mono" style={{color: CHART_COLORS.gold }}>{c.totalPaid == null ? "-" : formatCompact(c.totalPaid)}</td>
                     <td className="py-2.5">
                       {c.roi == null ? (
-                        <span className="text-xs font-mono text-gray-300">—</span>
+                        <span className="text-xs font-mono text-gray-300">-</span>
                       ) : (
                         <span className="text-xs font-mono font-semibold" style={{
                           color: c.roi >= 0 ? CHART_COLORS.green : CHART_COLORS.red,

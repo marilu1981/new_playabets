@@ -1,5 +1,5 @@
 /**
- * usePersistedFilters — shares the selected date range across all dashboard pages.
+ * usePersistedFilters - shares the selected date range across all dashboard pages.
  *
  * Stores filters in localStorage under "pb_dashboard_filters" so navigating
  * between pages preserves the user's date selection. On first load uses the
@@ -30,7 +30,7 @@ function getInitialFilters(): DashboardFilters {
     }
   } catch {}
 
-  // 2. Default: start of previous month → today
+  // 2. Default: start of previous month -> today
   return { ...defaultFilters, ...getDefaultDateRange() };
 }
 

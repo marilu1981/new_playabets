@@ -7,8 +7,8 @@ Run from the project root:
     python -m src.extract.incremental_betslips
 
 Environment variables required:
-    DWH_USER  – SQL Server login
-    DWH_PASS  – SQL Server password
+    DWH_USER  - SQL Server login
+    DWH_PASS  - SQL Server password
 """
 from __future__ import annotations
 

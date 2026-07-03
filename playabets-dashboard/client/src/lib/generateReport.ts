@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — PDF Report Generator (v2)
+ * PLAYA BETS - PDF Report Generator (v2)
  * Clean 2-page A4 report with real AI insights from Azure OpenAI.
  */
 
@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 export interface AiInsights {
   wins: string[];
   alerts?: string[];
-  concerns?: string[]; // legacy — mapped to alerts
+  concerns?: string[]; // legacy - mapped to alerts
   watch_list: string[];
   recommendations?: string[]; // removed from prompt, kept for backward compat
 }
@@ -72,7 +72,7 @@ const C = {
 
 const PW = 210, PH = 297, ML = 14, MR = 14, CW = PW - ML - MR;
 
-// Full numbers with thousands separator — no abbreviation
+// Full numbers with thousands separator - no abbreviation
 function fc(n: number): string {
   const s = n < 0 ? "-" : "", a = Math.abs(n);
   return `${s}R ${a.toLocaleString("en-ZA", { maximumFractionDigits: 0 })}`;
@@ -98,8 +98,8 @@ function pageHeader(doc: jsPDF, title: string, sub: string) {
 function footer(doc: jsPDF, page: number, total: number, dataDate: string|null) {
   sf(doc,C.darkBg); doc.rect(0,PH-11,PW,11,"F");
   doc.setFont("helvetica","normal"); doc.setFontSize(7); sc(doc,C.dimText);
-  doc.text("Playa Bets Analytics  ·  Confidential", ML, PH-4.5);
-  doc.text(`Data as of: ${dataDate??"—"}`, PW/2, PH-4.5, {align:"center"});
+  doc.text("Playa Bets Analytics  |  Confidential", ML, PH-4.5);
+  doc.text(`Data as of: ${dataDate??"-"}`, PW/2, PH-4.5, {align:"center"});
   doc.text(`Page ${page} of ${total}`, PW-MR, PH-4.5, {align:"right"});
 }
 
@@ -154,7 +154,7 @@ function insightBlock(
   y += 7;
 
   items.forEach((item) => {
-    const lines = doc.splitTextToSize(`• ${item}`, CW - 6) as string[];
+    const lines = doc.splitTextToSize(`- ${item}`, CW - 6) as string[];
     const bh = lines.length * 4 + 4;
     sf(doc, bgColor);
     doc.rect(ML, y, CW, bh, "F");
@@ -175,7 +175,7 @@ export function generateReport(data: ReportData): void {
   const ggr = data.ggr ?? (data.totalStake - data.totalWinnings);
   const netCash = data.totalDeposits - data.totalWithdrawals;
 
-  // ── PAGE 1: COVER ────────────────────────────────────────────────────────────
+  // -- PAGE 1: COVER ------------------------------------------------------------
   sf(doc, C.darkBg); doc.rect(0,0,PW,PH,"F");
   sf(doc, C.gold);   doc.rect(0,0,PW,2.5,"F");
   sf(doc, C.gold);   doc.rect(0,PH-2.5,PW,2.5,"F");
@@ -200,7 +200,7 @@ export function generateReport(data: ReportData): void {
   doc.setFont("helvetica","bold"); doc.setFontSize(11); sc(doc, C.white);
   doc.text(`${data.dateFrom}  to  ${data.dateTo}`, PW/2-36, 110);
   doc.setFont("helvetica","normal"); doc.setFontSize(7); sc(doc, C.dimText);
-  doc.text(`Data as of: ${data.dataDate??"—"}`, PW/2-36, 115);
+  doc.text(`Data as of: ${data.dataDate??"-"}`, PW/2-36, 115);
 
   // 4 snapshot KPIs
   const snaps = [
@@ -221,36 +221,36 @@ export function generateReport(data: ReportData): void {
   });
 
   doc.setFont("helvetica","italic"); doc.setFontSize(7); sc(doc,C.dimText);
-  doc.text("Confidential — For internal use only", PW/2, 196, {align:"center"});
+  doc.text("Confidential - For internal use only", PW/2, 196, {align:"center"});
   doc.setFont("helvetica","normal"); doc.setFontSize(6.5); sc(doc,[60,90,70] as [number,number,number]);
-  doc.text(`Generated: ${generatedAt}  ·  Playa Bets Analytics Platform`, PW/2, 275, {align:"center"});
+  doc.text(`Generated: ${generatedAt}  |  Playa Bets Analytics Platform`, PW/2, 275, {align:"center"});
 
-  // ── PAGE 2: KPIs + AI INSIGHTS ───────────────────────────────────────────────
+  // -- PAGE 2: KPIs + AI INSIGHTS -----------------------------------------------
   doc.addPage();
   sf(doc,C.white); doc.rect(0,0,PW,PH,"F");
-  pageHeader(doc, "Performance Summary", `${data.dateFrom} — ${data.dateTo}`);
+  pageHeader(doc, "Performance Summary", `${data.dateFrom} - ${data.dateTo}`);
   let y = 18;
 
   // KPI grid
   y = secHeader(doc, "Key Performance Indicators", y);
   const kpis: KpiEntry[] = [
     {label:"Registrations",   value:fnum(data.registrations),        sub:`${ftdRate}% conv rate`,    accent:C.gold},
-    {label:"FTDs",            value:fnum(data.ftds),                 sub:`R${data.avgFtdValue?.toFixed(0)??"—"} avg`,  accent:C.gold},
+    {label:"FTDs",            value:fnum(data.ftds),                 sub:`R${data.avgFtdValue?.toFixed(0)??"-"} avg`,  accent:C.gold},
     {label:"Active Players",  value:fnum(data.activePlayersSports+data.activePlayersCasino), sub:"Sports + Casino", accent:C.green},
     {label:"GGR",             value:fc(ggr),                         sub:data.holdPct ? `${data.holdPct.toFixed(1)}% hold` : "Gross Gaming Revenue", accent:C.green},
-    {label:"NGR",             value:data.ngr ? fc(data.ngr) : "—",  sub:"Net Gaming Revenue",        accent:C.green},
+    {label:"NGR",             value:data.ngr ? fc(data.ngr) : "-",  sub:"Net Gaming Revenue",        accent:C.green},
     {label:"Total Deposits",  value:data.totalDeposits>0?fc(data.totalDeposits):"Pending", sub:"Period deposits", accent:C.gold},
     {label:"Net Cash",        value:data.totalDeposits>0?fc(netCash):"Pending",            sub:"Deposits - Withdrawals", accent:C.gold},
-    {label:"VIP GGR",         value:data.vipGgr?fc(data.vipGgr):"—", sub:`${data.totalVips??0} VIP players`, accent:C.amber},
+    {label:"VIP GGR",         value:data.vipGgr?fc(data.vipGgr):"-", sub:`${data.totalVips??0} VIP players`, accent:C.amber},
   ];
   y = kpiRow(doc, kpis, y);
 
   // Secondary metrics row
   const sec2: KpiEntry[] = [
-    {label:"Churn Rate",      value:data.churnPct?fpct(data.churnPct):"—",     sub:"Monthly churn",    accent:C.red},
-    {label:"D7 Retention",    value:data.retentionD7?fpct(data.retentionD7):"—", sub:"Return within 7d", accent:C.green},
-    {label:"D30 Retention",   value:data.retentionD30?fpct(data.retentionD30):"—",sub:"Return within 30d",accent:C.green},
-    {label:"Bonus Issued",    value:data.bonusesCredited>0?fc(data.bonusesCredited):"—", sub:"Total bonuses",  accent:C.amber},
+    {label:"Churn Rate",      value:data.churnPct?fpct(data.churnPct):"-",     sub:"Monthly churn",    accent:C.red},
+    {label:"D7 Retention",    value:data.retentionD7?fpct(data.retentionD7):"-", sub:"Return within 7d", accent:C.green},
+    {label:"D30 Retention",   value:data.retentionD30?fpct(data.retentionD30):"-",sub:"Return within 30d",accent:C.green},
+    {label:"Bonus Issued",    value:data.bonusesCredited>0?fc(data.bonusesCredited):"-", sub:"Total bonuses",  accent:C.amber},
   ];
   y = kpiRow(doc, sec2, y);
 
@@ -264,7 +264,7 @@ export function generateReport(data: ReportData): void {
     y = insightBlock(doc, "Watch List", ai.watch_list,                    y, [210,150,60],  [252,248,238] as [number,number,number]);
   } else {
     doc.setFont("helvetica","italic"); doc.setFontSize(8); sc(doc, C.dimText);
-    doc.text("AI insights not available for this period — ensure Azure OpenAI is configured.", ML+3, y+4);
+    doc.text("AI insights not available for this period - ensure Azure OpenAI is configured.", ML+3, y+4);
     y += 12;
   }
 
@@ -278,7 +278,7 @@ export function generateReport(data: ReportData): void {
       "Retention rates are calculated from raw betslip cohorts. D7/D30 = % of new players who returned within 7/30 days.",
     ];
     notes.forEach(note => {
-      const lines = doc.splitTextToSize(`• ${note}`, CW-4) as string[];
+      const lines = doc.splitTextToSize(`- ${note}`, CW-4) as string[];
       doc.setFont("helvetica","normal"); doc.setFontSize(7); sc(doc, C.darkText);
       doc.text(lines, ML+2, y, {lineHeightFactor:1.4});
       y += lines.length*3.8+1.5;

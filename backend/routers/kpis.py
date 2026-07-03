@@ -1,5 +1,5 @@
 """
-routers/kpis.py — KPI endpoints and time-series endpoints.
+routers/kpis.py - KPI endpoints and time-series endpoints.
 """
 from __future__ import annotations
 
@@ -115,7 +115,7 @@ def kpis(
 ):
     allowed_ids = _get_allowed_user_ids(territory, country, customer_status, current_segment)
 
-    # Result cache — keyed on date range + file mtimes (same as summary cache)
+    # Result cache - keyed on date range + file mtimes (same as summary cache)
     # Only cache unfiltered requests (territory/country filters bypass)
     if allowed_ids is None:
         kpis_cache_key = _summary_cache_key(start, end, start, end, date(end.year, 1, 1))[:6]
@@ -144,7 +144,7 @@ def kpis(
         sportsbook_ggr = _s(df, "ggr_total") or _s(df, "ggr")  # total GGR
         sportsbook_actives = _mean_i(df, "actives_sports")
 
-    # Horse racing (Betmakers) is separated from casino — add to sports totals.
+    # Horse racing (Betmakers) is separated from casino - add to sports totals.
     horse_racing_ggr   = _s(casino, "horse_racing_ggr")
     horse_racing_stake = _s(casino, "horse_racing_stake")
     sportsbook_ggr     += horse_racing_ggr
@@ -197,7 +197,7 @@ def kpis(
     # FTD Reg Month: users who registered in period AND have ever deposited (lifetime).
     ftd_reg_month_df = _filter_range(load_parquet_cached(FTD_REG_MONTH_DAILY_PATH, "ftd_reg_month_daily"), start, end)
     ftd_reg_month = _i(ftd_reg_month_df, "ftd_reg_month")
-    # FTD New Depositors: registered AND first deposited in same period — matches client's report.
+    # FTD New Depositors: registered AND first deposited in same period - matches client's report.
     ftd_new_dep = _filter_range(load_parquet_cached(FTD_NEW_DEP_DAILY_PATH, "ftd_new_dep_daily"), start, end)
     ftd_new_depositors = _i(ftd_new_dep, "ftd_new_depositors")
 
@@ -364,7 +364,7 @@ def kpis_summary(
         previous_end = start - timedelta(days=1)
         previous_start = previous_end - timedelta(days=duration)
 
-    # Auto-compute YTD (Jan 1 of end year → end) if not provided
+    # Auto-compute YTD (Jan 1 of end year -> end) if not provided
     if ytd_start is None:
         ytd_start = date(end.year, 1, 1)
 
@@ -587,7 +587,7 @@ def crm_retention(
             if hasattr(v, "item"):
                 c[k] = v.item()
 
-    # Summary: average rates across cohorts (exclude most recent month — D90 incomplete)
+    # Summary: average rates across cohorts (exclude most recent month - D90 incomplete)
     complete = df[df["cohort_month"] < df["cohort_month"].max()] if len(df) > 1 else df
     summary = {
         "avg_d7":  round(float(complete["rate_d7"].mean()), 1) if not complete.empty else 0.0,

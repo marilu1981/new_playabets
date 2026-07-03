@@ -1,5 +1,5 @@
 """
-build_rfm_history.py — Backfill + incremental RFM monthly snapshots
+build_rfm_history.py - Backfill + incremental RFM monthly snapshots
 
 Computes RFM segment counts as-of each month-end from DATA_START_DATE to today,
 writing one row per month to data/serving/rfm_monthly_snapshots.parquet.
@@ -7,7 +7,7 @@ writing one row per month to data/serving/rfm_monthly_snapshots.parquet.
 Run once to backfill:
     python -m src.kpis.build_rfm_history
 
-Idempotent — skips months already present in the output file.
+Idempotent - skips months already present in the output file.
 """
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def build_monthly_snapshot(
 def main() -> None:
     SERVING_ROOT.mkdir(parents=True, exist_ok=True)
 
-    print("Loading raw data…")
+    print("Loading raw data...")
     users = read_all_parquets(USERS_DIR, "users_increment_*.parquet")
     betslips = read_all_parquets(BETSLIPS_DIR, "betslips_increment_*.parquet")
     sessions = read_all_parquets(SESSIONS_DIR, "sessions_increment_*.parquet") if SESSIONS_DIR.exists() else pd.DataFrame()
@@ -103,7 +103,7 @@ def main() -> None:
     first_deposits = read_all_parquets(FTD_DIR, "first_deposits_increment_*.parquet") if FTD_DIR.exists() else pd.DataFrame()
 
     if users.empty:
-        print("No user data found — cannot compute RFM. Exiting.")
+        print("No user data found - cannot compute RFM. Exiting.")
         return
 
     existing = _load_existing()
@@ -117,17 +117,17 @@ def main() -> None:
         today = date.today()
         is_current_month = (as_of_date.year == today.year and as_of_date.month == today.month)
         if as_of_date in existing_dates and not is_current_month:
-            print(f"  {as_of_date} — already present, skipping")
+            print(f"  {as_of_date} - already present, skipping")
             continue
 
-        print(f"  {as_of_date} — computing RFM as-of {as_of_date}…")
+        print(f"  {as_of_date} - computing RFM as-of {as_of_date}...")
         try:
             row = build_monthly_snapshot(users, betslips, casino, sessions, first_deposits, as_of_date)
             new_rows.append(row)
             counts = {c: int(row[c].iloc[0]) for c in RFM_COLS if c != "date" and c in row.columns}
-            print(f"             → {counts}")
+            print(f"             -> {counts}")
         except Exception as exc:
-            print(f"             ✗ failed: {exc}")
+            print(f"             FAILED: {exc}")
 
     if not new_rows:
         print("Nothing new to write.")

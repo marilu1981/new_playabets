@@ -1,5 +1,5 @@
 /**
- * PermissionsContext — holds the authenticated user's dashboard access rights.
+ * PermissionsContext - holds the authenticated user's dashboard access rights.
  *
  * Populated by AuthGuard after the Supabase session is confirmed.
  * Components read `usePermissions()` to decide what to render or navigate to.

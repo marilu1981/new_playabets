@@ -1,10 +1,10 @@
 """
-app.py — Playa Bets Local Analytics API
+app.py - Playa Bets Local Analytics API
 ========================================
 FastAPI backend that serves pre-computed Parquet files from data/serving/.
 
 All endpoints are READ-ONLY and serve from local Parquet files.
-No live DWH connection is made here — data is refreshed by the scheduler.
+No live DWH connection is made here - data is refreshed by the scheduler.
 
 Run:
     uvicorn backend.app:app --reload --port 8080
@@ -68,7 +68,7 @@ async def _log_requests(request: Request, call_next):
 
 
 # ---------------------------------------------------------------------------
-# CORS — only used when the frontend is NOT behind the same-origin reverse proxy.
+# CORS - only used when the frontend is NOT behind the same-origin reverse proxy.
 # In production (Azure Static Web Apps + Container Apps), the reverse proxy
 # handles routing so CORS is never triggered. This config is for local dev only.
 # ---------------------------------------------------------------------------
@@ -81,7 +81,7 @@ _ALLOWED_ORIGINS = (
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
-    allow_credentials=False,          # No cookies — we use Authorization header
+    allow_credentials=False,          # No cookies - we use Authorization header
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Accept", "X-API-Key", "X-User-Email"],
 )
@@ -120,7 +120,7 @@ app.add_middleware(APIKeyMiddleware)
 
 
 # ---------------------------------------------------------------------------
-# Startup cache warmup — pre-load all serving parquets into memory so the
+# Startup cache warmup - pre-load all serving parquets into memory so the
 # first user request is fast instead of waiting for Azure File Share I/O.
 # ---------------------------------------------------------------------------
 @app.on_event("startup")
@@ -228,4 +228,4 @@ def cache_clear():
 # ---------------------------------------------------------------------------
 @app.get("/")
 def root():
-    return {"message": "Playa Bets API v0.2 — see /docs for endpoints"}
+    return {"message": "Playa Bets API v0.2 - see /docs for endpoints"}

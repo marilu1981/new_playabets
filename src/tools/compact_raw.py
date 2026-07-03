@@ -20,7 +20,7 @@ from src.app_config import raw_dir
 log = logging.getLogger("compact_raw")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# ── Per-source configuration ──────────────────────────────────────────────────
+# -- Per-source configuration --------------------------------------------------
 # increment_glob : pattern that matches increment files to merge
 # full_name      : output filename after compaction
 # dedup_col      : column to deduplicate on (keep last occurrence); None = no dedup
@@ -83,7 +83,7 @@ def compact_source(
 
     inc_files = sorted(directory.glob(increment_glob))
     if not inc_files:
-        log.info("[%s] No increment files found — skipping", directory.name)
+        log.info("[%s] No increment files found - skipping", directory.name)
         return 0
 
     full_path = directory / full_name
@@ -109,7 +109,7 @@ def compact_source(
 
     combined = pd.concat(frames, ignore_index=True)
 
-    # Deduplicate — sort first so we keep the latest record
+    # Deduplicate - sort first so we keep the latest record
     if dedup_col and dedup_col in combined.columns:
         if sort_col and sort_col in combined.columns:
             combined = combined.sort_values(sort_col, ascending=True)
@@ -142,7 +142,7 @@ def compact_transactions(directory: Path) -> int:
 
     inc_files = sorted(directory.glob("transactions_daily_agg_*.parquet"))
     if not inc_files:
-        log.info("[transactions] No increment files found — skipping")
+        log.info("[transactions] No increment files found - skipping")
         return 0
 
     full_path = directory / "transactions_agg_full.parquet"
@@ -195,11 +195,11 @@ def main() -> None:
         )
         total += merged
 
-    # Transactions use pre-aggregated daily files — compact separately.
+    # Transactions use pre-aggregated daily files - compact separately.
     from src.app_config import raw_dir as _raw_dir
     total += compact_transactions(_raw_dir("transactions"))
 
-    log.info("Compaction complete — %d increment files merged and deleted", total)
+    log.info("Compaction complete - %d increment files merged and deleted", total)
 
 
 if __name__ == "__main__":

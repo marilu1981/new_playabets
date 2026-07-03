@@ -21,14 +21,14 @@ def main() -> None:
         print(f"No files found in {RAW_DIR}")
         return
 
-    print(f"Found {len(agg_files)} files — merging...")
+    print(f"Found {len(agg_files)} files - merging...")
     df = pd.concat((pd.read_parquet(f) for f in agg_files), ignore_index=True)
     df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
 
     OUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(OUT_FILE, index=False)
-    print(f"Saved {len(df)} rows → {OUT_FILE}")
-    print(f"Date range: {df['date'].min()} → {df['date'].max()}")
+    print(f"Saved {len(df)} rows -> {OUT_FILE}")
+    print(f"Date range: {df['date'].min()} -> {df['date'].max()}")
     print(f"Total deposits:    {df['deposits'].sum():,.0f}")
     print(f"Total withdrawals: {df['withdrawals'].sum():,.0f}")
 

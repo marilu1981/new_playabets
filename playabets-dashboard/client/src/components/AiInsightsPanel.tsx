@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — AI Insights Panel
+ * PLAYA BETS - AI Insights Panel
  * 3-section display: Wins, Alerts, Watch List. No Recommendations.
  */
 import type { AiInsights } from "@/lib/generateReport";

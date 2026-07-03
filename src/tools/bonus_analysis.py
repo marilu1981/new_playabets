@@ -64,7 +64,7 @@ def _load_bonuses(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     if bid and bid in df.columns:
         df = df.sort_values("insert_date").drop_duplicates(subset=[bid], keep="last")
     else:
-        # No BonusID — fall back to a row signature to avoid double-counting
+        # No BonusID - fall back to a row signature to avoid double-counting
         df = df.drop_duplicates(subset=["userid", "campaignid", "amount", "insert_date"], keep="last")
     return df
 
@@ -166,7 +166,7 @@ def main() -> None:
 
     bonuses = _load_bonuses(start, end)
     if bonuses.empty:
-        print("[bonus] no bonus rows in window — aborting.")
+        print("[bonus] no bonus rows in window - aborting.")
         return
     campaigns = _load_campaigns()
     turnover = _load_turnover(start, end)
@@ -180,7 +180,7 @@ def main() -> None:
     issued = bonuses[bonuses["bonus_status"] == ISSUED_STATUS].copy()
     print(f"[bonus] issued (Credited): {len(issued):,} bonuses, R{issued['amount'].sum():,.0f}")
 
-    # ---- per-player turnover/GGR (REAL MONEY only — User Account) ----
+    # ---- per-player turnover/GGR (REAL MONEY only - User Account) ----
     real = turnover[turnover["credit_type"] == "User Account"] if not turnover.empty else turnover
     if not real.empty:
         per_user = real.groupby("userid").agg(

@@ -9,7 +9,7 @@ Why pre-aggregate in SQL (not pull raw rows):
   Instead we run two fast inlined-date queries (~83s deposits, ~41s withdrawals)
   and write the daily summary directly.
 
-Timezone handling — SAST (UTC+2):
+Timezone handling - SAST (UTC+2):
   The DWH stores timestamps in UTC.  Dashboard dates are SAST calendar days.
   SAST midnight for date D = UTC 22:00 on D-1.
   So for SAST date "2026-04-08" the SQL window is:
@@ -25,7 +25,7 @@ build_domain_kpis.py detects these _agg_ files and uses them directly,
 bypassing transactions_kpi.py (which expects raw row-level data).
 
 DWH team guidance:
-  - Inline dates as string literals in WHERE — parameterised placeholders timeout.
+  - Inline dates as string literals in WHERE - parameterised placeholders timeout.
   - Run after :20 past the hour so DWH ETL has finished loading.
 
 Run from the project root:
@@ -90,7 +90,7 @@ def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
     """
     Return UTC query boundaries for a calendar date (UTC, not SAST).
 
-    e.g. "2026-04-08"  →  ("2026-04-08 00:00:00", "2026-04-09 00:00:00")
+    e.g. "2026-04-08"  ->  ("2026-04-08 00:00:00", "2026-04-09 00:00:00")
     """
     from datetime import date as _date
     d = _date.fromisoformat(sast_date)
@@ -103,17 +103,17 @@ def _sast_day_utc_window(sast_date: str) -> tuple[str, str]:
 # Confirmed via Dwh_en.view_Reasons (ReasonGroupID): Group 2 = Deposit, Group 3 = Withdrawals.
 # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits.
 # 248 (Deposit Bank Transfer) included; the TransactionAmountTypeID=1 filter on the
-# deposit query keeps only its positive leg — matches client net cash to within 0.6%.
+# deposit query keeps only its positive leg - matches client net cash to within 0.6%.
 DEPOSIT_REASON_IDS = (
     "248,249,250,830,835,839,843,851,853,855,857,859,"
     "861,863,865,867,869,871,873,875,877,939"
 )
 
-# Actual withdrawals (positive amounts). 873/875 removed — they are deposits.
+# Actual withdrawals (positive amounts). 873/875 removed - they are deposits.
 WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
 
 # Cancel withdrawals are stored as positive values in the DB but represent
-# reversed/cancelled withdrawals — subtract them from the withdrawal total.
+# reversed/cancelled withdrawals - subtract them from the withdrawal total.
 CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
 # Bonus ReasonGroup 8: 54=redeemed, 64+143=issued, 65=reversed
@@ -134,7 +134,7 @@ def _query_bonus(conn, sast_date: str) -> pd.DataFrame:
           AND ReasonID IN ({BONUS_REASON_IDS})
     """)
     t0 = perf_counter()
-    _log(f"Querying bonus: {s} → {e}  (SAST {sast_date})")
+    _log(f"Querying bonus: {s} -> {e}  (SAST {sast_date})")
     df = pd.read_sql(q, conn)
     _log(f"Bonus done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
     return df
@@ -156,7 +156,7 @@ def _query_deposits(conn, sast_date: str) -> pd.DataFrame:
           AND ReasonID IN ({DEPOSIT_REASON_IDS})
     """)
     t0 = perf_counter()
-    _log(f"Querying deposits: {s} → {e}  (SAST {sast_date})")
+    _log(f"Querying deposits: {s} -> {e}  (SAST {sast_date})")
     df = pd.read_sql(q, conn)
     _log(f"Deposits done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
     return df
@@ -181,7 +181,7 @@ def _query_withdrawals(conn, sast_date: str) -> pd.DataFrame:
           AND ReasonID IN ({WITHDRAWAL_REASON_IDS},{CANCEL_WITHDRAWAL_REASON_IDS})
     """)
     t0 = perf_counter()
-    _log(f"Querying withdrawals: {s} → {e}  (SAST {sast_date})")
+    _log(f"Querying withdrawals: {s} -> {e}  (SAST {sast_date})")
     df = pd.read_sql(q, conn)
     _log(f"Withdrawals done in {perf_counter()-t0:.1f}s | rows: {len(df)}")
     return df
@@ -218,7 +218,7 @@ def _merge(sast_date: str, deposits: pd.DataFrame, withdrawals: pd.DataFrame, bo
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     utc_s, utc_e = _sast_day_utc_window(START_DATE)
-    _log(f"SAST date: {START_DATE}  →  UTC window: {utc_s} to {utc_e}")
+    _log(f"SAST date: {START_DATE}  ->  UTC window: {utc_s} to {utc_e}")
 
     if WAIT_FOR_20:
         _wait_until_20_past()
@@ -250,7 +250,7 @@ def main() -> None:
     # Named by SAST date for easy deduplication by build_domain_kpis.py
     out_file = OUT_DIR / f"transactions_daily_agg_{START_DATE}.parquet"
     df.to_parquet(out_file, index=False)
-    _log(f"Saved → {out_file}")
+    _log(f"Saved -> {out_file}")
 
 
 if __name__ == "__main__":

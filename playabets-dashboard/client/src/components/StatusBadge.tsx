@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Status Badge Component
+ * PLAYA BETS - Status Badge Component
  * Pill badges for user statuses, betslip statuses, campaign statuses
  */
 

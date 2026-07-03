@@ -37,7 +37,7 @@ def _default_watermark() -> str:
     cutoff = datetime.now(UTC) - timedelta(days=days)
     return cutoff.strftime("%Y-%m-%d %H:%M:%S")
 
-# ── Connection config (read from env) ────────────────────────────────────────
+# -- Connection config (read from env) ----------------------------------------
 SERVER = os.environ.get("DWH_SERVER")
 if not SERVER:
     raise RuntimeError("DWH_SERVER environment variable is required")
@@ -91,7 +91,7 @@ def build_engine():
     return create_engine("mssql+pyodbc://", creator=creator, pool_pre_ping=True)
 
 
-# ── Watermark helpers ─────────────────────────────────────────────────────────
+# -- Watermark helpers ---------------------------------------------------------
 
 def _migrate_watermarks_schema(cur, conn) -> None:
     """
@@ -162,7 +162,7 @@ def get_watermark(watermark_db, view_name: str, default: str | None = None) -> s
                 return default
             return existing
 
-        # Row does not exist — insert the default
+        # Row does not exist - insert the default
         cur.execute(
             "INSERT INTO watermarks (view_name, last_value, updated_at) VALUES (?, ?, ?)",
             (view_name, default, datetime.now(UTC).isoformat(timespec="seconds")),

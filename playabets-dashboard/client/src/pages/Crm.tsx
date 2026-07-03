@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — CRM Page
+ * PLAYA BETS - CRM Page
  * Customer relationship management metrics: cohort analysis,
  * retention, Average Deposit Value, LTV, and Churn.
  */
@@ -54,7 +54,7 @@ export default function CrmPage() {
   useEffect(() => {
     const query = `start=${filters.dateFrom}&end=${filters.dateTo}`;
 
-    // Cohort conversion rates — aggregate by granularity
+    // Cohort conversion rates - aggregate by granularity
     fetchJson<{ points: Array<{ date: string; registrations?: number; ftds_d7?: number; ftds_d30?: number; rate_d7?: number | null; rate_d30?: number | null }> }>(
       `/timeseries/conversion-cohorts?${query}`
     ).then((d) => {
@@ -67,7 +67,7 @@ export default function CrmPage() {
       if (filters.granularity === "daily") {
         setCohortData(pts);
       } else {
-        // Aggregate to weekly/monthly — sum counts, average rates
+        // Aggregate to weekly/monthly - sum counts, average rates
         const agg = aggregateByGranularity(
           pts as Record<string, unknown>[],
           filters.granularity,
@@ -78,7 +78,7 @@ export default function CrmPage() {
       }
     }).catch(() => {});
 
-    // KPIs — churn, total actives, NGR for ARPU
+    // KPIs - churn, total actives, NGR for ARPU
     fetchJson<{ churn_pct?: number; total_actives_unique?: number; ngr?: number }>(
       `/kpis?${query}`
     ).then((d) => {
@@ -118,9 +118,9 @@ export default function CrmPage() {
     }).catch(() => {});
   }, [filters.dateFrom, filters.dateTo, filters.granularity]);
 
-  // CRM AI Insights — fires once CRM-specific data is available (churn + retention, NOT just main KPIs)
+  // CRM AI Insights - fires once CRM-specific data is available (churn + retention, NOT just main KPIs)
   useEffect(() => {
-    // Require both churn AND retention summary — ensures we have CRM-specific data, not just main dashboard KPIs
+    // Require both churn AND retention summary - ensures we have CRM-specific data, not just main dashboard KPIs
     if (churnPct === null || retentionSummary === null || totalActives === null || totalActives === 0) return;
     const churn = churnPct ?? 0;
     const d30 = retentionSummary?.avg_d30 ?? 0;
@@ -129,7 +129,7 @@ export default function CrmPage() {
     // Return cached insights if available
     const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api").replace(/\/+$/, "");
     const API_KEY_H = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-    // Use ARPU * actives as NGR proxy — only if both are non-zero
+    // Use ARPU * actives as NGR proxy - only if both are non-zero
     const estimatedNgr = (arpu != null && arpu > 0 && totalActives != null && totalActives > 0)
       ? arpu * totalActives : 0;
     const periodRegs = cohortData.reduce((s, r) => s + (r.registrations ?? 0), 0);
@@ -194,7 +194,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Churn (Actives)"
-            value={churnPct != null ? `${churnPct}%` : "—"}
+            value={churnPct != null ? `${churnPct}%` : "-"}
             subtitle="Players left / Total prev month"
             tooltip="Churn Rate = Players who did not return this month / Total active players in the previous month x 100."
             icon={<Activity size={18} />}
@@ -202,7 +202,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="ARPU"
-            value={arpu != null ? formatFull(arpu) : "—"}
+            value={arpu != null ? formatFull(arpu) : "-"}
             subtitle="NGR / Total Actives"
             tooltip="Average Revenue Per User = Net Gaming Revenue / Total Active Players. Key measure of player value."
             icon={<TrendingUp size={18} />}
@@ -210,7 +210,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Total Actives"
-            value={totalActives != null ? formatFull(totalActives) : "—"}
+            value={totalActives != null ? formatFull(totalActives) : "-"}
             subtitle="Unique sports + casino players"
             tooltip="Total unique players who placed at least one bet (sports or casino) during the selected period."
             icon={<Users size={18} />}
@@ -218,7 +218,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="LTV (Period)"
-            value={arpu != null ? formatFull(arpu) : "—"}
+            value={arpu != null ? formatFull(arpu) : "-"}
             subtitle="NGR / Active Players"
             tooltip="Lifetime Value proxy = NGR / Active Players for the period. True LTV requires full player history."
             icon={<TrendingUp size={18} />}
@@ -226,7 +226,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Retention Rate"
-            value={churnPct != null ? `${(100 - churnPct).toFixed(1)}%` : "—"}
+            value={churnPct != null ? `${(100 - churnPct).toFixed(1)}%` : "-"}
             subtitle="100% - Monthly Churn"
             tooltip="Retention Rate = 100% - Churn Rate. Percentage of active players who returned the following month."
             icon={<Clock size={18} />}
@@ -234,7 +234,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Cohort D7 Conv"
-            value={cohortSummary != null ? `${cohortSummary.avgD7Rate.toFixed(1)}%` : "—"}
+            value={cohortSummary != null ? `${cohortSummary.avgD7Rate.toFixed(1)}%` : "-"}
             subtitle="Avg D7 FTD conversion"
             tooltip="Of players who registered, what % made their first deposit within 7 days. Measures early onboarding effectiveness."
             icon={<Users size={18} />}
@@ -242,7 +242,7 @@ export default function CrmPage() {
           />
           <KpiCard
             title="Cohort D30 Conv"
-            value={cohortSummary != null ? `${cohortSummary.avgD30Rate.toFixed(1)}%` : "—"}
+            value={cohortSummary != null ? `${cohortSummary.avgD30Rate.toFixed(1)}%` : "-"}
             subtitle="Avg D30 FTD conversion"
             tooltip="Of players who registered, what % made their first deposit within 30 days. Measures medium-term conversion."
             icon={<Users size={18} />}
@@ -257,7 +257,7 @@ export default function CrmPage() {
 
         {/* Cohort D7 / D30 Conversion */}
         <div className="rounded-xl p-5" style={CARD_BG}>
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort — FTD Conversion Rate</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort - FTD Conversion Rate</h3>
           <p className="text-xs text-gray-500 mb-4">% of registrants who made first deposit within 7 / 30 days</p>
           {cohortData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -283,7 +283,7 @@ export default function CrmPage() {
       {/* Cohort Registration + FTD Bar Chart */}
       {cohortData.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort — Registrations vs FTDs</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-1">Cohort - Registrations vs FTDs</h3>
           <p className="text-xs text-gray-500 mb-4">D7 and D30 first deposits by registration date</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={cohortData} margin={{ top: 0, right: 5, bottom: 0, left: 0 }}>
@@ -306,7 +306,7 @@ export default function CrmPage() {
       {paymentMethods.length > 0 && (
         <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-900 mb-1">Payment Methods</h3>
-          <p className="text-xs text-gray-500 mb-4">Deposits and withdrawals by payment provider — selected period</p>
+          <p className="text-xs text-gray-500 mb-4">Deposits and withdrawals by payment provider - selected period</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -320,11 +320,11 @@ export default function CrmPage() {
                 {paymentMethods.filter(p => p.deposits > 0 || Math.abs(p.withdrawals) > 0).map((p) => (
                   <tr key={p.provider} className="border-b border-gray-50">
                     <td className="py-2 pr-4 text-gray-700 font-medium">{p.provider}</td>
-                    <td className="py-2 pr-4 text-right text-gray-700">{p.deposits > 0 ? `R ${formatFull(Math.round(p.deposits))}` : "—"}</td>
-                    <td className="py-2 pr-4 text-right" style={{ color: p.withdrawals < 0 ? "#d94040" : "#6b7280" }}>{p.withdrawals < 0 ? `R ${formatFull(Math.round(Math.abs(p.withdrawals)))}` : "—"}</td>
+                    <td className="py-2 pr-4 text-right text-gray-700">{p.deposits > 0 ? `R ${formatFull(Math.round(p.deposits))}` : "-"}</td>
+                    <td className="py-2 pr-4 text-right" style={{ color: p.withdrawals < 0 ? "#d94040" : "#6b7280" }}>{p.withdrawals < 0 ? `R ${formatFull(Math.round(Math.abs(p.withdrawals)))}` : "-"}</td>
                     <td className="py-2 pr-4 text-right font-medium" style={{ color: p.net >= 0 ? COLORS.gold : "#d94040" }}>{`R ${formatFull(Math.round(p.net))}`}</td>
-                    <td className="py-2 pr-4 text-right text-gray-500">{p.deposit_count > 0 ? formatCompact(p.deposit_count) : "—"}</td>
-                    <td className="py-2 pr-4 text-right text-gray-500">{p.withdrawal_count > 0 ? formatCompact(p.withdrawal_count) : "—"}</td>
+                    <td className="py-2 pr-4 text-right text-gray-500">{p.deposit_count > 0 ? formatCompact(p.deposit_count) : "-"}</td>
+                    <td className="py-2 pr-4 text-right text-gray-500">{p.withdrawal_count > 0 ? formatCompact(p.withdrawal_count) : "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -337,7 +337,7 @@ export default function CrmPage() {
       {retentionSummary && (
         <div className="rounded-xl p-5 mb-4" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-900 mb-1">Player Retention</h3>
-          <p className="text-xs text-gray-500 mb-4">% of new players who returned within 7, 30, and 90 days — by cohort month</p>
+          <p className="text-xs text-gray-500 mb-4">% of new players who returned within 7, 30, and 90 days - by cohort month</p>
 
           {/* Summary KPI cards */}
           <div className="grid grid-cols-3 gap-4 mb-5">
@@ -354,7 +354,7 @@ export default function CrmPage() {
             ))}
           </div>
 
-          {/* Retention by cohort — grouped bar chart */}
+          {/* Retention by cohort - grouped bar chart */}
           {retentionCohorts.length > 0 && (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={retentionCohorts} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>

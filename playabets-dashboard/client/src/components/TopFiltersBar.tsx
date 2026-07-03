@@ -1,8 +1,8 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * TopFiltersBar — Label-above-control stacked layout.
+ * TopFiltersBar - Label-above-control stacked layout.
  * All controls share a standard width (140px dropdowns, 130px date inputs).
- * Labels sit in small caps above each control — no inline labels, no abbreviations.
+ * Labels sit in small caps above each control - no inline labels, no abbreviations.
  *
  * Row 1: Date From | Date To | Granularity | Territory | Country | [Reset]
  */
@@ -39,13 +39,13 @@ interface TopFiltersBarProps {
   resetFilters?: DashboardFilters;
 }
 
-// ── Shared style constants ────────────────────────────────────────────────────
+// -- Shared style constants ----------------------------------------------------
 const BAR_BG: React.CSSProperties = {
   background: "#ffffff",
   borderBottom: "1px solid #e4ece4",
 };
 
-// Standard control width — all dropdowns and date inputs use this
+// Standard control width - all dropdowns and date inputs use this
 const CTRL_W = 140;
 
 const INPUT_STYLE: React.CSSProperties = {
@@ -101,7 +101,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-// Granularity toggle — three buttons, same height as other controls
+// Granularity toggle - three buttons, same height as other controls
 function GranularityToggle({
   value,
   onChange,
@@ -140,7 +140,7 @@ function GranularityToggle({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFiltersBarProps) {
   const set = (key: keyof DashboardFilters, value: string) =>
     onChange({ ...filters, [key]: value });
@@ -153,7 +153,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
   return (
     <div className="flex flex-shrink-0" style={BAR_BG}>
 
-      {/* ── Vertical "Filters & Controls" label ───────────────────────────── */}
+      {/* -- Vertical "Filters & Controls" label ----------------------------- */}
       <div
         className="flex items-center justify-center flex-shrink-0 px-3"
         style={{ borderRight: "1px solid #e4ece4", minWidth: "36px" }}
@@ -186,10 +186,10 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
         </div>
       </div>
 
-      {/* ── Filter rows ───────────────────────────────────────────────────── */}
+      {/* -- Filter rows ----------------------------------------------------- */}
       <div className="flex-1 flex flex-col">
 
-        {/* ROW 1 ─────────────────────────────────────────────────────────── */}
+        {/* ROW 1 ----------------------------------------------------------- */}
         <div className="flex items-end gap-3 px-5 pt-3 pb-2 flex-wrap">
 
           <Field label="Date From">
@@ -227,7 +227,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               onChange={(e) => set("territory", e.target.value)}
               className={selectCls}
               style={SELECT_STYLE}
-              title="Confirm Country grouping — territory mapping pending DWH confirmation"
+              title="Confirm Country grouping - territory mapping pending DWH confirmation"
             >
               <option value="all">All Territories</option>
               <option value="west_africa">West Africa</option>
@@ -242,7 +242,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
               onChange={(e) => set("country", e.target.value)}
               className={selectCls}
               style={SELECT_STYLE}
-              title="Confirm Country grouping — country filter pending DWH column mapping"
+              title="Confirm Country grouping - country filter pending DWH column mapping"
             >
               <option value="all">All Countries</option>
               <option value="NG">Nigeria</option>
@@ -254,7 +254,7 @@ export default function TopFiltersBar({ filters, onChange, resetFilters }: TopFi
             </select>
           </Field>
 
-          {/* Reset button — aligned to bottom of row, only when filters active */}
+          {/* Reset button - aligned to bottom of row, only when filters active */}
           {hasActiveFilters && (
             <div className="flex flex-col justify-end flex-shrink-0">
               <button

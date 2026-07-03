@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * App.tsx — Routes & top-level layout
+ * App.tsx - Routes & top-level layout
  * Design: Savanna Gold (dark forest green + warm gold)
  *
  * Code-splitting: all pages are lazy-loaded so the initial bundle only
@@ -14,7 +14,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import AuthGuard from "./components/AuthGuard";
 
-// Lazy-loaded pages — each becomes a separate JS chunk
+// Lazy-loaded pages - each becomes a separate JS chunk
 const Home             = lazy(() => import("./pages/Home"));
 const UsersPage        = lazy(() => import("./pages/Users"));
 const BettingPage      = lazy(() => import("./pages/Betting"));
@@ -44,7 +44,7 @@ function PageLoader() {
         letterSpacing: "0.1em",
       }}
     >
-      Loading…
+      Loading...
     </div>
   );
 }

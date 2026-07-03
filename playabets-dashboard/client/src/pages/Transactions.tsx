@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 /**
- * PLAYA BETS — Transactions Page
+ * PLAYA BETS - Transactions Page
  * Live data from /transactions/kpis and /transactions/trend
  */
 
@@ -126,7 +126,7 @@ export default function TransactionsPage() {
         (r) => r["date"] as string,
       ) as unknown as typeof rawTrendData);
 
-  const dash = loading ? "…" : "—";
+  const dash = loading ? "..." : "-";
   const pending = !kpis?.has_data;
   const totalsTransactions = kpis?.has_data ? kpis.tx_count : (providerTotals?.transactions ?? null);
   const totalsPositiveAmount = kpis?.has_data ? kpis.deposits : (providerTotals?.positive_amount ?? null);
@@ -151,7 +151,7 @@ export default function TransactionsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <div className="lg:col-span-2 rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Deposits vs Withdrawals</h3>
-          <p className="text-xs text-gray-400 mb-4">Daily flow — selected period</p>
+          <p className="text-xs text-gray-400 mb-4">Daily flow - selected period</p>
           {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={trendData} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -178,14 +178,14 @@ export default function TransactionsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-[220px] flex items-center justify-center text-xs text-gray-400">
-              {loading ? "Loading…" : "No transaction trend data available for this period"}
+              {loading ? "Loading..." : "No transaction trend data available for this period"}
             </div>
           )}
         </div>
 
         <div className="rounded-xl p-5" style={CARD_BG}>
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Net Cash Flow</h3>
-          <p className="text-xs text-gray-400 mb-4">Daily net (Deposits − Withdrawals)</p>
+          <p className="text-xs text-gray-400 mb-4">Daily net (Deposits - Withdrawals)</p>
           {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={trendData.slice(-14)} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
@@ -198,7 +198,7 @@ export default function TransactionsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-[220px] flex items-center justify-center text-xs text-gray-400">
-              {loading ? "Loading…" : "No data"}
+              {loading ? "Loading..." : "No data"}
             </div>
           )}
         </div>
@@ -211,11 +211,11 @@ export default function TransactionsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
               <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Net Cash %</div>
-              <div className="text-sm font-bold text-gray-900">{kpis.deposits > 0 ? `${((kpis.net_deposits / kpis.deposits) * 100).toFixed(1)}%` : "—"}</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.deposits > 0 ? `${((kpis.net_deposits / kpis.deposits) * 100).toFixed(1)}%` : "-"}</div>
             </div>
             <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
               <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Avg Deposit / User</div>
-              <div className="text-sm font-bold text-gray-900">{kpis.unique_depositors > 0 ? formatFull(kpis.deposits / kpis.unique_depositors) : "—"}</div>
+              <div className="text-sm font-bold text-gray-900">{kpis.unique_depositors > 0 ? formatFull(kpis.deposits / kpis.unique_depositors) : "-"}</div>
             </div>
             <div className="rounded-lg p-3" style={{ background: "#f5f9f5", border: "1px solid #dde8dd" }}>
               <div className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-1">Total Transactions</div>
@@ -241,19 +241,19 @@ export default function TransactionsPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-500">Transactions</div>
-            <div className="text-2xl font-light text-sky-500 mt-1">{totalsTransactions !== null ? totalsTransactions.toLocaleString() : "—"}</div>
+            <div className="text-2xl font-light text-sky-500 mt-1">{totalsTransactions !== null ? totalsTransactions.toLocaleString() : "-"}</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Positive amount</div>
-            <div className="text-2xl font-light text-emerald-600 mt-1">{totalsPositiveAmount !== null ? formatFull(totalsPositiveAmount) : "—"} ZAR</div>
+            <div className="text-2xl font-light text-emerald-600 mt-1">{totalsPositiveAmount !== null ? formatFull(totalsPositiveAmount) : "-"} ZAR</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-red-500">Negative amount</div>
-            <div className="text-2xl font-light text-red-500 mt-1">{totalsNegativeAmount !== null ? `-${formatFull(Math.abs(totalsNegativeAmount))}` : "—"} ZAR</div>
+            <div className="text-2xl font-light text-red-500 mt-1">{totalsNegativeAmount !== null ? `-${formatFull(Math.abs(totalsNegativeAmount))}` : "-"} ZAR</div>
           </div>
           <div className="rounded-lg p-3 border border-gray-200 bg-white">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-sky-500">Total amount</div>
-            <div className="text-2xl font-light text-sky-500 mt-1">{totalsNetAmount !== null ? formatFull(totalsNetAmount) : "—"} ZAR</div>
+            <div className="text-2xl font-light text-sky-500 mt-1">{totalsNetAmount !== null ? formatFull(totalsNetAmount) : "-"} ZAR</div>
           </div>
         </div>
 
@@ -289,7 +289,7 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="h-24 flex items-center justify-center text-xs text-gray-400">
-            {detailLoading ? "Loading…" : "No transaction detail data available for this period"}
+            {detailLoading ? "Loading..." : "No transaction detail data available for this period"}
           </div>
         )}
       </div>

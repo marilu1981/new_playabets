@@ -1,5 +1,5 @@
 """
-routers/admin.py — User permission management endpoints.
+routers/admin.py - User permission management endpoints.
 
 All write endpoints require the caller to be an admin (role = 'admin' in admin.db,
 or listed in the ADMIN_EMAILS env var).  The caller's identity is read from the
@@ -7,7 +7,7 @@ X-User-Email request header, which the frontend populates from the Supabase
 session after authentication.
 
 The overall request is still protected by the APIKeyMiddleware in app.py, so
-the only additional trust surface is the X-User-Email header — acceptable for
+the only additional trust surface is the X-User-Email header - acceptable for
 an invite-only internal dashboard behind an API key.
 """
 from __future__ import annotations

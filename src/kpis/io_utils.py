@@ -31,7 +31,7 @@ def ensure_cols(mapping: dict[str, str], required_lower: list[str], context: str
 
 
 def to_date(series: pd.Series) -> pd.Series:
-    # iSolutions stores all timestamps in UTC — use UTC date directly.
+    # iSolutions stores all timestamps in UTC - use UTC date directly.
     return pd.to_datetime(series, errors="coerce").dt.date
 
 

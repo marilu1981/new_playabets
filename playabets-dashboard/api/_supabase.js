@@ -1,6 +1,6 @@
 /**
  * Shared Supabase REST helper for Vercel API routes (CommonJS).
- * Uses the service-role key server-side — never exposed to the browser.
+ * Uses the service-role key server-side - never exposed to the browser.
  *
  * Includes a 60-second in-memory cache (per Vercel function instance)
  * to avoid redundant Supabase queries on repeated page loads.
@@ -10,7 +10,7 @@
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-// ── In-memory cache ─────────────────────────────────────────────────────────────────────────────────
+// -- In-memory cache ---------------------------------------------------------------------------------
 const _cache = new Map();
 const CACHE_TTL_MS = 60_000; // 60 seconds
 
@@ -28,7 +28,7 @@ function cacheSet(key, data) {
   _cache.set(key, { ts: Date.now(), data });
 }
 
-// ── Supabase REST query ───────────────────────────────────────────────────────────────────────────────
+// -- Supabase REST query -------------------------------------------------------------------------------
 async function supaQuery(table, opts = {}) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/${table}`);
   url.searchParams.set("select", opts.select ?? "*");
@@ -129,7 +129,7 @@ async function supaQueryAll(table, opts = {}) {
   return allRows;
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────────────────────────
+// -- Auth -----------------------------------------------------------------------------------------
 /**
  * Check API key. Returns true (and sends 401) if the request is rejected.
  * Returns false if auth passes or is disabled (no API_KEY env var set).
@@ -148,7 +148,7 @@ function requireAuth(req, res) {
   return false;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────────────────────────
+// -- Helpers --------------------------------------------------------------------------------------
 function sum(rows, col) {
   return rows.reduce((acc, r) => acc + Number(r[col] ?? 0), 0);
 }

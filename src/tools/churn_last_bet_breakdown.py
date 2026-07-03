@@ -46,7 +46,7 @@ def main() -> None:
     before_may = churned[churned["last_bet_date"] < "2026-05-01"]
 
     print("=" * 60)
-    print("CHURNED at-risk players — when did they last bet?")
+    print("CHURNED at-risk players - when did they last bet?")
     print("=" * 60)
     print(f"Churned (no bet after 5 June) .............. {n_churned_total:,}")
     print(f"  with a recorded last-bet date ........... {n_with_date:,}")

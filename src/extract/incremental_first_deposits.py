@@ -68,7 +68,7 @@ def main() -> None:
     )
 
     engine = build_engine()
-    print(f"[first_deposits] Querying {VIEW_NAME} (full refresh, per-user MIN)…")
+    print(f"[first_deposits] Querying {VIEW_NAME} (full refresh, per-user MIN)...")
     with engine.connect() as conn:
         df = pd.read_sql(query, conn)
 
@@ -81,7 +81,7 @@ def main() -> None:
     # Use a fixed filename so the next run overwrites the previous full snapshot.
     out_file = OUT_DIR / "first_deposits_full.parquet"
     df.to_parquet(out_file, index=False)
-    print(f"[first_deposits] Saved full snapshot → {out_file}")
+    print(f"[first_deposits] Saved full snapshot -> {out_file}")
 
 
 if __name__ == "__main__":

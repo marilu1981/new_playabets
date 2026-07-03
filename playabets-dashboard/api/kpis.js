@@ -46,11 +46,11 @@ module.exports = async function handler(req, res) {
     const sportsbook_turnover = sum(kpiRows, "settled_stake");
     const sportsbook_ggr      = sum(kpiRows, "ggr");
 
-    // Casino metrics — casino_stake and casino_ggr are the column names in casino_daily
+    // Casino metrics - casino_stake and casino_ggr are the column names in casino_daily
     const casino_turnover = sum(casinoRows, "casino_stake");
     const casino_ggr      = sum(casinoRows, "casino_ggr");
 
-    // Combined totals — mirrors backend/app.py lines 184-188
+    // Combined totals - mirrors backend/app.py lines 184-188
     const total_turnover = sportsbook_turnover + casino_turnover;
     const total_ggr      = sportsbook_ggr + casino_ggr;
     const bonusSpent     = sum(bonusRows, "bonus_credited");

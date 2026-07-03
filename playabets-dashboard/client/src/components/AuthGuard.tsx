@@ -1,5 +1,5 @@
 /**
- * AuthGuard — wraps the entire app.
+ * AuthGuard - wraps the entire app.
  * Uses onAuthStateChange (fires INITIAL_SESSION from localStorage immediately)
  * instead of getSession() which can block on slow networks.
  * After a valid session is confirmed, fetches dashboard permissions from /admin/me.
@@ -37,9 +37,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         allowedPages: perms.allowed_pages,
       });
     } catch (err) {
-      // Admin endpoint unreachable — preserve cached permissions if available.
+      // Admin endpoint unreachable - preserve cached permissions if available.
       // If first login (no cache), grant full access but keep admin role if
-      // this is an email from bootstrap admins (risk: API failure → temp privilege loss,
+      // this is an email from bootstrap admins (risk: API failure -> temp privilege loss,
       // but we don't have env vars client-side to check).
       // For now, fall back to full-access viewer to avoid leaking admin status to network errors.
       const cached = localStorage.getItem("cachedPermissions");
@@ -59,7 +59,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }, []);
 
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION synchronously from localStorage —
+    // onAuthStateChange fires INITIAL_SESSION synchronously from localStorage -
     // no network call needed to determine whether a session exists.
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       handleSession(session);
@@ -91,7 +91,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (state === "signed-out") {
-    // Pass a no-op — onAuthStateChange handles SIGNED_IN automatically.
+    // Pass a no-op - onAuthStateChange handles SIGNED_IN automatically.
     return <Login onLogin={() => {}} />;
   }
 

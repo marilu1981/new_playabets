@@ -1,7 +1,7 @@
 """
 non_bonus_analysis.py
 ---------------------
-Companion to bonus_analysis.py — analyses players who were NEVER issued a bonus
+Companion to bonus_analysis.py - analyses players who were NEVER issued a bonus
 in the selected window, providing a baseline for comparison.
 
 Funnel (overall and per-player):
@@ -18,7 +18,7 @@ Also identifies:
 DATA NOTES / ASSUMPTIONS:
     - Non-bonus = no BonusStatus == "Credited" row in the window for that player.
     - Real-money turnover only: sports CreditType == "User Account", casino Stake > 0.
-    - Deposits/withdrawals are stored as DAILY AGGREGATES — no per-user deposit amounts.
+    - Deposits/withdrawals are stored as DAILY AGGREGATES - no per-user deposit amounts.
     - Net Value is GGR only (no bonus cost, no per-user withdrawal data).
 
 Usage (on the VM, full data):
@@ -113,7 +113,7 @@ def _load_ftd(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Non-bonus player analysis — baseline comparison")
+    p = argparse.ArgumentParser(description="Non-bonus player analysis - baseline comparison")
     p.add_argument("--start", default="2026-01-01", help="Start date YYYY-MM-DD")
     p.add_argument("--end", default=None, help="End date YYYY-MM-DD (default: today)")
     p.add_argument("--outdir", default="data/serving/non_bonus_analysis", help="Output directory for CSVs")
@@ -170,7 +170,7 @@ def main() -> None:
     high_value.to_csv(outdir / "02_high_value_players.csv", index=False)
     print(f"[non_bonus] 02_high_value_players: {len(high_value):,} players (GGR >= R{ggr_threshold:,.0f})")
 
-    # ---- FTD players (within window) with no bets — genuinely deposited and didn't engage ----
+    # ---- FTD players (within window) with no bets - genuinely deposited and didn't engage ----
     ftd_no_bet_ids = set(ftd_nb_window["userid"]) - set(per_user["userid"])
     ftd_no_bet = ftd_nb_window[ftd_nb_window["userid"].isin(ftd_no_bet_ids)].copy()
     ftd_no_bet.to_csv(outdir / "03_ftd_no_bets.csv", index=False)

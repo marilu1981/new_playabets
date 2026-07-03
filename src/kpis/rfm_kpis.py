@@ -416,16 +416,16 @@ def build_rfm_users(
     rfm["m_score"] = _score_quantiles(rfm["monetary_30d"], ascending=False, zero_is_lowest=True)
     rfm["rfm_score"] = rfm["r_score"] * 100 + rfm["f_score"] * 10 + rfm["m_score"]
 
-    # ── Activity-based segmentation ───────────────────────────────────────────
+    # -- Activity-based segmentation -------------------------------------------
     # Segments are based on recency_days and monetary_30d so every user is
     # placed into exactly one meaningful bucket that maps to a CRM action.
     #
-    #   VIP       – active in last 30 days AND top 10% by monetary value
-    #   Active    – active in last 30 days (below VIP threshold)
-    #   New       – registered in last 30 days (may overlap Active; New wins)
-    #   Cooling   – last activity was 31–90 days ago
-    #   Lapsed    – last activity was 91–180 days ago
-    #   Dormant   – no activity in 180+ days (or never active)
+    #   VIP       - active in last 30 days AND top 10% by monetary value
+    #   Active    - active in last 30 days (below VIP threshold)
+    #   New       - registered in last 30 days (may overlap Active; New wins)
+    #   Cooling   - last activity was 31-90 days ago
+    #   Lapsed    - last activity was 91-180 days ago
+    #   Dormant   - no activity in 180+ days (or never active)
 
     # Top-10% monetary threshold among users active in the last 30 days
     active_mask = rfm["recency_days"] <= 30

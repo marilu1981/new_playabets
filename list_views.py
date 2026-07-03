@@ -1,7 +1,7 @@
 """
 list_views.py
 -------------
-Lists all views in the Dwh_en schema so we can verify the exact names.
+Lists all views in the Dwh_en schema.
 
 Usage (VPN connected):
     python list_views.py

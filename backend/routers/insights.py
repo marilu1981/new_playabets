@@ -1,10 +1,10 @@
 """
-routers/insights.py — AI-powered dashboard insights via Azure OpenAI.
+routers/insights.py - AI-powered dashboard insights via Azure OpenAI.
 
 Calls gpt-4o-mini with the period KPI data and returns structured insights
 in four categories: wins, concerns, watch_list, recommendations.
 
-Data never leaves Azure — uses Azure OpenAI endpoint in the same tenant.
+Data never leaves Azure - uses Azure OpenAI endpoint in the same tenant.
 Results are cached in-memory per period (hash of start+end+key metrics).
 """
 from __future__ import annotations
@@ -86,7 +86,7 @@ def _call_azure_openai(prompt: str, context: str = "home") -> dict:
 
 
 # Deterministic safety net: even if the model ignores the prompt, these words
-# never reach the user. Order matters — phrases before single words.
+# never reach the user. Order matters - phrases before single words.
 _BANNED_REPLACEMENTS: list[tuple[str, str]] = [
     ("which is critical", "which is worth noting"),
     ("which is crucial", "which is worth noting"),
@@ -154,7 +154,7 @@ def ai_summary(
     start: date = Query(...),
     end:   date = Query(...),
     context: str = Query("home"),  # which page: home | crm | vip
-    # KPIs passed as query params — no sensitive player data, just aggregates
+    # KPIs passed as query params - no sensitive player data, just aggregates
     registrations:      int   = Query(0),
     ftds:               int   = Query(0),
     conv_rate:          float = Query(0.0),
@@ -248,16 +248,16 @@ TRANSACTIONS
             return f"+{chg:.1f}%" if chg >= 0 else f"{chg:.1f}%"
 
         prev_lines = f"""
-PERIOD-OVER-PERIOD CHANGES (these percentages are PRE-CALCULATED — copy them exactly, do NOT compute your own)
+PERIOD-OVER-PERIOD CHANGES (these percentages are PRE-CALCULATED - copy them exactly, do NOT compute your own)
 - GGR: now R{ggr:,.0f} ({pct_change(ggr, prev_ggr)} vs previous R{prev_ggr:,.0f})
 - NGR: now R{ngr:,.0f} ({pct_change(ngr, prev_ngr)} vs previous R{prev_ngr:,.0f})
 - Registrations: now {registrations:,} ({pct_change(registrations, prev_registrations)} vs previous {prev_registrations:,})
 - FTDs: now {ftds:,} ({pct_change(ftds, prev_ftds)} vs previous {prev_ftds:,})
 - Turnover: now R{turnover:,.0f} ({pct_change(turnover, prev_turnover)} vs previous R{prev_turnover:,.0f})
-The "now" figures above are THIS period's actual values. The percentages in brackets are correct — use them verbatim and never recalculate."""
+The "now" figures above are THIS period's actual values. The percentages in brackets are correct - use them verbatim and never recalculate."""
 
     prompt = f"""
-Playabets gaming operator data — {start} to {end} ({days} days).
+Playabets gaming operator data - {start} to {end} ({days} days).
 USE ONLY THESE EXACT NUMBERS. Do not compute, round, or substitute different values.
 
 PLAYER ACQUISITION

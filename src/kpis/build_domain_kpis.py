@@ -32,12 +32,12 @@ SERVING = SERVING_ROOT
 def main() -> None:
     SERVING.mkdir(parents=True, exist_ok=True)
 
-    # Transactions — two possible sources:
+    # Transactions - two possible sources:
     # 1. Pre-aggregated files (transactions_daily_agg_*.parquet) written by
-    #    incremental_transactions_simple.py — used when raw row export is not
+    #    incremental_transactions_simple.py - used when raw row export is not
     #    feasible (view_transactions has ~4M rows/day, no usable index).
     # 2. Raw row increments (transactions_increment_*.parquet) written by
-    #    incremental_transactions.py — used if a row-level export ever works.
+    #    incremental_transactions.py - used if a row-level export ever works.
     if ENABLE_TRANSACTIONS:
         tx_dir = RAW / "transactions"
         out = SERVING / "transactions_daily.parquet"
@@ -88,7 +88,7 @@ def main() -> None:
     else:
         print("[domain_kpis] Transactions disabled - skipping transactions_daily build")
 
-    # Bonus — read full compacted file + any new increments (same pattern as transactions)
+    # Bonus - read full compacted file + any new increments (same pattern as transactions)
     bonus_dir = RAW / "bonus"
     if bonus_dir.exists():
         bonus_full = bonus_dir / "bonuses_full.parquet"
@@ -105,7 +105,7 @@ def main() -> None:
         freebets_latest = bonus_dir / "freebets_latest.parquet"
         freebets_raw = pd.read_parquet(freebets_latest) if freebets_latest.exists() else pd.DataFrame()
         out = SERVING / "bonus_daily.parquet"
-        # BonusTransactions (ReasonID 64=issued, 65=reversed) — client's Bonus Issued source
+        # BonusTransactions (ReasonID 64=issued, 65=reversed) - client's Bonus Issued source
         bonus_tx_raw = read_all_parquets(bonus_dir, "bonus_transactions_increment_*.parquet")
 
         if bonus_raw.empty:
@@ -128,7 +128,7 @@ def main() -> None:
                 ).to_parquet(bonus_full, index=False)
                 for f in bonus_increments:
                     f.unlink()
-                print(f"[domain_kpis] Bonus compacted: merged {len(bonus_increments)} increments → bonuses_full.parquet")
+                print(f"[domain_kpis] Bonus compacted: merged {len(bonus_increments)} increments -> bonuses_full.parquet")
     else:
         print("[domain_kpis] No bonus raw dir - skipping")
 
@@ -165,7 +165,7 @@ def main() -> None:
     else:
         print("[domain_kpis] No first_deposits raw dir - skipping")
 
-    # FTD New Depositors — users who BOTH registered AND first deposited in the same calendar
+    # FTD New Depositors - users who BOTH registered AND first deposited in the same calendar
     # month, indexed by first deposit date.  This is the "clean" FTD metric that matches
     # the client's GlobalGamingReport definition and explains the ~4 % gap versus ftd_daily
     # (which counts ALL first deposits regardless of registration date).
@@ -231,7 +231,7 @@ def main() -> None:
     else:
         print("[domain_kpis] No casino raw dir - skipping")
 
-    # FTD Reg Month — users who registered in a period AND have ever deposited (lifetime).
+    # FTD Reg Month - users who registered in a period AND have ever deposited (lifetime).
     # Uses users_raw (registration dates) + ftd_raw (ever-deposited user IDs).
     # Output: one row per registration date with ftd_reg_month count.
     if ftd_dir.exists() and (ftd_dir / "first_deposits_full.parquet").exists():
@@ -275,9 +275,9 @@ def main() -> None:
     else:
         print("[domain_kpis] FTD Reg Month: no FTD full snapshot - skipping")
 
-    # Actives Monthly Unique — period-total unique users who placed real-money bets.
+    # Actives Monthly Unique - period-total unique users who placed real-money bets.
     # Sports: from raw betslips (CreditType == "User Account").
-    # Casino: from raw casino (no credit type filter — all casino bets counted).
+    # Casino: from raw casino (no credit type filter - all casino bets counted).
     actives_rows = []
     betslips_dir = RAW / "betslips"
     if betslips_dir.exists():
@@ -336,7 +336,7 @@ def main() -> None:
     else:
         print("[domain_kpis] Actives monthly: no data - skipping")
 
-    # Total Actives Monthly — union of sports and casino UserIDs (no double counting).
+    # Total Actives Monthly - union of sports and casino UserIDs (no double counting).
     # Players active in both sports and casino are counted once.
     try:
         sports_month_users: dict = {}
@@ -384,7 +384,7 @@ def main() -> None:
             total_act_df.to_parquet(total_act_out, index=False)
             print(f"[domain_kpis] Total actives monthly: {len(total_act_df)} rows -> {total_act_out}")
 
-        # Churn — uses total actives (sports + casino union) not sports-only.
+        # Churn - uses total actives (sports + casino union) not sports-only.
         # Sports-only churn over-counts: casino-only players look churned when they stop sports.
         months_sorted = sorted(total_month_users.keys())
         churn_rows = []
@@ -411,14 +411,14 @@ def main() -> None:
 
     # (Churn is now computed inside the Total Actives block above using sports+casino union)
 
-    # Monthly Unique Depositors — only runs if file missing or explicitly requested.
+    # Monthly Unique Depositors - only runs if file missing or explicitly requested.
     # Skipped during normal scheduler runs to avoid DWH timeout (full table scan).
     # Run manually: REBUILD_DEPOSITORS=1 python -m src.kpis.build_domain_kpis
     import os as _os
     dep_out = SERVING / "depositors_monthly.parquet"
     if _os.environ.get("REBUILD_DEPOSITORS") == "1" or not dep_out.exists():
         try:
-            # Compute from already-extracted user_transactions parquets — no DWH query needed.
+            # Compute from already-extracted user_transactions parquets - no DWH query needed.
             # user_transactions_month_YYYYMM.parquet has userid + month + deposits per user.
             # Users with deposits > 0 in a month are that month's unique depositors.
             user_tx_dir = RAW_ROOT / "user_transactions"
@@ -438,13 +438,13 @@ def main() -> None:
                 dep_df.to_parquet(dep_out, index=False)
                 print(f"[domain_kpis] Depositors monthly: {len(dep_df)} rows -> {dep_out}")
             else:
-                print("[domain_kpis] Depositors monthly: no user_transactions parquets found — skipping")
+                print("[domain_kpis] Depositors monthly: no user_transactions parquets found - skipping")
         except Exception as e:
             print(f"[domain_kpis] Depositors monthly: error - {e}")
     else:
         print(f"[domain_kpis] Depositors monthly: using cached file (set REBUILD_DEPOSITORS=1 to refresh)")
 
-    # Payment Providers — aggregate raw increments to daily by provider
+    # Payment Providers - aggregate raw increments to daily by provider
     try:
         import re as _re
         pp_dir = RAW_ROOT / "payment_providers"
@@ -459,7 +459,7 @@ def main() -> None:
             pp_raw["provider"] = pp_raw["causale_name"].apply(_clean_provider)
             pp_raw["date"] = pd.to_datetime(pp_raw["date"]).dt.date.astype(str)
 
-            # Normalise legacy 'Withdrawals' (plural) → 'Withdrawal' from old parquet files.
+            # Normalise legacy 'Withdrawals' (plural) -> 'Withdrawal' from old parquet files.
             pp_raw["group_name"] = pp_raw["group_name"].replace("Withdrawals", "Withdrawal")
 
             dep = pp_raw[pp_raw["group_name"] == "Deposit"].copy()
@@ -495,14 +495,14 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] Payment providers: error - {e}")
 
-    # VIP roster — seed ONCE from the committed vip_list.csv. After that, the
+    # VIP roster - seed ONCE from the committed vip_list.csv. After that, the
     # frontend CSV upload (POST /vip/upload) is the source of truth and writes
     # vip_roster.parquet directly. Do NOT rebuild here if the serving file
     # already exists, or the scheduler would overwrite uploaded VIP data.
     try:
         vip_out = SERVING / "vip_roster.parquet"
         if vip_out.exists():
-            print(f"[domain_kpis] VIP roster: serving file exists — preserving uploaded data (set via /vip/upload)")
+            print(f"[domain_kpis] VIP roster: serving file exists - preserving uploaded data (set via /vip/upload)")
         else:
             vip_df = build_vip_roster()
             if not vip_df.empty:
@@ -511,11 +511,11 @@ def main() -> None:
                 print(f"[domain_kpis] VIP roster seeded from vip_list.csv: {len(vip_df)} stints, {vip_df['userid'].nunique()} users -> {vip_out}"
                       + (f" ({n_err} date errors flagged)" if n_err else ""))
             else:
-                print("[domain_kpis] VIP roster: vip_list.csv not found — skipping")
+                print("[domain_kpis] VIP roster: vip_list.csv not found - skipping")
     except Exception as e:
         print(f"[domain_kpis] VIP roster: error - {e}")
 
-    # Affiliate summary — built from RavenTrack parquet extracts
+    # Affiliate summary - built from RavenTrack parquet extracts
     try:
         from .affiliate_kpis import compute_affiliate_summary
         aff_dir = RAW / "affiliates"
@@ -531,7 +531,7 @@ def main() -> None:
     except Exception as e:
         print(f"[domain_kpis] Affiliates: error - {e}")
 
-    # VIP revenue by user — pre-aggregated from raw betslips + casino per VIP userid.
+    # VIP revenue by user - pre-aggregated from raw betslips + casino per VIP userid.
     # Eliminates live raw-file loading on every VIP API request (was 3-4 seconds).
     try:
         from src.kpis.io_utils import normalize_cols as _nc, to_dt as _to_dt
@@ -600,11 +600,11 @@ def main() -> None:
             else:
                 print("[domain_kpis] VIP revenue daily: no betslip/casino data found")
         else:
-            print("[domain_kpis] VIP revenue daily: no vip_roster.parquet — skipping")
+            print("[domain_kpis] VIP revenue daily: no vip_roster.parquet - skipping")
     except Exception as e:
         print(f"[domain_kpis] VIP revenue daily: error - {e}")
 
-    # Player retention (7/30/90 day) — computed from raw betslips + casino.
+    # Player retention (7/30/90 day) - computed from raw betslips + casino.
     # For each calendar month cohort, find players who bet for the first time
     # in that month, then check if they returned within 7/30/90 days.
     try:
