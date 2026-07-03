@@ -4,13 +4,13 @@ run_small_extracts.py
 Run one, several, or all extract modules.
 
 Available modules:
-  bonus              — BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
-  users              — view_users (incremental via DateVersion)
-  balances           — view_balances (full-refresh snapshot)
-  casino             — view_casino (incremental via InsertDate)
-  transactions       — view_transactions (incremental via DateVersion)
-  user_transactions  — view_transactions per-user with UserID (for SocioTopography FC axis)
-  betslips           — view_betslips (incremental via DateVersion, LARGE)
+  bonus              - BonusBonuses (incremental) + Campaigns/Freebets (full-refresh)
+  users              - view_users (incremental via DateVersion)
+  balances           - view_balances (full-refresh snapshot)
+  casino             - view_casino (incremental via InsertDate)
+  transactions       - view_transactions (incremental via DateVersion)
+  user_transactions  - view_transactions per-user with UserID (for SocioTopography FC axis)
+  betslips           - view_betslips (incremental via DateVersion, LARGE)
 
 Usage examples:
   python run_small_extracts.py                          # runs all except betslips
@@ -27,9 +27,9 @@ Usage examples:
   python run_small_extracts.py --reset-watermarks casino        # reset only casino
 
 Environment variables:
-  DWH_USER            — SQL Server login (required for extract runs)
-  DWH_PASS            — SQL Server password (required for extract runs)
-  INITIAL_LOAD_DAYS   — Days to look back on first run (default: 90)
+  DWH_USER            - SQL Server login (required for extract runs)
+  DWH_PASS            - SQL Server password (required for extract runs)
+  INITIAL_LOAD_DAYS   - Days to look back on first run (default: 90)
 """
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 WATERMARK_DB = str((PROJECT_ROOT / "data" / "watermarks.db").resolve())
 
-# ── Module registry ───────────────────────────────────────────────────────────
+# -- Module registry -----------------------------------------------------------
 MODULES: dict[str, str] = {
     "bonus":             "src.extract.incremental_bonus",
     "users":             "src.extract.incremental_users",
@@ -82,7 +82,7 @@ MODULE_VIEWS: dict[str, list[str]] = {
     "betslips":          ["Dwh_en.view_betslips"],
 }
 
-# ── Watermark management ──────────────────────────────────────────────────────
+# -- Watermark management ------------------------------------------------------
 ALL_VIEWS = [
     # Bonus
     "Dwh_en.view_bonuscampaigns",
@@ -98,7 +98,7 @@ ALL_VIEWS = [
     "Dwh_en.view_transactions_per_user",
     "Stats.Transazioni_DepositiUtente",
     "Dwh_en.view_betslips",
-    # Legacy mixed-case names from old code — reset these too
+    # Legacy mixed-case names from old code - reset these too
     "Dwh_en.view_BonusBonuses",
     "Dwh_en.view_BonusCampaigns",
     "Dwh_en.view_BonusFreebets",
@@ -115,7 +115,7 @@ def _days_ago(days: int) -> str:
 def show_watermarks():
     """Print current watermark values for all known views."""
     if not Path(WATERMARK_DB).exists():
-        print("watermarks.db not found — no extracts have run yet.")
+        print("watermarks.db not found - no extracts have run yet.")
         return
     conn = sqlite3.connect(WATERMARK_DB)
     rows = conn.execute(
@@ -152,7 +152,7 @@ def reset_module_watermarks(module: str, days: int = 90):
         )
     conn.commit()
     conn.close()
-    print(f"\n  ✓ {module} watermark(s) reset to {cutoff} ({days} days ago)")
+    print(f"\n  {module} watermark(s) reset to {cutoff} ({days} days ago)")
     for v in views:
         print(f"    {v}")
     print()
@@ -175,7 +175,7 @@ def set_watermarks_today():
     updated = cur.rowcount
     conn.commit()
     conn.close()
-    print(f"\n  ✓ {updated} stale watermark(s) set to {today}")
+    print(f"\n  {updated} stale watermark(s) set to {today}")
     print("  (rows already at 2026+ were left unchanged)\n")
 
 
@@ -198,10 +198,10 @@ def reset_watermarks(days: int = 90):
         )
     conn.commit()
     conn.close()
-    print(f"\n  ✓ All {len(ALL_VIEWS)} watermarks reset to {cutoff} ({days} days ago)\n")
+    print(f"\n  All {len(ALL_VIEWS)} watermarks reset to {cutoff} ({days} days ago)\n")
 
 
-# ── Module runner ─────────────────────────────────────────────────────────────
+# -- Module runner -------------------------------------------------------------
 def run_module(label: str, module_path: str) -> bool:
     """Import and run a module's main() function. Returns True on success."""
     print(f"\n{'='*60}")
@@ -213,30 +213,30 @@ def run_module(label: str, module_path: str) -> bool:
         mod = importlib.import_module(module_path)
         mod.main()
         elapsed = time.time() - t0
-        print(f"\n  ✓ {label} completed in {elapsed:.1f}s")
+        print(f"\n  {label} completed in {elapsed:.1f}s")
         return True
     except Exception as e:
         elapsed = time.time() - t0
-        print(f"\n  ✗ {label} FAILED after {elapsed:.1f}s: {e}")
+        print(f"\n  {label} FAILED after {elapsed:.1f}s: {e}")
         traceback.print_exc()
         return False
 
 
-# ── Argument parsing ──────────────────────────────────────────────────────────
+# -- Argument parsing ----------------------------------------------------------
 def parse_args():
     """
     Returns (modules_to_run: list[str], run_transforms: bool)
 
     Logic:
     - If --show-watermarks or --reset-watermarks: handle and exit
-    - Positional args that match module names → run those specific modules
-    - --all → run all modules including betslips
-    - No positional args → run DEFAULT_ORDER (all except betslips)
-    - --transform → append transform modules to the run list
+    - Positional args that match module names -> run those specific modules
+    - --all -> run all modules including betslips
+    - No positional args -> run DEFAULT_ORDER (all except betslips)
+    - --transform -> append transform modules to the run list
     """
     args = sys.argv[1:]
 
-    # Utility commands — no DWH connection needed
+    # Utility commands - no DWH connection needed
     if "--show-watermarks" in args:
         show_watermarks()
         sys.exit(0)
@@ -278,7 +278,7 @@ def parse_args():
     return modules, run_transforms
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 def main():
     modules_to_run, run_transforms = parse_args()
 
@@ -286,19 +286,19 @@ def main():
     if run_transforms:
         run_list += list(TRANSFORM_MODULES.items())
 
-    print(f"\nPlaya Bets — Extract Pipeline")
+    print(f"\nPlaya Bets - Extract Pipeline")
     print(f"Running {len(run_list)} module(s): {[m[0] for m in run_list]}\n")
 
     results = {}
     for label, path in run_list:
         results[label] = run_module(label, path)
 
-    # ── Summary ───────────────────────────────────────────────────────────────
+    # -- Summary ---------------------------------------------------------------
     print(f"\n{'='*60}")
     print("  SUMMARY")
     print(f"{'='*60}")
     for label, ok in results.items():
-        status = "✓ OK" if ok else "✗ FAILED"
+        status = "OK" if ok else "FAILED"
         print(f"  {status:10s}  {label}")
 
     failed = [k for k, v in results.items() if not v]

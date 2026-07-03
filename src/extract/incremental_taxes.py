@@ -33,10 +33,10 @@ WATERMARK_KEY = "taxes_paid"
 WATERMARK_DB  = Path.home() / "watermarks_taxes.db"
 OUT_DIR       = raw_dir("taxes")
 
-# IDTipoDatoAggiuntivoCorrelazioneTransazioni = 38 → Betting Tax
+# IDTipoDatoAggiuntivoCorrelazioneTransazioni = 38 -> Betting Tax
 TAX_TYPE_ID = 38
 
-# ── Table/column names to verify on VM ───────────────────────────────────────
+# -- Table/column names to verify on VM ---------------------------------------
 # Run to confirm:
 #   python3 -c "
 #   from src.extract.db_utils import build_engine; from sqlalchemy import text
@@ -49,7 +49,7 @@ TABLE_NAME   = "Dwh.CorrelazioneTransazioniDatiAggiuntivi"
 DATE_COL     = "DataCreazione"
 AMOUNT_COL   = "Valore"
 TYPE_COL     = "IDTipoDatoAggiuntivoCorrelazioneTransazioni"
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 
 def _parse_window(value: str | None, label: str) -> str | None:
@@ -86,7 +86,7 @@ def main() -> None:
 
     lower = ws or last_value
     upper = we
-    print(f"[taxes] window: {lower} → {upper or 'now'}")
+    print(f"[taxes] window: {lower} -> {upper or 'now'}")
 
     date_filter = f"{DATE_COL} >= :lower"
     params: dict = {"lower": lower}
@@ -123,7 +123,7 @@ def main() -> None:
 
     out = OUT_DIR / fname
     df.to_parquet(out, index=False)
-    print(f"[taxes] Saved → {out}")
+    print(f"[taxes] Saved -> {out}")
     print(df.tail())
 
     if (ws is None) or args.update_watermark:

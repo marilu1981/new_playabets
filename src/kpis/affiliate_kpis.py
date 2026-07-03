@@ -5,20 +5,20 @@ Aggregates raw RavenTrack affiliate and player parquet files into
 serving-layer summaries for the Acquisition Dashboard.
 
 Channel classification uses affiliate_name keyword matching:
-  Google Ads  — names containing: google, goog, gads, rmads
-  Meta        — names containing: facebook, fb_, insta, meta
-  Influencers — names containing: spin, king, bet_, play_, levit, stian,
+  Google Ads  - names containing: google, goog, gads, rmads
+  Meta        - names containing: facebook, fb_, insta, meta
+  Influencers - names containing: spin, king, bet_, play_, levit, stian,
                                   king, connect, wholesome, missmoney,
                                   zol, pbs, stiaan, auctera, digi4u
-  Affiliates  — all remaining tracked affiliates
-  Organic     — not tracked via RavenTrack (set to 0)
+  Affiliates  - all remaining tracked affiliates
+  Organic     - not tracked via RavenTrack (set to 0)
 """
 from __future__ import annotations
 
 import re
 import pandas as pd
 
-# ── Channel classification keywords ──────────────────────────────────────────
+# -- Channel classification keywords ------------------------------------------
 _GOOGLE_KEYWORDS  = re.compile(r"google|goog|gads|rmads", re.I)
 _META_KEYWORDS    = re.compile(r"facebook|fb_|insta|meta|playa_fb|playafb", re.I)
 _INFLUENCER_KEYWORDS = re.compile(

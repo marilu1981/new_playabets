@@ -157,7 +157,7 @@ def main() -> None:
     )
 
     if df.empty:
-        print("[export] No players matched the filters — nothing to export.")
+        print("[export] No players matched the filters - nothing to export.")
         return
 
     out_path = args.out or f"export_churn_risk_{date.today().isoformat()}.{args.format}"
@@ -170,15 +170,15 @@ def main() -> None:
                 for col_cells in ws.columns:
                     max_len = max(len(str(c.value or "")) for c in col_cells)
                     ws.column_dimensions[col_cells[0].column_letter].width = min(max_len + 2, 40)
-            print(f"[export] Saved {len(df):,} players → {out_path}")
+            print(f"[export] Saved {len(df):,} players -> {out_path}")
         except ModuleNotFoundError:
             out_path = out_path.replace(".xlsx", ".csv")
             df.to_csv(out_path, index=True)
-            print(f"[export] openpyxl not installed — saved as CSV instead → {out_path}")
+            print(f"[export] openpyxl not installed - saved as CSV instead -> {out_path}")
             print("[export] To get Excel: pip install openpyxl")
     else:
         df.to_csv(out_path, index=True)
-        print(f"[export] Saved {len(df):,} players → {out_path}")
+        print(f"[export] Saved {len(df):,} players -> {out_path}")
 
     print(f"[export] Risk tier breakdown:")
     if "Risk Tier" in df.columns:

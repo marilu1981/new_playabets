@@ -87,3 +87,8 @@ Lib/
 
 'export_churn_risk_2026-05-19.csv'
 'export_churn_risk_2026-05-19.xlsx'
+# Data exports and credentials — never commit
+*.ovpn
+vip_list.csv
+docs/*.csv
+!docs/data_matching.csv

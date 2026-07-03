@@ -35,7 +35,7 @@ with engine.connect() as conn:
     ), {"schema": schema, "view": view}).fetchall()
 
 if not rows:
-    print(f"\nNo columns found for {schema}.{view} — check the name is correct.\n")
+    print(f"\nNo columns found for {schema}.{view} - check the name is correct.\n")
     sys.exit(1)
 
 print(f"\nColumns in {schema}.{view} ({len(rows)} columns):\n")

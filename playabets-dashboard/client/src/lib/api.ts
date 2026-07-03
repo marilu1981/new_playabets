@@ -1,10 +1,10 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * ─────────────────────────────────────────────────────────────────────────────
- * API Service Layer — ACTIVE (Live Mode)
- * ─────────────────────────────────────────────────────────────────────────────
+ * -----------------------------------------------------------------------------
+ * API Service Layer - ACTIVE (Live Mode)
+ * -----------------------------------------------------------------------------
  *
- * STATUS: API calls are ENABLED by default — routes are Vercel serverless
+ * STATUS: API calls are ENABLED by default - routes are Vercel serverless
  * functions backed by Supabase (no VPN required for demo environment).
  *
  * To force mock mode (e.g. local dev without Supabase access):
@@ -15,8 +15,8 @@
  *   2. Set VITE_API_BASE_URL to the DWH API endpoint (see docs/dashboard-build-tracker.md)
  *
  * ARCHITECTURE:
- *   Frontend → Vercel API routes (/api/*) → Supabase → pre-loaded parquet data
- *   (Future) Frontend → (VPN) → DWH Backend API → isbets_bi DWH views
+ *   Frontend -> Vercel API routes (/api/*) -> Supabase -> pre-loaded parquet data
+ *   (Future) Frontend -> (VPN) -> DWH Backend API -> isbets_bi DWH views
  *
  * DWH VIEWS MAPPED:
  *   Users:        view_Users, view_Balances, view_UserSessions, view_UsersSelfexclusions
@@ -31,13 +31,13 @@
 
 import * as mock from "./mockData";
 
-// ─── Configuration ────────────────────────────────────────────────────────────
+// --- Configuration ------------------------------------------------------------
 const API_ENABLED = import.meta.env.VITE_API_ENABLED !== "false"; // default ON; set VITE_API_ENABLED=false to force mock mode
 const DEFAULT_API_BASE_URL = "";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
 const API_TIMEOUT_MS = Number.parseInt(import.meta.env.VITE_API_TIMEOUT_MS ?? "10000", 10) || 10_000;
 
-// ─── Date Range Filter ────────────────────────────────────────────────────────
+// --- Date Range Filter --------------------------------------------------------
 export interface DateRange {
   from: string; // ISO date string e.g. "2026-01-01"
   to: string;   // ISO date string e.g. "2026-02-22"
@@ -54,7 +54,7 @@ function toStartEndParams(range?: DateRange): Record<string, string> | undefined
   return { start, end };
 }
 
-// ─── Generic Fetch Wrapper ────────────────────────────────────────────────────
+// --- Generic Fetch Wrapper ----------------------------------------------------
 async function apiFetch<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
   if (!API_ENABLED) {
     throw new Error("API_DISABLED: Running in mock mode. Set VITE_API_ENABLED=false to enable.");
@@ -88,7 +88,7 @@ async function apiFetch<T>(endpoint: string, params?: Record<string, string>): P
   }
 }
 
-// ─── Helper: Return mock or fetch real data ───────────────────────────────────
+// --- Helper: Return mock or fetch real data -----------------------------------
 async function withMock<T>(mockValue: T, endpoint: string, params?: Record<string, string>): Promise<T> {
   if (!API_ENABLED) {
     return mockValue;
@@ -96,10 +96,10 @@ async function withMock<T>(mockValue: T, endpoint: string, params?: Record<strin
   return apiFetch<T>(endpoint, params);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // USERS API
 // DWH: view_Users, view_Balances, view_UserSessions, view_UsersSelfexclusions
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export interface UserKPIs {
   totalUsers: number;
@@ -175,10 +175,10 @@ export const usersApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TRANSACTIONS API
 // DWH: view_Transactions, view_TransactionTypes
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export interface TransactionKPIs {
   totalDeposits: number;
@@ -208,10 +208,10 @@ export const transactionsApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // BETTING API
 // DWH: view_Betslips, view_Bets, view_EventProgram
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export interface BettingKPIs {
   totalBetslips: number;
@@ -277,10 +277,10 @@ export const bettingApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // BONUS API
 // DWH: view_BonusCampaigns, view_BonusBalances, view_Freebets
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const bonusApi = {
   getKPIs: () => withMock(mock.bonusKPIs, "/bonus/kpis"),
@@ -293,10 +293,10 @@ export const bonusApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // CASINO API
 // DWH: view_CasinoBets, view_CasinoGames, view_VirtualGames
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const casinoApi = {
   getKPIs: (range?: DateRange) => withMock(
@@ -311,10 +311,10 @@ export const casinoApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // HIERARCHY API
 // DWH: view_Hierarchy, view_UserRoles
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const hierarchyApi = {
   getSummary: () => withMock(mock.hierarchySummary, "/hierarchy/summary"),
@@ -325,10 +325,10 @@ export const hierarchyApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // COMPLIANCE API
 // DWH: view_ImportStatus, view_AuditLog, view_UsersSelfexclusions
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const complianceApi = {
   getKPIs: () => withMock(mock.complianceKPIs, "/compliance/kpis"),
@@ -336,10 +336,10 @@ export const complianceApi = {
   getSelfExclusions: () => withMock(mock.selfExclusionSummary, "/compliance/self-exclusions"),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // OVERVIEW API
 // Aggregated KPIs for the main dashboard
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const overviewApi = {
   getKPIs: () => withMock(mock.overviewKPIs, "/overview/kpis"),
@@ -350,10 +350,10 @@ export const overviewApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // LOOKUP API
 // DWH: view_Sports, view_Currencies, view_Countries, view_BetslipStatuses
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export const lookupApi = {
   getSports: () => withMock(
@@ -366,9 +366,9 @@ export const lookupApi = {
   ),
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // API STATUS CHECK
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export function getApiStatus(): { enabled: boolean; baseUrl: string; mode: "live" | "mock" } {
   return {
@@ -378,9 +378,9 @@ export function getApiStatus(): { enabled: boolean; baseUrl: string; mode: "live
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // ADMIN API
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 export interface PermissionsResponse {
   user_email: string;

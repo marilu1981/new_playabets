@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — DataTable Component
+ * PLAYA BETS - DataTable Component
  * Reusable table with Savanna Gold styling.
  * Use `light` prop when the table sits inside a white/light card.
  */
@@ -83,7 +83,7 @@ export default function DataTable<T extends Record<string, unknown>>({
                   >
                     {col.render
                       ? col.render(row)
-                      : String(row[col.key as keyof T] ?? "—")}
+                      : String(row[col.key as keyof T] ?? "-")}
                   </td>
                 ))}
               </tr>

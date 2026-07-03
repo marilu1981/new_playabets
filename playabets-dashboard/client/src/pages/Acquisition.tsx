@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Acquisition Dashboard
+ * PLAYA BETS - Acquisition Dashboard
  * Marketing channel performance: Affiliates, Google Ads, Meta, Influencers, Organic.
  * Affiliate data from RavenTrack; other channels pending integration.
  */
@@ -129,7 +129,7 @@ export default function AcquisitionPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
         <KpiCard
           title="Marketing Spend"
-          value={totals ? fmtZar(totals.marketing_spend) : "—"}
+          value={totals ? fmtZar(totals.marketing_spend) : "-"}
           subtitle="Total paid acquisition cost"
           tooltip="Total amount spent on paid marketing across all channels for the selected period."
           icon={<DollarSign size={18} />}
@@ -138,7 +138,7 @@ export default function AcquisitionPage() {
         />
         <KpiCard
           title="CPA"
-          value={totals && totals.cpa > 0 ? fmtZar(totals.cpa) : "—"}
+          value={totals && totals.cpa > 0 ? fmtZar(totals.cpa) : "-"}
           subtitle="Cost per first-time depositor"
           tooltip="Cost Per Acquisition = Marketing Spend / FTDs. How much it costs to acquire one depositing player."
           icon={<Target size={18} />}
@@ -147,7 +147,7 @@ export default function AcquisitionPage() {
         />
         <KpiCard
           title="ROI"
-          value={totals && totals.marketing_spend > 0 ? fmtPct(totals.roi_pct) : "—"}
+          value={totals && totals.marketing_spend > 0 ? fmtPct(totals.roi_pct) : "-"}
           subtitle="(Revenue - Spend) / Spend"
           tooltip="Return on Investment = (Revenue - Marketing Spend) / Marketing Spend x 100. Higher is better."
           icon={<TrendingUp size={18} />}
@@ -156,7 +156,7 @@ export default function AcquisitionPage() {
         />
         <KpiCard
           title="Avg FTD Value"
-          value={totals && totals.avg_ftd_value > 0 ? fmtZar(totals.avg_ftd_value) : "—"}
+          value={totals && totals.avg_ftd_value > 0 ? fmtZar(totals.avg_ftd_value) : "-"}
           subtitle="Total first deposits / FTDs"
           tooltip="Average First Deposit Value = Total value of all first deposits / Number of FTDs. Measures quality of acquired players."
           icon={<Users size={18} />}
@@ -190,18 +190,18 @@ export default function AcquisitionPage() {
                       )}
                     </div>
                   </td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data ? fmt(ch.registrations) : "—"}</td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data ? fmt(ch.ftds) : "—"}</td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.avg_ftd_value > 0 ? fmtZar(ch.avg_ftd_value) : "—"}</td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.revenue > 0 ? fmtZar(ch.revenue) : "—"}</td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.marketing_spend > 0 ? fmtZar(ch.marketing_spend) : "—"}</td>
-                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.cpa > 0 ? fmtZar(ch.cpa) : "—"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data ? fmt(ch.registrations) : "-"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data ? fmt(ch.ftds) : "-"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.avg_ftd_value > 0 ? fmtZar(ch.avg_ftd_value) : "-"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.revenue > 0 ? fmtZar(ch.revenue) : "-"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.marketing_spend > 0 ? fmtZar(ch.marketing_spend) : "-"}</td>
+                  <td className="py-2.5 pr-4 text-gray-700">{ch.has_data && ch.cpa > 0 ? fmtZar(ch.cpa) : "-"}</td>
                   <td className="py-2.5 pr-4">
                     {ch.has_data && ch.marketing_spend > 0 ? (
                       <span className={`font-medium ${ch.roi_pct >= 0 ? "text-green-700" : "text-red-600"}`}>
                         {fmtPct(ch.roi_pct)}
                       </span>
-                    ) : "—"}
+                    ) : "-"}
                   </td>
                 </tr>
               ))}
@@ -216,25 +216,25 @@ export default function AcquisitionPage() {
       {/* Affiliate leaderboard */}
       <div className="rounded-xl p-5" style={CARD_BG}>
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Affiliate Leaderboard</h3>
-        <p className="text-xs text-gray-500 mb-4">Ranked by revenue — RavenTrack data</p>
+        <p className="text-xs text-gray-500 mb-4">Ranked by revenue - RavenTrack data</p>
         <DataTable<AffiliateRow>
           compact
           light
-          emptyMessage={loading ? "Loading…" : "No affiliate data yet. Pending RavenTrack token approval."}
+          emptyMessage={loading ? "Loading..." : "No affiliate data yet. Pending RavenTrack token approval."}
           columns={[
-            { key: "affiliate_name", header: "Affiliate", render: r => r.affiliate_name ?? r.affiliate_id ?? "—" },
-            { key: "clicks",        header: "Clicks",   render: r => r.clicks != null ? fmt(r.clicks) : "—" },
+            { key: "affiliate_name", header: "Affiliate", render: r => r.affiliate_name ?? r.affiliate_id ?? "-" },
+            { key: "clicks",        header: "Clicks",   render: r => r.clicks != null ? fmt(r.clicks) : "-" },
             { key: "registrations", header: "Regs",     render: r => fmt(r.registrations) },
             { key: "ftds",          header: "FTDs",     render: r => fmt(r.ftds) },
-            { key: "avg_ftd_value", header: "Avg FTD",  render: r => r.avg_ftd_value > 0 ? fmtZar(r.avg_ftd_value) : "—", align: "right" },
+            { key: "avg_ftd_value", header: "Avg FTD",  render: r => r.avg_ftd_value > 0 ? fmtZar(r.avg_ftd_value) : "-", align: "right" },
             { key: "revenue",       header: "Revenue",  render: r => fmtZar(r.revenue), align: "right" },
-            { key: "marketing_spend", header: "Spend",  render: r => r.marketing_spend > 0 ? fmtZar(r.marketing_spend) : "—", align: "right" },
-            { key: "cpa",           header: "CPA",      render: r => r.cpa > 0 ? fmtZar(r.cpa) : "—", align: "right" },
+            { key: "marketing_spend", header: "Spend",  render: r => r.marketing_spend > 0 ? fmtZar(r.marketing_spend) : "-", align: "right" },
+            { key: "cpa",           header: "CPA",      render: r => r.cpa > 0 ? fmtZar(r.cpa) : "-", align: "right" },
             {
               key: "roi_pct", header: "ROI",
               render: r => r.marketing_spend > 0
                 ? <span className={r.roi_pct >= 0 ? "text-green-700 font-medium" : "text-red-600 font-medium"}>{fmtPct(r.roi_pct)}</span>
-                : "—",
+                : "-",
               align: "right",
             },
           ]}

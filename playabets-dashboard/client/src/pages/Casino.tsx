@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 /**
- * PLAYA BETS — Casino & Games Page
+ * PLAYA BETS - Casino & Games Page
  * DWH Views: view_CasinoBets, view_CasinoGames, view_VirtualGames
  * Data source: Supabase casino_daily table via /api/casino/kpis
  */
@@ -141,15 +141,15 @@ export default function CasinoPage() {
   return (
     <DashboardLayout title="Casino & Games" subtitle="Provider performance, virtual games, and casino revenue"
       filtersBar={<TopFiltersBar filters={filters} onChange={setFilters} />}>
-      {/* KPI Row — casino-specific metrics only (Stake/Winnings/GGR are on Product Dashboard) */}
+      {/* KPI Row - casino-specific metrics only (Stake/Winnings/GGR are on Product Dashboard) */}
       <div className="rounded-xl p-5 mb-6" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <KpiCard title="Hold %" value={liveCasinoKPIs ? `${casinoKPIs.margin}%` : "—"} subtitle="GGR / Stake" icon={<TrendingUp size={18} />} accent="green" />
-          <KpiCard title="Depositors" value={liveCasinoKPIs?.depositors != null ? formatCompact(liveCasinoKPIs.depositors) : "—"} subtitle="Unique depositors" icon={<DollarSign size={18} />} accent="teal" />
-          <KpiCard title="Deposit / Customer" value={liveCasinoKPIs?.depositPerCustomer != null && liveCasinoKPIs.depositPerCustomer > 0 ? formatFull(liveCasinoKPIs.depositPerCustomer) : "—"} subtitle="Avg per depositor" icon={<TrendingUp size={18} />} accent="gold" />
-          <KpiCard title="Bonus Issued" value={liveCasinoKPIs?.bonusIssued != null && liveCasinoKPIs.bonusIssued > 0 ? formatFull(liveCasinoKPIs.bonusIssued) : "—"} subtitle="Bonuses granted" icon={<Gamepad2 size={18} />} accent="amber" />
-          <KpiCard title="Bonus Converted" value={liveCasinoKPIs?.bonusConverted != null && liveCasinoKPIs.bonusConverted > 0 ? formatFull(liveCasinoKPIs.bonusConverted) : "—"} subtitle="ReasonID 54" icon={<TrendingUp size={18} />} accent="green" />
-          <KpiCard title="Bonus %" value={liveCasinoKPIs?.bonusPct != null && liveCasinoKPIs.bonusPct > 0 ? `${liveCasinoKPIs.bonusPct}%` : "—"} subtitle="Converted / Issued" icon={<TrendingUp size={18} />} accent="teal" />
+          <KpiCard title="Hold %" value={liveCasinoKPIs ? `${casinoKPIs.margin}%` : "-"} subtitle="GGR / Stake" icon={<TrendingUp size={18} />} accent="green" />
+          <KpiCard title="Depositors" value={liveCasinoKPIs?.depositors != null ? formatCompact(liveCasinoKPIs.depositors) : "-"} subtitle="Unique depositors" icon={<DollarSign size={18} />} accent="teal" />
+          <KpiCard title="Deposit / Customer" value={liveCasinoKPIs?.depositPerCustomer != null && liveCasinoKPIs.depositPerCustomer > 0 ? formatFull(liveCasinoKPIs.depositPerCustomer) : "-"} subtitle="Avg per depositor" icon={<TrendingUp size={18} />} accent="gold" />
+          <KpiCard title="Bonus Issued" value={liveCasinoKPIs?.bonusIssued != null && liveCasinoKPIs.bonusIssued > 0 ? formatFull(liveCasinoKPIs.bonusIssued) : "-"} subtitle="Bonuses granted" icon={<Gamepad2 size={18} />} accent="amber" />
+          <KpiCard title="Bonus Converted" value={liveCasinoKPIs?.bonusConverted != null && liveCasinoKPIs.bonusConverted > 0 ? formatFull(liveCasinoKPIs.bonusConverted) : "-"} subtitle="ReasonID 54" icon={<TrendingUp size={18} />} accent="green" />
+          <KpiCard title="Bonus %" value={liveCasinoKPIs?.bonusPct != null && liveCasinoKPIs.bonusPct > 0 ? `${liveCasinoKPIs.bonusPct}%` : "-"} subtitle="Converted / Issued" icon={<TrendingUp size={18} />} accent="teal" />
         </div>
       </div>
 
@@ -159,7 +159,7 @@ export default function CasinoPage() {
         <div className="relative lg:col-span-2 rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Revenue by Provider</h3>
-          <p className="text-xs text-gray-400 mb-4">Gross profit per casino provider — top 10</p>
+          <p className="text-xs text-gray-400 mb-4">Gross profit per casino provider - top 10</p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={top10ByProfit} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -182,7 +182,7 @@ export default function CasinoPage() {
         <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
           <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
           <h3 className="text-sm font-semibold text-gray-800 mb-1">Stake Share</h3>
-          <p className="text-xs text-gray-400 mb-4">By provider — top 10</p>
+          <p className="text-xs text-gray-400 mb-4">By provider - top 10</p>
           <ResponsiveContainer width="100%" height={320}>
             <BarChart data={top10ByStake} layout="vertical" margin={{ top: 0, right: 22, bottom: 0, left: 100 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -220,7 +220,7 @@ export default function CasinoPage() {
       <div className="relative rounded-xl p-5" style={{ background: "#ffffff", border: "1px solid #dde8dd", boxShadow: "0 1px 4px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)" }}>
         <MockOverlay active={!liveCasinoProviders} badge label="Mock Data" />
         <h3 className="text-sm font-semibold text-gray-800 mb-1">Provider Detail</h3>
-        <p className="text-xs text-gray-400 mb-4">view_CasinoBets — all providers</p>
+        <p className="text-xs text-gray-400 mb-4">view_CasinoBets - all providers</p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

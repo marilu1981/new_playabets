@@ -1,5 +1,5 @@
 """
-routers/bonus.py — Bonus KPI, daily, campaigns, and freebets endpoints.
+routers/bonus.py - Bonus KPI, daily, campaigns, and freebets endpoints.
 """
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 """
-routers/acquisition.py — Acquisition / Marketing channel endpoints.
+routers/acquisition.py - Acquisition / Marketing channel endpoints.
 """
 from __future__ import annotations
 

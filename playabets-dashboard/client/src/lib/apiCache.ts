@@ -1,18 +1,18 @@
 /**
- * PLAYA BETS — Client-Side API Cache
+ * PLAYA BETS - Client-Side API Cache
  * In-memory cache that persists across React page navigations (component unmounts).
  * Cache entries expire after TTL_MS (30 minutes).
  * This prevents re-fetching the same data every time the user navigates between pages.
  */
 
-const TTL_MS = 30 * 60 * 1000; // 30 minutes — DWH data updates once daily, no need to re-fetch frequently
+const TTL_MS = 30 * 60 * 1000; // 30 minutes - DWH data updates once daily, no need to re-fetch frequently
 
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
 }
 
-// Module-level map — survives React component unmounts/remounts
+// Module-level map - survives React component unmounts/remounts
 const cache = new Map<string, CacheEntry<unknown>>();
 const inFlight = new Map<string, Promise<unknown>>();
 
@@ -37,7 +37,7 @@ export function invalidateCache(): void {
   try { sessionStorage.removeItem(LATEST_DATE_KEY); } catch { /* ignore */ }
 }
 
-// ── Persistent latestDataDate ─────────────────────────────────────────────────
+// -- Persistent latestDataDate -------------------------------------------------
 // Stored in sessionStorage so it survives React component unmount/remount AND
 // cold page loads within the same browser session. Clears automatically when
 // the tab is closed, so the next fresh session always re-validates with the API.

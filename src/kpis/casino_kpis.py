@@ -3,12 +3,12 @@ casino_kpis.py
 ---------------
 Transforms casino Parquet increments into daily KPI summaries.
 
-compute_casino_daily()  → date, casino_stake, casino_winnings, casino_ggr,
+compute_casino_daily()  -> date, casino_stake, casino_winnings, casino_ggr,
                           casino_bets, casino_actives,
                           horse_racing_stake, horse_racing_winnings, horse_racing_ggr,
                           horse_racing_bets, horse_racing_actives
-compute_casino_by_provider() → provider_name, stake, winnings, ggr, bets
-compute_casino_by_type()     → casino_type, stake, winnings, ggr
+compute_casino_by_provider() -> provider_name, stake, winnings, ggr, bets
+compute_casino_by_type()     -> casino_type, stake, winnings, ggr
 """
 from __future__ import annotations
 import pandas as pd
@@ -108,7 +108,7 @@ def compute_casino_daily(casino: pd.DataFrame) -> pd.DataFrame:
     hr_out    = _agg_daily(horse_racing, "horse_racing_")
     lotto_out = _agg_daily(lotto, "lotto_")
 
-    # Casino bonus stake/winnings — view_Casino.Stake = ImportoGiocato (real money only)
+    # Casino bonus stake/winnings - view_Casino.Stake = ImportoGiocato (real money only)
     # BonusStake = ImportoGiocatoBonus, BonusWinnings = ImportoVintoBonus
     # casino_ggr = Stake - Winnings = real money GGR (for NGR)
     # casino_total_ggr = casino_ggr + bonus_ggr (for display)

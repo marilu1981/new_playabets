@@ -3,9 +3,9 @@ visualize_sociotopo.py
 ----------------------
 Generates three publication-ready charts from sociotopo_features.parquet:
 
-  1. sociotopo_umap.png        — UMAP manifold scatter (all players, coloured by tier)
-  2. sociotopo_radar_vips.png  — Radar charts for Critical VIPs (axis scores)
-  3. sociotopo_heatmap.png     — Segment × risk tier player count heatmap
+  1. sociotopo_umap.png        - UMAP manifold scatter (all players, coloured by tier)
+  2. sociotopo_radar_vips.png  - Radar charts for Critical VIPs (axis scores)
+  3. sociotopo_heatmap.png     - Segment x risk tier player count heatmap
 
 Usage (from project root on VM):
     python3 -m src.tools.visualize_sociotopo
@@ -68,13 +68,13 @@ def _load() -> pd.DataFrame:
     return df
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Chart 1: UMAP Manifold Scatter
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def plot_umap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
     if "umap_x" not in df.columns or df["umap_x"].isna().all():
-        print("[viz] UMAP coordinates not available — skipping manifold scatter.")
+        print("[viz] UMAP coordinates not available - skipping manifold scatter.")
         return
 
     bg   = "#0e1117" if dark else "#f8faf8"
@@ -106,7 +106,7 @@ def plot_umap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
             edgecolors="white" if dark else BRAND_DARK, zorder=5, label="VIP players",
         )
 
-    # Critical VIPs — star markers
+    # Critical VIPs - star markers
     crit_vips = df[(df["risk_tier"] == "Critical") & (df["segment"] == "VIP")]
     if not crit_vips.empty:
         ax.scatter(
@@ -128,8 +128,8 @@ def plot_umap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
 
     total = len(df)
     ax.set_title(
-        f"Playabets — SocioTopography Behavioural Manifold\n"
-        f"{total:,} players  ·  {df['risk_tier'].nunique()} risk tiers  ·  30-day window",
+        f"Playabets - SocioTopography Behavioural Manifold\n"
+        f"{total:,} players  |  {df['risk_tier'].nunique()} risk tiers  |  30-day window",
         color=fg, fontsize=13, pad=14,
     )
     ax.set_xlabel("UMAP Dimension 1", color=fg, fontsize=9)
@@ -141,12 +141,12 @@ def plot_umap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
     plt.tight_layout()
     fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=bg)
     plt.close(fig)
-    print(f"[viz] Saved → {out}")
+    print(f"[viz] Saved -> {out}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Chart 2: Radar Charts for Critical VIPs
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def _radar_one(ax, values: list[float], labels: list[str], color: str, title: str,
                dark: bool) -> None:
@@ -182,7 +182,7 @@ def _radar_one(ax, values: list[float], labels: list[str], color: str, title: st
 def plot_radar(df: pd.DataFrame, out: Path, segment: str, tier: str, dark: bool = False) -> None:
     sub = df[(df["risk_tier"] == tier) & (df["segment"] == segment)].copy()
     if sub.empty:
-        print(f"[viz] No {tier} {segment} players — skipping radar.")
+        print(f"[viz] No {tier} {segment} players - skipping radar.")
         return
 
     sub = sub.sort_values("risk_score", ascending=False).head(16)
@@ -195,7 +195,7 @@ def plot_radar(df: pd.DataFrame, out: Path, segment: str, tier: str, dark: bool 
     nrows = math.ceil(len(sub) / ncols)
     fig   = plt.figure(figsize=(ncols * 3.5, nrows * 3.5 + 1.2), facecolor=bg)
     fig.suptitle(
-        f"Playabets — {tier} Risk {segment} Players\nAxis scores: 0 = no risk, 1 = maximum risk",
+        f"Playabets - {tier} Risk {segment} Players\nAxis scores: 0 = no risk, 1 = maximum risk",
         color=fg, fontsize=12, y=0.98,
     )
 
@@ -217,12 +217,12 @@ def plot_radar(df: pd.DataFrame, out: Path, segment: str, tier: str, dark: bool 
     plt.tight_layout(rect=[0, 0, 1, 0.95])
     fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=bg)
     plt.close(fig)
-    print(f"[viz] Saved → {out}")
+    print(f"[viz] Saved -> {out}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Chart 3: Segment × Tier Heatmap
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# Chart 3: Segment x Tier Heatmap
+# -----------------------------------------------------------------------------
 
 def plot_heatmap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
     bg = "#0e1117" if dark else "#f8faf8"
@@ -269,7 +269,7 @@ def plot_heatmap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
     cbar.ax.yaxis.set_tick_params(color=fg)
     plt.setp(cbar.ax.yaxis.get_ticklabels(), color=fg)
 
-    ax.set_title("Playabets — Churn Risk by Player Segment\n% of each segment in each risk tier",
+    ax.set_title("Playabets - Churn Risk by Player Segment\n% of each segment in each risk tier",
                  color=fg, fontsize=12, pad=12)
     ax.set_xlabel("Risk Tier", color=fg, fontsize=10)
     ax.set_ylabel("RFM Segment", color=fg, fontsize=10)
@@ -277,12 +277,12 @@ def plot_heatmap(df: pd.DataFrame, out: Path, dark: bool = False) -> None:
     plt.tight_layout()
     fig.savefig(out, dpi=150, bbox_inches="tight", facecolor=bg)
     plt.close(fig)
-    print(f"[viz] Saved → {out}")
+    print(f"[viz] Saved -> {out}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 # Main
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
 
 def main() -> None:
     p = argparse.ArgumentParser()

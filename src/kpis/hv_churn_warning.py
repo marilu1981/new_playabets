@@ -8,22 +8,22 @@ risk using trajectory features derived from existing parquet data.
 No DWH connection required.
 
 Warning score:
-  recency_component   * 0.35   – days since last bet (normalised to churn_gap)
-  stake_decline       * 0.25   – 7d avg stake vs 30d avg stake
-  freq_decline        * 0.20   – 7d session count vs 30d session rate
-  fc_depletion        * 0.10   – 1 − fc_score  (from sociotopo)
-  oi_spike            * 0.10   – oi_score       (from sociotopo)
+  recency_component   * 0.35   - days since last bet (normalised to churn_gap)
+  stake_decline       * 0.25   - 7d avg stake vs 30d avg stake
+  freq_decline        * 0.20   - 7d session count vs 30d session rate
+  fc_depletion        * 0.10   - 1 - fc_score  (from sociotopo)
+  oi_spike            * 0.10   - oi_score       (from sociotopo)
 
 Warning tiers:
-  Watch    0.30 – 0.50
-  Alert    0.50 – 0.70
+  Watch    0.30 - 0.50
+  Alert    0.50 - 0.70
   Critical 0.70+
 
 Data sources:
-  REQUIRED  data/raw/betslips/*.parquet           – recency, stake trend, streaks
-  OPTIONAL  data/raw/casino/*.parquet             – cross-product activity flag
-  OPTIONAL  data/raw/balances/*.parquet           – current balance
-  OPTIONAL  data/serving/sociotopo_features.parquet – FC / OI scores
+  REQUIRED  data/raw/betslips/*.parquet           - recency, stake trend, streaks
+  OPTIONAL  data/raw/casino/*.parquet             - cross-product activity flag
+  OPTIONAL  data/raw/balances/*.parquet           - current balance
+  OPTIONAL  data/serving/sociotopo_features.parquet - FC / OI scores
 
 Output:
   data/serving/hv_churn_warning.parquet
@@ -48,10 +48,10 @@ from src.kpis.io_utils import read_all_parquets, normalize_cols, to_dt, to_num
 
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# ── Output ────────────────────────────────────────────────────────────────────
+# -- Output --------------------------------------------------------------------
 OUT_FILE = SERVING_ROOT / "hv_churn_warning.parquet"
 
-# ── Warning score weights ─────────────────────────────────────────────────────
+# -- Warning score weights -----------------------------------------------------
 W_RECENCY      = 0.35
 W_STAKE_DECL   = 0.25
 W_FREQ_DECL    = 0.20
@@ -59,9 +59,9 @@ W_FC_DEPLETION = 0.10
 W_OI_SPIKE     = 0.10
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Data loaders
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def _load_betslips(window_days: int, as_of: pd.Timestamp) -> pd.DataFrame:
     folder = raw_dir("betslips")
@@ -76,7 +76,7 @@ def _load_betslips(window_days: int, as_of: pd.Timestamp) -> pd.DataFrame:
     win_col    = m.get("winnings") or m.get("win")
 
     if not date_col or not user_col:
-        print("[hv_churn] betslips: missing date or userid column — skipping")
+        print("[hv_churn] betslips: missing date or userid column - skipping")
         return pd.DataFrame()
 
     bs["_dt"]     = to_dt(bs[date_col])
@@ -137,7 +137,7 @@ def _load_balances() -> pd.DataFrame:
 def _load_sociotopo() -> pd.DataFrame:
     path = SERVING_ROOT / "sociotopo_features.parquet"
     if not path.exists():
-        print("[hv_churn] sociotopo_features.parquet not found — FC/OI will default to 0.5")
+        print("[hv_churn] sociotopo_features.parquet not found - FC/OI will default to 0.5")
         return pd.DataFrame()
 
     st = pd.read_parquet(path)
@@ -156,9 +156,9 @@ def _load_sociotopo() -> pd.DataFrame:
     return out.dropna(subset=["_userid"])
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Feature engineering
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def _detect_as_of(bs: pd.DataFrame) -> pd.Timestamp:
     if not bs.empty and "_dt" in bs.columns:
@@ -177,13 +177,13 @@ def _betslip_features(bs: pd.DataFrame, as_of: pd.Timestamp,
 
     now = as_of
 
-    # ── Recency ───────────────────────────────────────────────────────────────
+    # -- Recency ---------------------------------------------------------------
     last_bet = bs.groupby("_userid")["_dt"].max().rename("last_bet_dt")
 
-    # ── Total stake (full window) — used for HV ranking ──────────────────────
+    # -- Total stake (full window) - used for HV ranking ----------------------
     total_stake = bs.groupby("_userid")["_stake"].sum().rename("total_stake_window")
 
-    # ── Stake trend: avg stake in last 7d vs avg stake in last 30d ───────────
+    # -- Stake trend: avg stake in last 7d vs avg stake in last 30d -----------
     cut7  = now - pd.Timedelta(days=7)
     cut30 = now - pd.Timedelta(days=30)
 
@@ -192,7 +192,7 @@ def _betslip_features(bs: pd.DataFrame, as_of: pd.Timestamp,
     stake30 = (bs[bs["_dt"] >= cut30]
                .groupby("_userid")["_stake"].mean().rename("avg_stake_30d"))
 
-    # ── Session frequency: bet-days in last 7d vs daily rate in last 30d ──────
+    # -- Session frequency: bet-days in last 7d vs daily rate in last 30d ------
     def _bet_days(mask):
         return (bs[mask]
                 .assign(_date=bs["_dt"].dt.date)
@@ -201,7 +201,7 @@ def _betslip_features(bs: pd.DataFrame, as_of: pd.Timestamp,
     freq7d = _bet_days(bs["_dt"] >= cut7).rename("bet_days_7d")
     freq30d = _bet_days(bs["_dt"] >= cut30).rename("bet_days_30d")
 
-    # ── Losing streak in last 14d ─────────────────────────────────────────────
+    # -- Losing streak in last 14d ---------------------------------------------
     cut14 = now - pd.Timedelta(days=14)
     recent = bs[bs["_dt"] >= cut14].copy()
     if not recent.empty:
@@ -218,7 +218,7 @@ def _betslip_features(bs: pd.DataFrame, as_of: pd.Timestamp,
     else:
         max_streak = pd.Series(dtype=float, name="losing_streak_14d")
 
-    # ── Assemble ──────────────────────────────────────────────────────────────
+    # -- Assemble --------------------------------------------------------------
     out = (pd.concat([last_bet, total_stake, stake7, stake30,
                       freq7d, freq30d, max_streak], axis=1)
            .reset_index()
@@ -233,7 +233,7 @@ def _betslip_features(bs: pd.DataFrame, as_of: pd.Timestamp,
         out["avg_stake_30d"].replace(0, np.nan)
     ).fillna(0).clip(upper=5)
 
-    # Freq trend ratio: 7d bet-days / (30d bet-days / 30 * 7)  — normalised to same window
+    # Freq trend ratio: 7d bet-days / (30d bet-days / 30 * 7)  - normalised to same window
     expected_7d = (out["bet_days_30d"].fillna(0) / 30 * 7).replace(0, np.nan)
     out["freq_trend_7v30"] = (out["bet_days_7d"].fillna(0) / expected_7d).fillna(0).clip(upper=5)
 
@@ -254,9 +254,9 @@ def _casino_flag(ca: pd.DataFrame, as_of: pd.Timestamp) -> pd.Series:
     return active
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Warning score
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def _compute_warning_score(df: pd.DataFrame, churn_gap_days: int) -> pd.DataFrame:
     out = df.copy()
@@ -291,8 +291,8 @@ def _compute_warning_score(df: pd.DataFrame, churn_gap_days: int) -> pd.DataFram
         right=False,
     )
 
-    # Priority score: warning probability × value rank within HV cohort
-    # Ranks total_stake_window 0→1 within the HV subset so high-stake silent
+    # Priority score: warning probability x value rank within HV cohort
+    # Ranks total_stake_window 0->1 within the HV subset so high-stake silent
     # players surface above low-stake silent ones.
     stake_rank = out["total_stake_window"].rank(pct=True)
     out["priority_score"] = (out["warning_score"] * stake_rank).round(4)
@@ -302,9 +302,9 @@ def _compute_warning_score(df: pd.DataFrame, churn_gap_days: int) -> pd.DataFram
     return out
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # Main builder
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def build_hv_churn_warning(
     hv_pct: float = 0.10,
@@ -331,7 +331,7 @@ def build_hv_churn_warning(
     bs = _load_betslips(window_days, pd.Timestamp.now())
 
     if bs.empty:
-        print("[hv_churn] No betslip data found — cannot proceed.")
+        print("[hv_churn] No betslip data found - cannot proceed.")
         return pd.DataFrame()
 
     as_of = _detect_as_of(bs)
@@ -342,7 +342,7 @@ def build_hv_churn_warning(
     print("[hv_churn] Computing betslip features...")
     feat = _betslip_features(bs, as_of, window_days, churn_gap_days)
 
-    # ── HV classification ─────────────────────────────────────────────────────
+    # -- HV classification -----------------------------------------------------
     stake_threshold = feat["total_stake_window"].quantile(1 - hv_pct)
     feat["is_hv"] = feat["total_stake_window"] >= stake_threshold
     feat["hv_rank_pct"] = feat["total_stake_window"].rank(pct=True).round(4)
@@ -352,7 +352,7 @@ def build_hv_churn_warning(
     print(f"[hv_churn] HV players (top {hv_pct:.0%}): {n_hv:,}  "
           f"(stake threshold: R {stake_threshold:,.0f})")
 
-    # ── Casino cross-product flag ─────────────────────────────────────────────
+    # -- Casino cross-product flag ---------------------------------------------
     print("[hv_churn] Loading casino data...")
     ca = _load_casino(window_days, as_of)
     casino_flag = _casino_flag(ca, as_of)
@@ -360,7 +360,7 @@ def build_hv_churn_warning(
                   on="userid", how="left")
     hv["casino_active_7d"] = hv["casino_active_7d"].fillna(0).astype(int)
 
-    # ── Balance ───────────────────────────────────────────────────────────────
+    # -- Balance ---------------------------------------------------------------
     print("[hv_churn] Loading balances...")
     bal = _load_balances()
     if not bal.empty:
@@ -370,7 +370,7 @@ def build_hv_churn_warning(
     else:
         hv["current_balance"] = np.nan
 
-    # ── SocioTopo scores ──────────────────────────────────────────────────────
+    # -- SocioTopo scores ------------------------------------------------------
     print("[hv_churn] Loading sociotopo scores...")
     st = _load_sociotopo()
     if not st.empty:
@@ -383,11 +383,11 @@ def build_hv_churn_warning(
     hv["fc_score"] = hv["fc_score"].fillna(0.5)
     hv["oi_score"] = hv["oi_score"].fillna(0.5)
 
-    # ── Warning score ─────────────────────────────────────────────────────────
+    # -- Warning score ---------------------------------------------------------
     print("[hv_churn] Computing warning scores...")
     hv = _compute_warning_score(hv, churn_gap_days)
 
-    # ── Sort and select output columns ────────────────────────────────────────
+    # -- Sort and select output columns ----------------------------------------
     output_cols = [
         "userid",
         "hv_rank_pct",
@@ -415,9 +415,9 @@ def build_hv_churn_warning(
     return hv
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 # CLI entry point
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 def main() -> None:
     p = argparse.ArgumentParser(description="HV player churn early warning")
@@ -441,7 +441,7 @@ def main() -> None:
         return
 
     result.to_parquet(OUT_FILE, index=False)
-    print(f"\n[hv_churn] Saved {len(result):,} HV users → {OUT_FILE}")
+    print(f"\n[hv_churn] Saved {len(result):,} HV users -> {OUT_FILE}")
     print("\n[hv_churn] Warning tier distribution:")
     print(result["warning_tier"].value_counts().sort_index().to_string())
     print("\n[hv_churn] Top 10 priority HV players (by priority_score):")

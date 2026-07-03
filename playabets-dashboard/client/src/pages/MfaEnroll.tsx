@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * MFA Enrollment — mandatory TOTP setup shown after first login
+ * MFA Enrollment - mandatory TOTP setup shown after first login
  * if the account has no verified MFA factor yet.
  */
 
@@ -62,7 +62,7 @@ export default function MfaEnroll({ onComplete }: { onComplete: () => void }) {
 
       // Clean up any stale unverified TOTP factors from a previous failed attempt
       const { data: existing } = await supabase.auth.mfa.listFactors();
-      const stale = (existing?.totp ?? []).filter((f) => f.status === "unverified");
+      const stale = (existing?.all ?? []).filter((f) => f.factor_type === "totp" && f.status === "unverified");
       for (const f of stale) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
       }
@@ -217,7 +217,7 @@ export default function MfaEnroll({ onComplete }: { onComplete: () => void }) {
                   disabled={verifying || code.length !== 6}
                   style={{ ...BTN_STYLE, opacity: verifying || code.length !== 6 ? 0.6 : 1 }}
                 >
-                  {verifying ? "Verifying…" : "Verify & Continue"}
+                  {verifying ? "Verifying..." : "Verify & Continue"}
                 </button>
               </form>
             </>

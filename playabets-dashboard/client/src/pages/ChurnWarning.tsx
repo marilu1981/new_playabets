@@ -16,7 +16,7 @@ export default function ChurnWarningPage() {
       >
         <h3 className="text-sm font-semibold text-gray-800 mb-2">Module retired</h3>
         <p className="text-sm text-gray-600">
-          All RFM segment charts and KPIs have been removed as requested.
+          This module is no longer in use.
         </p>
       </div>
     </DashboardLayout>

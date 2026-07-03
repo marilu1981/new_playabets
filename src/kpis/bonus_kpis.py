@@ -3,8 +3,8 @@ bonus_kpis.py
 --------------
 Transforms bonus Parquet files into daily and summary KPIs.
 
-compute_bonus_daily()  → date, bonus_credited, bonus_count, unique_bonus_users
-compute_bonus_summary() → total_campaigns, active_campaigns, total_freebets,
+compute_bonus_daily()  -> date, bonus_credited, bonus_count, unique_bonus_users
+compute_bonus_summary() -> total_campaigns, active_campaigns, total_freebets,
                           active_freebets, total_bonus_amount
 """
 from __future__ import annotations
@@ -105,8 +105,8 @@ def compute_bonus_daily(
 
     bonus_credited  = BonusStatusID in [2,5] amounts minus reversed bonuses
                       (CancellationBonusTransazionID IS NOT NULL records excluded).
-    freebet_issued  = All freebets by InsertDate (any status — face value committed).
-    freebet_spend   = FreeBetStatusId=2 only (actually played) — reference column.
+    freebet_issued  = All freebets by InsertDate (any status - face value committed).
+    freebet_spend   = FreeBetStatusId=2 only (actually played) - reference column.
     bonus_total     = bonus_credited + freebet_issued  (total bonus exposure for NGR).
     """
     if bonuses.empty:

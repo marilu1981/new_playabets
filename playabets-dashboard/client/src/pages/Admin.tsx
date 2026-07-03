@@ -1,5 +1,5 @@
 /**
- * Admin — User Access Management page.
+ * Admin - User Access Management page.
  * Only accessible to users with role === 'admin'.
  */
 import { useState, useEffect } from "react";
@@ -109,7 +109,7 @@ export default function AdminPage() {
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
+  // -- Helpers ----------------------------------------------------------------
 
   function patchUser(email: string, patch: Partial<Omit<EditableUser, "user_email">>) {
     setUsers((prev) =>
@@ -135,7 +135,7 @@ export default function AdminPage() {
     patchUser(email, { allowed_pages: ["*"] });
   }
 
-  // ── Save / Delete ──────────────────────────────────────────────────────────
+  // -- Save / Delete ----------------------------------------------------------
 
   async function saveUser(u: EditableUser) {
     setSaving((prev) => ({ ...prev, [u.user_email]: true }));
@@ -165,7 +165,7 @@ export default function AdminPage() {
     }
   }
 
-  // ── Add user ───────────────────────────────────────────────────────────────
+  // -- Add user ---------------------------------------------------------------
 
   function toggleNewUserPage(path: string) {
     setNewUser((prev) => {
@@ -212,7 +212,7 @@ export default function AdminPage() {
     }
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // -- Render -----------------------------------------------------------------
 
   if (!permissions.userEmail || permissions.role !== "admin") return null;
 
@@ -223,7 +223,7 @@ export default function AdminPage() {
     >
       <div className="max-w-5xl mx-auto space-y-6">
 
-        {/* ── Add User ────────────────────────────────────────────────────── */}
+        {/* -- Add User ------------------------------------------------------ */}
         <div
           className="rounded-lg border p-5"
           style={{ background: "#fff", borderColor: "#dde8dd" }}
@@ -302,12 +302,12 @@ export default function AdminPage() {
               style={{ background: "#7ab800" }}
             >
               <Plus size={14} />
-              {addingSaving ? "Saving…" : "Add User"}
+              {addingSaving ? "Saving..." : "Add User"}
             </button>
           </form>
         </div>
 
-        {/* ── User List ───────────────────────────────────────────────────── */}
+        {/* -- User List ----------------------------------------------------- */}
         <div
           className="rounded-lg border"
           style={{ background: "#fff", borderColor: "#dde8dd" }}
@@ -337,7 +337,7 @@ export default function AdminPage() {
           {loading && (
             <div className="flex items-center justify-center py-12 text-gray-400 text-sm gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#7ab800", borderTopColor: "transparent" }} />
-              Loading…
+              Loading...
             </div>
           )}
 
@@ -408,7 +408,7 @@ export default function AdminPage() {
                         title="Save changes"
                       >
                         <Save size={11} />
-                        {saving[u.user_email] ? "…" : "Save"}
+                        {saving[u.user_email] ? "..." : "Save"}
                       </button>
 
                       {/* Delete button */}
@@ -428,7 +428,7 @@ export default function AdminPage() {
                     {u.allowed_pages.includes("*") ? (
                       <>
                         <AllBadge onClick={() => patchUser(u.user_email, { allowed_pages: dashboardPaths.length ? [dashboardPaths[0]] : [] })} />
-                        <span className="text-xs text-gray-400 self-center">all pages — click to restrict</span>
+                        <span className="text-xs text-gray-400 self-center">all pages - click to restrict</span>
                       </>
                     ) : (
                       <>
@@ -456,7 +456,7 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* ── Info note ───────────────────────────────────────────────────── */}
+        {/* -- Info note ----------------------------------------------------- */}
         <p className="text-xs text-gray-400 px-1">
           Users not listed here default to full access. Removing a user from this list restores full access for that account.
           Bootstrap admins configured via the <code className="bg-gray-100 px-1 rounded">ADMIN_EMAILS</code> environment variable always retain admin access regardless of this list.

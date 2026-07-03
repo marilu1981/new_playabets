@@ -1,5 +1,5 @@
 """
-core/helpers.py — Scalar aggregation helpers and summary-period logic.
+core/helpers.py - Scalar aggregation helpers and summary-period logic.
 """
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def _i(df: pd.DataFrame, col: str) -> int:
 
 
 def _mean_i(df: pd.DataFrame, col: str) -> int:
-    """Return rounded mean of a column — used for avg daily unique users."""
+    """Return rounded mean of a column - used for avg daily unique users."""
     return int(round(df[col].mean())) if col in df.columns and len(df) > 0 else 0
 
 
@@ -74,7 +74,7 @@ def _get_taxes_paid(start: date, end: date, taxes_df: pd.DataFrame | None = None
     df = taxes_df if taxes_df is not None else _load_taxes_df()
     if df.empty or "_d" not in df.columns or "taxes_paid" not in df.columns:
         return 0.0
-    # Deduplicate by date — cron runs accumulate duplicate records across multiple files
+    # Deduplicate by date - cron runs accumulate duplicate records across multiple files
     df = df.drop_duplicates(subset=["_d"], keep="last")
     return round(float(df[(df["_d"] >= start) & (df["_d"] <= end)]["taxes_paid"].sum()), 2)
 
@@ -159,7 +159,7 @@ def _summary_period(
     ftd_new_dep_df = _filter_range(load_parquet_cached(FTD_NEW_DEP_DAILY_PATH, "ftd_new_dep_daily"), start, end)
     ftd_new_depositors = _i(ftd_new_dep_df, "ftd_new_depositors")
 
-    # Conv rate = FTD Reg Month ÷ Registrations (users who registered AND ever deposited).
+    # Conv rate = FTD Reg Month / Registrations (users who registered AND ever deposited).
     conv_rate = round(ftd_reg_month / regs * 100, 1) if regs > 0 else 0.0
 
     sports_turnover_real  = _s(df, "placed_stake")         # real money sports turnover
@@ -196,7 +196,7 @@ def _summary_period(
     casino_rtp = round(100.0 - casino_margin, 1)
     casino_display_ggr = casino_total_ggr  # Casino page shows casino only (no lotto)
 
-    # Taxes paid — must be computed before total_ggr (client formula: GGR = Real+Bonus GGR - Taxes)
+    # Taxes paid - must be computed before total_ggr (client formula: GGR = Real+Bonus GGR - Taxes)
     taxes_paid = _get_taxes_paid(start, end, taxes_df=taxes_df)
 
     # GGR = Real Money GGR + Bonus Money GGR - Taxes Paid By User (client formula)

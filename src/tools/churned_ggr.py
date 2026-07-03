@@ -106,7 +106,7 @@ def _casino_ggr(user_ids: set[int], start: str, end: str) -> pd.DataFrame:
     else:
         df["_real_stake"]    = df["_stake"]
         df["_real_winnings"] = df["_winnings"]
-        print("[ggr] Casino: bonusstake/bonuswinnings columns not found — using total stake/winnings")
+        print("[ggr] Casino: bonusstake/bonuswinnings columns not found - using total stake/winnings")
 
     df["_ggr"] = df["_real_stake"] - df["_real_winnings"]
 
@@ -162,7 +162,7 @@ def main() -> None:
     players_with_ggr = int((per_user["total_ggr"] != 0).sum())
     avg_ggr = per_user.loc[per_user["total_ggr"] != 0, "total_ggr"].mean()
 
-    print(f"\n=== GGR SUMMARY ({args.start} to {args.end}) — {label.upper()} ===")
+    print(f"\n=== GGR SUMMARY ({args.start} to {args.end}) - {label.upper()} ===")
     print(f"Players in cohort ................. {len(per_user):,}")
     print(f"Players with any GGR .............. {players_with_ggr:,}")
     print(f"Sports GGR ........................ R{sports_total:>14,.0f}")

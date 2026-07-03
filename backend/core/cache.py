@@ -1,5 +1,5 @@
 """
-core/cache.py — Parquet cache, path constants, and data-loading helpers.
+core/cache.py - Parquet cache, path constants, and data-loading helpers.
 """
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ VIP_ROSTER_PATH         = _SERVING / "vip_roster.parquet"
 VIP_REVENUE_DAILY_PATH  = _SERVING / "vip_revenue_daily.parquet"
 
 # Earliest date for which all data sources (casino, FTD, bonus, sportsbook) are complete.
-# Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus — exclude them.
+# Pre-Jan 2026 rows exist in daily_kpis but have zero casino/FTD/bonus - exclude them.
 DATA_START_DATE = date(2026, 1, 1)
 
 # Raw bonus reference files (full-refresh, written by incremental_bonus.py)

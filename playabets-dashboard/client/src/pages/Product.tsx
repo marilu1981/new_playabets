@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Product Dashboard
+ * PLAYA BETS - Product Dashboard
  * Performance across Sports Betting, Casino, Horse Racing, and Lotto verticals.
  */
 import { useEffect, useMemo, useState } from "react";
@@ -48,7 +48,7 @@ function VerticalSection({ title, color, metrics, loading }: {
   title: string; color: string; metrics: VerticalMetrics | null; loading: boolean;
 }) {
   const v = metrics;
-  const dash = loading ? "…" : "—";
+  const dash = loading ? "..." : "-";
   return (
     <div className="rounded-xl p-5" style={CARD_BG}>
       <div className="flex items-center gap-2 mb-4">
@@ -61,7 +61,7 @@ function VerticalSection({ title, color, metrics, loading }: {
         <MetricCard label="Active Players" value={v ? v.actives.toLocaleString() : dash} sub="period unique" />
         <MetricCard label="Bets"         value={v ? v.bets.toLocaleString()      : dash} />
         <MetricCard label="Avg Bet Size" value={v && v.bets > 0 ? formatFull(v.avg_bet) : dash} />
-        <MetricCard label="Hold %"       value={v ? `${v.hold_pct.toFixed(2)}%`  : dash} sub="GGR÷Turnover" />
+        <MetricCard label="Hold %"       value={v ? `${v.hold_pct.toFixed(2)}%`  : dash} sub="GGR/Turnover" />
       </div>
     </div>
   );
@@ -156,7 +156,7 @@ export default function ProductPage() {
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           <GranularityTabs />
         </div>
-        <p className="text-xs text-gray-500 mb-3">Selected period — {granularity}</p>
+        <p className="text-xs text-gray-500 mb-3">Selected period - {granularity}</p>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={aggPoints} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />

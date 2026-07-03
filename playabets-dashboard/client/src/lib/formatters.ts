@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Data Formatters
+ * PLAYA BETS - Data Formatters
  * Consistent number/currency/date formatting across the dashboard
  */
 
@@ -32,7 +32,7 @@ export function formatCompact(n: number): string {
   return `${sign}${abs}`;
 }
 
-/** Full comma-separated number — use for KPI card values where space allows. */
+/** Full comma-separated number - use for KPI card values where space allows. */
 export function formatFull(n: number, decimals = 0): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,

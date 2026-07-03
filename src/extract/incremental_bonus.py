@@ -22,7 +22,7 @@ from src.extract.db_utils import build_engine, get_watermark, set_watermark
 BONUSES_VIEW        = "Dwh_en.view_bonusbonuses"
 CAMPAIGNS_VIEW      = "Dwh_en.view_bonuscampaigns"
 FREEBETS_VIEW       = "Dwh_en.view_bonusfreebets"
-BONUS_TX_VIEW       = "Dwh_en.view_bonustransactions"  # IDCausale/ReasonID based — for Bonus Issued
+BONUS_TX_VIEW       = "Dwh_en.view_bonustransactions"  # IDCausale/ReasonID based - for Bonus Issued
 CURSOR_COLUMN       = "DateVersion"
 FREEBETS_START_DATE = "2025-11-01 00:00:00"
 
@@ -77,7 +77,7 @@ def main() -> None:
     engine = build_engine()
     ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
-    # ── 1. BonusBonuses (incremental) ────────────────────────────────────────
+    # -- 1. BonusBonuses (incremental) ----------------------------------------
     cols_sql = ", ".join(BONUSES_COLUMNS)
     window_start = args.window_start
     window_end = args.window_end
@@ -130,7 +130,7 @@ def main() -> None:
             set_watermark(WATERMARK_DB, BONUSES_VIEW, str(df_bonuses["__cursor__"].max()))
             print(f"[bonus] Watermark updated to: {df_bonuses['__cursor__'].max()}")
 
-    # ── 2. BonusCampaigns (full-refresh) ─────────────────────────────────────
+    # -- 2. BonusCampaigns (full-refresh) -------------------------------------
     print("[bonus] Pulling BonusCampaigns (full-refresh)...")
     cols_sql = ", ".join(CAMPAIGNS_COLUMNS)
     with engine.connect() as conn:
@@ -138,7 +138,7 @@ def main() -> None:
     print(f"[bonus] BonusCampaigns rows: {len(df_campaigns)}")
     df_campaigns.to_parquet(OUT_DIR / "campaigns_latest.parquet", index=False)
 
-    # ── 3. BonusFreebets (full-refresh) ──────────────────────────────────────
+    # -- 3. BonusFreebets (full-refresh) --------------------------------------
     print("[bonus] Pulling BonusFreebets...")
     cols_sql = ", ".join(FREEBETS_COLUMNS)
     freebets_query = text(
@@ -153,7 +153,7 @@ def main() -> None:
     print(f"[bonus] BonusFreebets rows: {len(df_freebets)}")
     df_freebets.to_parquet(OUT_DIR / "freebets_latest.parquet", index=False)
 
-    # ── 4. BonusTransactions (incremental by Date) — ReasonID 64=issued, 65=reversed
+    # -- 4. BonusTransactions (incremental by Date) - ReasonID 64=issued, 65=reversed
     # Client uses this view (not view_BonusBonuses) for Bonus Issued calculation.
     print("[bonus] Pulling BonusTransactions (ReasonID 64+65)...")
     bonus_tx_cols_sql = ", ".join(BONUS_TX_COLUMNS)

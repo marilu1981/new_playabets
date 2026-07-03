@@ -1,5 +1,5 @@
 """
-core/filters.py — User/filter normalization and aggregation helpers.
+core/filters.py - User/filter normalization and aggregation helpers.
 """
 from __future__ import annotations
 
@@ -240,7 +240,7 @@ def _per_user_wagering(start: date, end: date, allowed_ids: set[str]) -> pd.Data
     """
     from backend.core.cache import VIP_REVENUE_DAILY_PATH
 
-    # Fast path — serving file exists (built by pipeline)
+    # Fast path - serving file exists (built by pipeline)
     if VIP_REVENUE_DAILY_PATH.exists():
         df = load_parquet_cached(VIP_REVENUE_DAILY_PATH, "vip_revenue_daily")
         df = df[df["userid"].astype(str).isin(allowed_ids)]
@@ -260,7 +260,7 @@ def _per_user_wagering(start: date, end: date, allowed_ids: set[str]) -> pd.Data
         result["userid"] = result["userid"].astype(str)
         return result
 
-    # Slow path — raw betslips + casino (fallback)
+    # Slow path - raw betslips + casino (fallback)
     def _agg(df: pd.DataFrame, label: str) -> pd.DataFrame:
         empty = pd.DataFrame(columns=["userid", f"{label}_stake", f"{label}_winnings", f"{label}_bets"])
         if df.empty:

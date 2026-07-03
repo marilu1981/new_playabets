@@ -171,7 +171,7 @@ function aggregateByGranularity<T extends Record<string, unknown>>(
 export default function UsersPage() {
   const [filters, setFilters] = useState<DashboardFilters>(defaultFilters);
   const [latestDataDate, setLatestDataDate] = useState<string | null>(getLatestDataDate());
-  // If we already have a cached date the data fetch fires immediately — start non-loading
+  // If we already have a cached date the data fetch fires immediately - start non-loading
   // so returning to this page feels instant. On first load it starts as true.
   const [isLoading, setIsLoading] = useState<boolean>(getLatestDataDate() === null);
   const [liveOverview, setLiveOverview] = useState<typeof baseOverviewKPIs | null>(null);
@@ -257,7 +257,7 @@ export default function UsersPage() {
       if (filters.country !== "all") params.set("country", filters.country);
       if (filters.granularity) params.set("granularity", filters.granularity);
       const query = params.toString();
-      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes, selfExTrendRes] = await Promise.allSettled([
+      const [kpisRes, regsRes, statusRes, dailyRes, casinoRes, selfExRes] = await Promise.allSettled([
         fetchJson<{ actives_sports?: number; actives_casino?: number; registrations?: number; total_apd?: number }>(`/kpis?${query}`),
         fetchJson<{ registrations: Array<{ date: string; value: number }> }>(`/timeseries/registrations?${query}`),
         fetchJson<{ statuses?: Array<{ status: string; count: number }> }>(`/users/status-breakdown?${query}`),
@@ -288,7 +288,7 @@ export default function UsersPage() {
       if (hasRegs) {
         setLiveRegistrationsDaily((regsRes.value.registrations ?? []).map((r) => ({
           date: r.date,
-          // API returns { date, registrations } — fall back to .value for compatibility
+          // API returns { date, registrations } - fall back to .value for compatibility
           value: Number((r as { date: string; registrations?: number; value?: number }).registrations ?? (r as { date: string; registrations?: number; value?: number }).value ?? 0),
         })));
       } else {
@@ -471,7 +471,7 @@ export default function UsersPage() {
           <KpiCard title="Frozen Accounts" value={formatFull(frozenUsers)} subtitle="Status: Frozen" icon={<UserX size={18} />} accent="amber" loading={isLoading} />
           <KpiCard title="Pending KYC" value={formatFull(pendingKycUsers)} subtitle="Status: Be Validated" icon={<Clock size={18} />} accent="gold" loading={isLoading} />
           <KpiCard title="Self-Exclusions" value={liveSelfExclusions ? formatFull(selfExclusionSummary.total) : "Pending"} valueClassName={!liveSelfExclusions ? "text-white/30" : undefined} subtitle="Active self-exclusions" icon={<Shield size={18} />} accent="red" loading={isLoading} />
-          <KpiCard title="APD" value={liveApd != null ? `${liveApd}d` : "—"} subtitle="Avg play days / active player" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
+          <KpiCard title="APD" value={liveApd != null ? `${liveApd}d` : "-"} subtitle="Avg play days / active player" icon={<UserCheck size={18} />} accent="green" loading={isLoading} />
         </div>
       </div>
 

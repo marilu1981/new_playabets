@@ -12,7 +12,7 @@ Output: one parquet per calendar month, named user_transactions_month_YYYYMM.par
 
 Chunking: processes one calendar month at a time to avoid SQL Server numeric
 overflow when SUM(ABS(Importo)) accumulates across a large window.
-Each month file is overwritten on reprocessing — no duplicates.
+Each month file is overwritten on reprocessing - no duplicates.
 
 Run from the project root:
     python -m src.extract.incremental_user_transactions
@@ -123,36 +123,36 @@ def main() -> None:
         lower_str = lower_str + "-01 00:00:00"
 
     if not lower_str:
-        raise ValueError("No watermark found — provide --window-start to bootstrap.")
+        raise ValueError("No watermark found - provide --window-start to bootstrap.")
 
     from_date = date.fromisoformat(lower_str[:10])
     to_date   = date.fromisoformat(we[:10]) if we else date.today()
 
     chunks = _month_chunks(from_date, to_date)
-    print(f"[user_transactions] {len(chunks)} monthly chunk(s): {from_date} → {to_date}")
+    print(f"[user_transactions] {len(chunks)} monthly chunk(s): {from_date} -> {to_date}")
 
     engine = build_engine()
     last_written: date | None = None
 
     for month_start, month_end in chunks:
         tag = month_start.strftime("%Y%m")
-        print(f"[user_transactions] Chunk {tag}: {month_start} → {month_end}")
+        print(f"[user_transactions] Chunk {tag}: {month_start} -> {month_end}")
 
         with engine.connect() as conn:
             df = _query_month(conn, month_start, month_end)
 
         if df.empty:
-            print(f"[user_transactions] No data for {tag} — skipping.")
+            print(f"[user_transactions] No data for {tag} - skipping.")
             last_written = month_start
             continue
 
         df["net_cashflow"] = df["deposits"] - df["withdrawals"]
         print(f"[user_transactions] {tag}: {len(df)} rows, {df['userid'].nunique()} users")
 
-        # One file per month — overwrite so reprocessing never duplicates
+        # One file per month - overwrite so reprocessing never duplicates
         out = OUT_DIR / f"user_transactions_month_{tag}.parquet"
         df.to_parquet(out, index=False)
-        print(f"[user_transactions] Saved → {out}")
+        print(f"[user_transactions] Saved -> {out}")
         last_written = month_start
 
     if last_written and ((ws is None) or args.update_watermark):

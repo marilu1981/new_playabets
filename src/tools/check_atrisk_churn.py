@@ -300,7 +300,7 @@ def main() -> None:
                         "month = dashboard calendar-month rule")
     p.add_argument("--since", default=None, help="(since rule) flag date YYYY-MM-DD; churned = no bet after this date")
     p.add_argument("--require-active-in", default=None,
-                   help="(since rule) comma months e.g. 2026-04,2026-05 — restrict baseline to players "
+                   help="(since rule) comma months e.g. 2026-04,2026-05 - restrict baseline to players "
                         "who bet real money in any of these months")
     p.add_argument("--silence-days", type=int, default=21, help="Days of no bet = churned (silence rule), default 21")
     p.add_argument("--as-of", default=None, help="Override 'as of' date (YYYY-MM-DD); default = latest date in data")

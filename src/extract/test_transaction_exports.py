@@ -9,12 +9,12 @@ Run from project root:
     python -m src.extract.test_transaction_exports
 
 Optional env overrides:
-    TEST_DATE        – single date to probe, e.g. "2026-03-20"  (default: yesterday)
-    TEST_START       – explicit start datetime for range tests
-    TEST_END         – explicit end datetime for range tests
-    TEST_TIMEOUT     – per-query timeout in seconds (default: 120)
-    TEST_TOP_N       – row limit for the sample query (default: 200)
-    TEST_SAVE_CSV    – set to "1" to save successful results as CSV (default: 1)
+    TEST_DATE        - single date to probe, e.g. "2026-03-20"  (default: yesterday)
+    TEST_START       - explicit start datetime for range tests
+    TEST_END         - explicit end datetime for range tests
+    TEST_TIMEOUT     - per-query timeout in seconds (default: 120)
+    TEST_TOP_N       - row limit for the sample query (default: 200)
+    TEST_SAVE_CSV    - set to "1" to save successful results as CSV (default: 1)
 
 Results are printed to console with timing, and saved to
     data/raw/transactions/test_exports_<timestamp>/
@@ -34,11 +34,11 @@ import pandas as pd
 import pyodbc
 from sqlalchemy import text
 
-# ── project imports ────────────────────────────────────────────────────────────
+# -- project imports ------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from src.extract.db_utils import build_engine
 
-# ── config ─────────────────────────────────────────────────────────────────────
+# -- config ---------------------------------------------------------------------
 VIEW  = "Dwh_en.view_transactions"
 TODAY = datetime.now(UTC).date()
 YESTERDAY = TODAY - timedelta(days=1)
@@ -57,7 +57,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS: list[dict[str, Any]] = []
 
 
-# ── helpers ────────────────────────────────────────────────────────────────────
+# -- helpers --------------------------------------------------------------------
 
 def _now() -> str:
     return datetime.now(UTC).strftime("%H:%M:%S")
@@ -69,8 +69,7 @@ def _log(strategy: str, msg: str) -> None:
 
 def _record(strategy: str, status: str, elapsed: float,
             rows: int | None = None, note: str = "") -> None:
-    icon = "✓" if status == "OK" else "✗" if status == "FAIL" else "⏱"
-    summary = f"{icon}  {strategy:<45} {status:<8} {elapsed:>7.1f}s"
+    summary = f"{strategy:<45} {status:<8} {elapsed:>7.1f}s"
     if rows is not None:
         summary += f"  {rows} row(s)"
     if note:
@@ -87,7 +86,7 @@ def _record(strategy: str, status: str, elapsed: float,
 
 def _run(strategy: str, engine, query: str, params: dict | None = None) -> pd.DataFrame | None:
     """Execute a single strategy. Returns DataFrame on success, None on failure."""
-    print(f"\n{'─'*70}")
+    print(f"\n{'-'*70}")
     print(f"  Strategy: {strategy}")
     print(f"  Query preview: {query.strip()[:200].replace(chr(10), ' ')}")
     t0 = perf_counter()
@@ -103,7 +102,7 @@ def _run(strategy: str, engine, query: str, params: dict | None = None) -> pd.Da
         if SAVE_CSV and not df.empty:
             fname = OUT_DIR / f"{strategy.replace(' ', '_').replace('/', '_')}.csv"
             df.to_csv(fname, index=False)
-            _log(strategy, f"Saved → {fname.name}")
+            _log(strategy, f"Saved -> {fname.name}")
         return df
     except Exception as exc:
         elapsed = perf_counter() - t0
@@ -117,25 +116,25 @@ def _run(strategy: str, engine, query: str, params: dict | None = None) -> pd.Da
         return None
 
 
-# ── strategy definitions ───────────────────────────────────────────────────────
+# -- strategy definitions -------------------------------------------------------
 
 def run_all() -> None:
     print(f"\n{'='*70}")
     print(f"  Playabets Transaction Export Probe")
     print(f"  View:       {VIEW}")
-    print(f"  Test date:  {TEST_DATE}  ({TEST_START} → {TEST_END})")
+    print(f"  Test date:  {TEST_DATE}  ({TEST_START} -> {TEST_END})")
     print(f"  Timeout:    {TEST_TIMEOUT}s per query")
     print(f"  Output dir: {OUT_DIR}")
     print(f"{'='*70}\n")
 
     engine = build_engine()
 
-    # ── 3. CTE with INLINED dates (DWH team's recommended approach) ──────────────
-    # Parameterised dates (:s, :e) consistently timeout — the optimizer cannot
+    # -- 1. Inlined dates - COUNT ------------------------------------------------
+    # Parameterised dates (:s, :e) consistently timeout - the optimizer cannot
     # see the literal values and falls back to a full table scan.
     # Inlining the dates as string literals allows the optimizer to use the index.
     _run(
-        "3. CTE inlined dates — COUNT (step 1 only)",
+        "1. Inlined dates - COUNT",
         engine,
         f"""
         SELECT COUNT(*) AS row_count
@@ -145,9 +144,9 @@ def run_all() -> None:
         """,
     )
 
-    # ── 4. CTE inlined dates — full aggregate (DWH team's exact approach) ────────
+    # -- 2. CTE inlined dates - full daily aggregate ------------------------------
     _run(
-        "4. CTE inlined dates — full daily aggregate",
+        "2. CTE inlined dates - full daily aggregate",
         engine,
         f"""
         WITH IdRange AS (
@@ -171,9 +170,9 @@ def run_all() -> None:
         """,
     )
 
-    # ── 5. Inlined Date — deposits only (simpler, faster scan) ───────────────────
+    # -- 3. Inlined Date - deposits only ------------------------------------------
     _run(
-        "5. Inlined Date — deposits only aggregate",
+        "3. Inlined Date - deposits only aggregate",
         engine,
         f"""
         SELECT
@@ -188,9 +187,9 @@ def run_all() -> None:
         """,
     )
 
-    # ── 6. Inlined Date — withdrawals only ───────────────────────────────────────
+    # -- 4. Inlined Date - withdrawals only ---------------------------------------
     _run(
-        "6. Inlined Date — withdrawals only aggregate",
+        "4. Inlined Date - withdrawals only aggregate",
         engine,
         f"""
         SELECT
@@ -204,10 +203,10 @@ def run_all() -> None:
         """,
     )
 
-    # ── 9. INFORMATION_SCHEMA — what other transaction objects exist? ──────────
-    # (Cheap metadata query — always fast)
+    # -- 5. List transaction-related DWH objects ----------------------------------
+    # (Cheap metadata query - always fast)
     _run(
-        "9. List DWH objects with 'transaction' in name",
+        "5. List DWH objects with 'transaction' in name",
         engine,
         """
         SELECT
@@ -219,7 +218,7 @@ def run_all() -> None:
         """,
     )
 
-    # ── 10. Probe for pre-aggregated daily/summary views ──────────────────────
+    # -- 6. Probe for pre-aggregated daily/summary views --------------------------
     for candidate in [
         "Dwh_en.view_transactions_daily",
         "Dwh_en.view_TransactionSummary",
@@ -229,12 +228,12 @@ def run_all() -> None:
         "Dwh_en.view_withdrawals",
     ]:
         _run(
-            f"10. Probe alternate view: {candidate}",
+            f"6. Probe alternate view: {candidate}",
             engine,
             f"SELECT TOP 5 * FROM {candidate}",
         )
 
-    # ── Summary ────────────────────────────────────────────────────────────────
+    # -- Summary ----------------------------------------------------------------
     _print_summary()
 
 
@@ -245,14 +244,14 @@ def _print_summary() -> None:
     print(f"  {'Strategy':<45} {'Status':<10} {'Time':>8}  Rows")
     print(f"  {'-'*45} {'-'*10} {'-'*8}  ----")
     for r in RESULTS:
-        rows_str = str(r["rows"]) if r["rows"] is not None else "—"
+        rows_str = str(r["rows"]) if r["rows"] is not None else "-"
         print(f"  {r['strategy']:<45} {r['status']:<10} {r['elapsed_s']:>7.1f}s  {rows_str}")
         if r["note"]:
-            print(f"    ↳ {r['note'][:100]}")
+            print(f"    -> {r['note'][:100]}")
 
     ok = [r for r in RESULTS if r["status"] == "OK"]
     failed = [r for r in RESULTS if r["status"] != "OK"]
-    print(f"\n  ✓ Passed: {len(ok)}   ✗ Failed/Timeout: {len(failed)}")
+    print(f"\n  Passed: {len(ok)}   Failed/Timeout: {len(failed)}")
 
     if SAVE_CSV:
         summary_path = OUT_DIR / "_summary.csv"
@@ -260,16 +259,16 @@ def _print_summary() -> None:
             writer = csv.DictWriter(f, fieldnames=["strategy", "status", "elapsed_s", "rows", "note"])
             writer.writeheader()
             writer.writerows(RESULTS)
-        print(f"\n  Summary saved → {summary_path}")
+        print(f"\n  Summary saved -> {summary_path}")
 
     print(f"\n  Next steps:")
     if ok:
         names = [r["strategy"] for r in ok]
-        print(f"  • Build incremental pipeline using: {names}")
-        print(f"  • Results saved to: {OUT_DIR}")
+        print(f"  - Build incremental pipeline using: {names}")
+        print(f"  - Results saved to: {OUT_DIR}")
     else:
-        print("  • All strategies failed — check VPN/DWH connection and timeout settings.")
-        print(f"  • Try: SET TEST_TIMEOUT=300 and re-run with a narrower TEST_DATE window.")
+        print("  - All strategies failed - check VPN/DWH connection and timeout settings.")
+        print(f"  - Try: SET TEST_TIMEOUT=300 and re-run with a narrower TEST_DATE window.")
     print()
 
 

@@ -3,7 +3,7 @@ backfill_transactions.py
 ------------------------
 Pulls daily transaction aggregates for a historical date range, one day at a
 time.  Each day is saved as a separate Parquet file so:
-  - Progress is preserved — re-runs skip already-completed days.
+  - Progress is preserved - re-runs skip already-completed days.
   - Individual failed days can be retried without re-doing everything.
   - build_domain_kpis.py picks up all files automatically.
 
@@ -16,7 +16,7 @@ Required env vars (same as incremental_transactions_simple):
 Optional env overrides:
     BACKFILL_START   e.g. "2026-01-01"  (default: 90 days ago)
     BACKFILL_END     e.g. "2026-04-08"  (default: yesterday, inclusive)
-    DELAY_SECONDS    pause between days — be kind to the DWH (default: 10)
+    DELAY_SECONDS    pause between days - be kind to the DWH (default: 10)
     WAIT_FOR_20      set to "0" to skip the :20 guard (default: "1")
 """
 from __future__ import annotations
@@ -74,15 +74,15 @@ def _fetch_day(conn, day: date) -> pd.DataFrame:
     # Confirmed via Dwh_en.view_Reasons (ReasonGroupID):
     #   Group 2 = Deposit, Group 3 = Withdrawals (incl. Cancel Withdraw reasons)
     # 873 (FnbEWallet Deposit) and 875 (InstantMoney Deposit) are Group 2 Deposits
-    #   — they were previously mis-listed under withdrawals.
+    #   - they were previously mis-listed under withdrawals.
     # 248 (Deposit Bank Transfer) is Group 2; included here. The TransactionAmountTypeID=1
     #   filter on the deposit query keeps only the positive (genuine deposit) leg of 248,
-    #   excluding its TypeID=2 reversals — matching the client's net cash to within 0.6%.
+    #   excluding its TypeID=2 reversals - matching the client's net cash to within 0.6%.
     DEPOSIT_REASON_IDS = (
         "248,249,250,830,835,839,843,851,853,855,857,859,"
         "861,863,865,867,869,871,873,875,877,939"
     )
-    # 873 and 875 removed — they are deposits (Group 2), not withdrawals.
+    # 873 and 875 removed - they are deposits (Group 2), not withdrawals.
     WITHDRAWAL_REASON_IDS = "251,252,253,254,831,833,837,841,845,847,849"
     CANCEL_WITHDRAWAL_REASON_IDS = "838,842,846,848,850"
 
@@ -185,12 +185,12 @@ def main() -> None:
     done      = {f.stem.replace("transactions_daily_agg_", "") for f in OUT_DIR.glob("transactions_daily_agg_*.parquet")}
     remaining = [d for d in all_days if str(d) not in done]
 
-    _log(f"Backfill range: {BACKFILL_START} → {BACKFILL_END}  ({total} days)")
+    _log(f"Backfill range: {BACKFILL_START} -> {BACKFILL_END}  ({total} days)")
     _log(f"Already done:   {len(done)} days")
     _log(f"To fetch:       {len(remaining)} days")
 
     if not remaining:
-        _log("Nothing to do — all days already fetched.")
+        _log("Nothing to do - all days already fetched.")
         return
 
     if WAIT_FOR_20:
@@ -207,7 +207,7 @@ def main() -> None:
             with engine.connect() as conn:
                 df = _fetch_day(conn, day)
             if df.empty:
-                _log(f"  No data for {day} — skipping.")
+                _log(f"  No data for {day} - skipping.")
             else:
                 out = OUT_DIR / f"transactions_daily_agg_{day}.parquet"
                 df.to_parquet(out, index=False)
@@ -217,7 +217,7 @@ def main() -> None:
         except Exception as exc:
             _log(f"  FAILED {day}: {exc}")
             failed.append((day, str(exc)))
-            # TCP drop leaves the pool in a broken state — rebuild the engine so
+            # TCP drop leaves the pool in a broken state - rebuild the engine so
             # the next day starts with a clean connection.
             try:
                 engine.dispose()

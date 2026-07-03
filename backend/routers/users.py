@@ -1,5 +1,5 @@
 """
-routers/users.py — User status, self-exclusions, and RFM endpoints.
+routers/users.py - User status, self-exclusions, and RFM endpoints.
 """
 from __future__ import annotations
 
@@ -305,9 +305,9 @@ async def vip_upload(file: UploadFile = File(...)):
     Merge an uploaded VIP CSV into the roster.
 
     Stint identity key: (userid, account_manager, vip_lifecycle_stage, onboard_date).
-    - Exact match on all 5 columns → unchanged (skipped).
-    - Key match but different offboard_date → updated.
-    - No key match → added as a new stint.
+    - Exact match on all 5 columns -> unchanged (skipped).
+    - Key match but different offboard_date -> updated.
+    - No key match -> added as a new stint.
 
     Returns counts for added / updated / unchanged rows.
     """
@@ -400,7 +400,7 @@ async def vip_upload(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------------------------
-# VIP revenue analytics — the VIP universe comes from the uploaded roster
+# VIP revenue analytics - the VIP universe comes from the uploaded roster
 # (vip_roster.parquet). Revenue is computed from RAW betslips + casino wagering
 # for those userids over the selected period (actual stakes/winnings), NOT from
 # the rfm_users rolling snapshot. This gives correct turnover/GGR/hold per VIP.
@@ -445,7 +445,7 @@ def _join_vip_revenue(
     if roster.empty:
         return pd.DataFrame()
 
-    # One row per user — latest stint wins.
+    # One row per user - latest stint wins.
     roster = roster.sort_values(["userid", "onboard_date"]).drop_duplicates(
         subset=["userid"], keep="last"
     )
@@ -635,7 +635,7 @@ def vip_demographics(
         return {"has_data": False, "age_bands": [], "countries": []}
     d = roster.merge(details, on="userid", how="left")
 
-    # ── Age bands from birthdate ──────────────────────────────────────────────
+    # -- Age bands from birthdate ----------------------------------------------
     age_bands: list[dict] = []
     if "birthdate" in d.columns:
         bdate = pd.to_datetime(d["birthdate"], errors="coerce")
@@ -647,7 +647,7 @@ def vip_demographics(
         counts = age_cat.value_counts().reindex(labels, fill_value=0)
         age_bands = [{"band": str(b), "count": int(c)} for b, c in counts.items()]
 
-    # ── Country distribution ──────────────────────────────────────────────────
+    # -- Country distribution --------------------------------------------------
     countries: list[dict] = []
     if "country" in d.columns:
         cc = d["country"].fillna("Unknown").astype(str).str.strip().replace("", "Unknown")
@@ -725,7 +725,7 @@ def vip_monthly(
     account_manager: Optional[str] = Query(None),
     stage: Optional[str] = Query(None),
 ):
-    """6-month performance — one row per calendar month."""
+    """6-month performance - one row per calendar month."""
     from backend.core.cache import VIP_REVENUE_DAILY_PATH
     if not VIP_REVENUE_DAILY_PATH.exists():
         return {"has_data": False, "months": []}
@@ -1139,7 +1139,7 @@ def rfm_segments(
 ):
     rfm_cols = ["date", "rfm_vip", "rfm_active", "rfm_new", "rfm_cooling", "rfm_lapsed", "rfm_dormant"]
 
-    # 1. Monthly snapshots (backfilled history) — highest priority
+    # 1. Monthly snapshots (backfilled history) - highest priority
     if str(mode or "").lower() != "snapshot" and RFM_MONTHLY_PATH.exists():
         monthly = load_parquet_cached(RFM_MONTHLY_PATH, "rfm_monthly")
         if not monthly.empty and all(col in monthly.columns for col in rfm_cols):
@@ -1255,7 +1255,7 @@ def rfm_risk():
 @router.get("/rfm/risk/players")
 def rfm_risk_players(
     tier: Optional[str]    = Query(None, description="Filter by risk tier (Critical, High, Moderate, Low)"),
-    segment: Optional[str] = Query(None, description="Filter by RFM segment (VIP, Active, Lapsed…)"),
+    segment: Optional[str] = Query(None, description="Filter by RFM segment (VIP, Active, Lapsed...)"),
     limit: int             = Query(200, ge=1, le=2000),
 ):
     """Return individual players from sociotopo_features, ordered by risk_score desc."""

@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * MFA Challenge — shown after password login for accounts with a
+ * MFA Challenge - shown after password login for accounts with a
  * verified TOTP factor. Requires the 6-digit authenticator code.
  */
 
@@ -182,7 +182,7 @@ export default function MfaChallenge({ onComplete }: { onComplete: () => void })
                 disabled={verifying || !factorId || code.length !== 6}
                 style={{ ...BTN_STYLE, opacity: verifying || !factorId || code.length !== 6 ? 0.6 : 1 }}
               >
-                {verifying ? "Verifying…" : "Verify"}
+                {verifying ? "Verifying..." : "Verify"}
               </button>
             </form>
           )}

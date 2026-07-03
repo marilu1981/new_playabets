@@ -1,5 +1,5 @@
 """
-routers/product.py — Product daily vertical breakdown endpoint.
+routers/product.py - Product daily vertical breakdown endpoint.
 """
 from __future__ import annotations
 

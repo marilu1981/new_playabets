@@ -1,6 +1,6 @@
 /**
  * PLAYA BETS ANALYTICS DASHBOARD
- * DashboardLayout — Savanna Gold design system
+ * DashboardLayout - Savanna Gold design system
  * Fixed 240px sidebar + top bar + main content area
  */
 
@@ -29,13 +29,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Brand assets — local files in /public/brand/
-const LOGO_FULL   = "/brand/logo-white.png";    // full horizontal logo, white — on dark Forest Leaf sidebar
-const LOGO_ICON   = "/brand/icon-white.png";     // lion icon only, white — collapsed sidebar
-const ICON_CASINO = "/brand/icon-dice-green.png"; // green dice — Casino nav
-const ICON_BOLT   = "/brand/icon-bolt-green.png"; // green bolt — Bonus nav
+// Brand assets - local files in /public/brand/
+const LOGO_FULL   = "/brand/logo-white.png";    // full horizontal logo, white - on dark Forest Leaf sidebar
+const LOGO_ICON   = "/brand/icon-white.png";     // lion icon only, white - collapsed sidebar
+const ICON_CASINO = "/brand/icon-dice-green.png"; // green dice - Casino nav
+const ICON_BOLT   = "/brand/icon-bolt-green.png"; // green bolt - Bonus nav
 
-// ── Sidebar footer with user info + sign out ─────────────────────────────────
+// -- Sidebar footer with user info + sign out ---------------------------------
 function SidebarFooter({ collapsed }: { collapsed: boolean }) {
   const [email, setEmail] = useState<string | null>(null);
 
@@ -204,7 +204,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
               />
             </div>
           ) : (
-            // Expanded: full black logo — legible on the Playa Green top of gradient
+            // Expanded: full black logo - legible on the Playa Green top of gradient
             <div className="flex-1 min-w-0 flex items-center">
               <img
                 src={LOGO_FULL}
@@ -294,7 +294,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
             );
           })}
 
-          {/* Admin link — only shown to users with admin role */}
+          {/* Admin link - only shown to users with admin role */}
           {permissions.role === "admin" && (
             <div>
               {!collapsed && (
@@ -387,7 +387,7 @@ export default function DashboardLayout({ children, title, subtitle, filtersBar 
           </div>
         </header>
 
-        {/* Filters bar slot — rendered between header and page content */}
+        {/* Filters bar slot - rendered between header and page content */}
         {filtersBar && filtersBar}
 
         {/* Page content */}

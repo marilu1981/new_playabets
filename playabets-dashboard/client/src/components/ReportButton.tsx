@@ -1,5 +1,5 @@
 /**
- * PLAYA BETS — Report Download Button
+ * PLAYA BETS - Report Download Button
  * Fetches AI insights from Azure OpenAI then generates the PDF.
  */
 
@@ -60,10 +60,10 @@ export default function ReportButton({ data }: ReportButtonProps) {
 
   const handleClick = async () => {
     setLoading(true);
-    setStatus("Fetching AI insights…");
+    setStatus("Fetching AI insights...");
     try {
       const aiInsights = await fetchAiInsights(data);
-      setStatus("Building PDF…");
+      setStatus("Building PDF...");
       await new Promise((r) => setTimeout(r, 80));
       generateReport({ ...data, aiInsights });
     } finally {
@@ -85,7 +85,7 @@ export default function ReportButton({ data }: ReportButtonProps) {
       title="Download executive PDF report with AI insights"
     >
       {loading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-      <span>{loading ? (status || "Building…") : "Download Report"}</span>
+      <span>{loading ? (status || "Building...") : "Download Report"}</span>
     </button>
   );
 }

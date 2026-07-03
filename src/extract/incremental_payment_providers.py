@@ -23,7 +23,7 @@ from sqlalchemy import text
 from src.app_config import raw_dir
 from src.extract.db_utils import build_engine, get_watermark, set_watermark
 
-CHUNK_DAYS = 30  # Stats.Transazioni is fast — 30d chunks are fine
+CHUNK_DAYS = 30  # Stats.Transazioni is fast - 30d chunks are fine
 
 WATERMARK_KEY = "payment_providers"
 WATERMARK_DB  = Path.home() / "watermarks_payment_providers.db"
@@ -72,12 +72,12 @@ def main() -> None:
     chunk_days = args.chunk_days
     lower_dt = datetime.fromisoformat(ws or last_value)
     upper_dt = datetime.fromisoformat(we) if we else datetime.now(UTC).replace(tzinfo=None)
-    print(f"[payment_providers] window: {lower_dt} → {upper_dt}  (chunk={chunk_days}d)")
+    print(f"[payment_providers] window: {lower_dt} -> {upper_dt}  (chunk={chunk_days}d)")
 
     # Uses Stats.Transazioni (fast ~26K rows/day) filtered to the player-credit
     # leg only via IDTipoImportoTransazione:
-    #   1 = credit to player wallet  → deposits & cancel-withdrawals
-    #   2 = debit from player wallet → withdrawals
+    #   1 = credit to player wallet  -> deposits & cancel-withdrawals
+    #   2 = debit from player wallet -> withdrawals
     # Without this filter, Stats.Transazioni includes all accounting legs
     # (player + house + settlement) causing ~4x amount inflation.
     query = text(f"""
@@ -125,7 +125,7 @@ def main() -> None:
     cursor  = lower_dt
     while cursor < upper_dt:
         chunk_end = min(cursor + timedelta(days=chunk_days), upper_dt)
-        print(f"[payment_providers] chunk {cursor.date()} → {chunk_end.date()} …", end=" ", flush=True)
+        print(f"[payment_providers] chunk {cursor.date()} -> {chunk_end.date()} ...", end=" ", flush=True)
         with engine.connect() as conn:
             chunk_df = pd.read_sql(query, conn, params={
                 "lower": cursor.strftime("%Y-%m-%d %H:%M:%S"),
@@ -153,7 +153,7 @@ def main() -> None:
 
     out = OUT_DIR / fname
     df.to_parquet(out, index=False)
-    print(f"[payment_providers] Saved → {out}")
+    print(f"[payment_providers] Saved -> {out}")
     print(df.groupby("group_name")["total_amount"].sum())
 
     if (ws is None) or args.update_watermark:
