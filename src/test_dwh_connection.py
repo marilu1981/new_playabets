@@ -1,9 +1,10 @@
+"""Smoke test for DWH connectivity. Requires DWH_* environment variables."""
 import os
 import pyodbc
 
-SERVER = "playabets-dwh-aurora-prd.cluster-cx4oskcc63z8.eu-west-1.rds.amazonaws.com"
-PORT = 1433
-DATABASE = "master"
+SERVER = os.environ["DWH_SERVER"]
+PORT = int(os.environ.get("DWH_PORT", "1433"))
+DATABASE = os.environ.get("DWH_DATABASE", "master")
 
 USERNAME = os.environ["DWH_USER"]
 PASSWORD = os.environ["DWH_PASS"]
