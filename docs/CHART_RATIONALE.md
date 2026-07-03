@@ -1,4 +1,4 @@
-# Playa Bets Dashboard — Chart & Page Rationale
+# Playa Bets Dashboard - Chart & Page Rationale
 
 > **Purpose of this document:** Explains the business reasoning behind every page and every chart in the dashboard. Written for non-technical stakeholders who need to understand *why* each visual exists, not just what it shows.
 
@@ -18,7 +18,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 ---
 
-## Page 1 — Executive Overview (Dashboard)
+## Page 1 - Executive Overview (Dashboard)
 
 **Who uses it:** C-suite, Head of Analytics, Country Managers.
 **Core question it answers:** "Is the business growing, and where is the money coming from?"
@@ -29,7 +29,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 | Card | Why it's here |
 |---|---|
-| **Registrations** | Top-of-funnel health. If this drops, everything downstream will drop in 30–60 days. |
+| **Registrations** | Top-of-funnel health. If this drops, everything downstream will drop in 30-60 days. |
 | **FTDs** (First-Time Depositors) | The moment a player becomes a revenue-generating customer. The most important acquisition metric. |
 | **V_FTDs** (Verified FTDs) | FTDs who passed identity verification. Relevant for regulated markets (KYC compliance). |
 | **Top_FTDs** | High-value first depositors (above a threshold). Indicates quality of acquisition, not just quantity. |
@@ -40,7 +40,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 | **GGR** (Gross Gaming Revenue) | Turnover minus winnings paid. The primary revenue line before costs. |
 | **NGR** (Net Gaming Revenue) | GGR minus bonuses paid. The closest proxy to actual profit from operations. |
 | **Bonus Spent** | Total bonus value redeemed. High bonus spend relative to NGR is a margin risk signal. |
-| **Conversion Rate** | Registrations → FTD rate. If 100 people register and 38 deposit, conversion is 38%. Measures how well the onboarding funnel works. |
+| **Conversion Rate** | Registrations -> FTD rate. If 100 people register and 38 deposit, conversion is 38%. Measures how well the onboarding funnel works. |
 
 **Why show % change vs last month on every card?** Because absolute numbers without context are misleading. ₦1.4M GGR means nothing unless you know it was ₦1.3M last month (+7.7%) or ₦2.1M last month (−33%).
 
@@ -50,7 +50,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 **Chart type:** Multi-line chart with toggle.
 **Answers:** "Is revenue trending up or down, and is the margin holding?"
-**Why three lines on one toggle?** GGR shows gross performance, NGR shows net performance after bonus costs, and Turnover shows betting activity. If Turnover is rising but GGR is flat, it means margins are compressing — a risk signal. The toggle avoids clutter while keeping all three accessible.
+**Why three lines on one toggle?** GGR shows gross performance, NGR shows net performance after bonus costs, and Turnover shows betting activity. If Turnover is rising but GGR is flat, it means margins are compressing - a risk signal. The toggle avoids clutter while keeping all three accessible.
 
 ---
 
@@ -58,7 +58,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 **Chart type:** Bar chart (Registrations vs FTDs side-by-side).
 **Answers:** "Are we acquiring players and converting them?"
-**Why two bars?** Registrations without FTDs is vanity. The gap between the two bars is the unconverted funnel — a direct target for CRM and onboarding improvement.
+**Why two bars?** Registrations without FTDs is vanity. The gap between the two bars is the unconverted funnel - a direct target for CRM and onboarding improvement.
 **MoM toggle:** Month-on-month % change view lets you see acceleration or deceleration in growth, which is more useful than raw numbers for trend analysis.
 
 ---
@@ -67,7 +67,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 **Chart type:** Daily line chart.
 **Answers:** "Is our registration-to-deposit funnel improving or degrading over time?"
-**Why separate from the KPI card?** The KPI card shows the period average. This chart shows the daily shape — you can see if conversion dropped after a specific campaign ended, or spiked after a bonus offer launched.
+**Why separate from the KPI card?** The KPI card shows the period average. This chart shows the daily shape - you can see if conversion dropped after a specific campaign ended, or spiked after a bonus offer launched.
 
 ---
 
@@ -75,7 +75,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 **Chart type:** Donut with legend.
 **Answers:** "What proportion of our active players are VIP, PVIP, Mass, or Mix?"
-**Why it matters:** VIP players (small in number) typically generate 60–80% of GGR. If the VIP slice shrinks, revenue is at risk even if total actives grow. This is a player quality signal, not a volume signal.
+**Why it matters:** VIP players (small in number) typically generate 60-80% of GGR. If the VIP slice shrinks, revenue is at risk even if total actives grow. This is a player quality signal, not a volume signal.
 
 ---
 
@@ -91,7 +91,7 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 **Chart type:** 4 summary tiles.
 **Answers:** "How many players are in each segment right now?"
-**Why it's separate from the pie chart?** The pie shows proportion. This row shows absolute counts. Both are needed — a segment can be 40% of the pie but only 2,000 players, which is very different from 40% and 80,000 players.
+**Why it's separate from the pie chart?** The pie shows proportion. This row shows absolute counts. Both are needed - a segment can be 40% of the pie but only 2,000 players, which is very different from 40% and 80,000 players.
 
 ---
 
@@ -106,13 +106,13 @@ If a chart cannot be linked to a business decision, it should not be on the dash
 
 ### Geographic Distribution (Dual-axis bar chart)
 
-**Chart type:** Bar chart with two Y-axes — Players (left axis) and GGR (right axis).
-**Answers:** "Which countries have the most players, and which generate the most revenue — and are they the same countries?"
+**Chart type:** Bar chart with two Y-axes - Players (left axis) and GGR (right axis).
+**Answers:** "Which countries have the most players, and which generate the most revenue - and are they the same countries?"
 
 **Why two metrics on one chart?**
 This is the key insight: a country with many players but low GGR is an acquisition problem (players are registering but not depositing enough, or margins are thin). A country with few players but high GGR is a high-value market worth investing in further. If you only showed players, you'd miss the revenue concentration. If you only showed GGR, you'd miss the scale opportunity.
 
-**Example:** Nigeria might have 68,000 players and ₦842K GGR. Kenya might have 22,000 players and ₦281K GGR. GGR per player is similar — both markets are equally efficient. But if Ghana had 24,000 players and only ₦50K GGR, that signals a problem specific to Ghana (low deposit rates, wrong product mix, currency issues) that wouldn't be visible from a single-metric chart.
+**Example:** Nigeria might have 68,000 players and ₦842K GGR. Kenya might have 22,000 players and ₦281K GGR. GGR per player is similar - both markets are equally efficient. But if Ghana had 24,000 players and only ₦50K GGR, that signals a problem specific to Ghana (low deposit rates, wrong product mix, currency issues) that wouldn't be visible from a single-metric chart.
 
 **Decision it drives:** Where to allocate marketing budget, where to investigate operational issues, and which markets to prioritise for product localisation.
 
@@ -130,15 +130,15 @@ This is the key insight: a country with many players but low GGR is an acquisiti
 
 **Chart type:** Stacked bar by month, segmented by VIP/PVIP/Mass/Mix.
 **Answers:** "Is the revenue mix shifting between segments over time?"
-**Why stacked?** You see total GGR height AND the composition in one view. If total GGR is flat but the VIP slice is shrinking and Mass is growing, that's a margin risk — Mass players generate lower GGR per player. This is a segment health trend, not just a snapshot.
+**Why stacked?** You see total GGR height AND the composition in one view. If total GGR is flat but the VIP slice is shrinking and Mass is growing, that's a margin risk - Mass players generate lower GGR per player. This is a segment health trend, not just a snapshot.
 
 ---
 
 ### Daily Trend with 7-day Moving Average (Line chart)
 
-**Chart type:** Two lines — raw daily GGR and 7-day rolling average.
+**Chart type:** Two lines - raw daily GGR and 7-day rolling average.
 **Answers:** "Is today's performance normal, or is something unusual happening?"
-**Why the 7-day MA?** Daily GGR is noisy — it spikes on weekends (football), drops on quiet Tuesdays. The 7-day moving average smooths the noise and shows the underlying trend direction. If the MA is declining while daily values are volatile, the business is in a downtrend even if individual days look okay. This is the most operationally useful chart for a daily analyst.
+**Why the 7-day MA?** Daily GGR is noisy - it spikes on weekends (football), drops on quiet Tuesdays. The 7-day moving average smooths the noise and shows the underlying trend direction. If the MA is declining while daily values are volatile, the business is in a downtrend even if individual days look okay. This is the most operationally useful chart for a daily analyst.
 
 ---
 
@@ -146,7 +146,7 @@ This is the key insight: a country with many players but low GGR is an acquisiti
 
 **Chart type:** Area chart, last 30 days.
 **Answers:** "How much of the stake are we keeping as revenue?"
-**Why area (not line)?** The filled area makes the gap between Stake and Revenue visually obvious — that gap is the winnings paid out. A narrowing gap means margins are improving. A widening gap means the house is paying out more than usual (could be a big win event, or a product pricing issue).
+**Why area (not line)?** The filled area makes the gap between Stake and Revenue visually obvious - that gap is the winnings paid out. A narrowing gap means margins are improving. A widening gap means the house is paying out more than usual (could be a big win event, or a product pricing issue).
 
 ---
 
@@ -162,7 +162,7 @@ This is the key insight: a country with many players but low GGR is an acquisiti
 
 **Chart type:** Horizontal bar, ranked by GGR.
 **Answers:** "Which sports are generating the most revenue?"
-**Why horizontal?** Sport names are long — horizontal bars give space for labels without rotation. Ranked order makes the top performer immediately obvious.
+**Why horizontal?** Sport names are long - horizontal bars give space for labels without rotation. Ranked order makes the top performer immediately obvious.
 **Decision it drives:** Which sports to prioritise for odds compilation, marketing, and event coverage.
 
 ---
@@ -185,14 +185,14 @@ This is the key insight: a country with many players but low GGR is an acquisiti
 
 ### Detailed Breakdown Table (with Export)
 
-**Chart type:** Tabular data — Date, Brand, Segment, Territory, Value, % Change.
+**Chart type:** Tabular data - Date, Brand, Segment, Territory, Value, % Change.
 **Answers:** "Show me the raw numbers behind the charts, sliced by the dimensions I care about."
-**Why it replaces Upcoming Events?** Upcoming Events is an operational tool for the trading desk — it belongs on the Betting page. The Detailed Breakdown is an analytical tool for the business analyst who needs to drill into the numbers after seeing a trend in the charts above.
-**Export button:** Same rationale as Summary Metrics — enables reporting workflows without requiring a separate data pull.
+**Why it replaces Upcoming Events?** Upcoming Events is an operational tool for the trading desk - it belongs on the Betting page. The Detailed Breakdown is an analytical tool for the business analyst who needs to drill into the numbers after seeing a trend in the charts above.
+**Export button:** Same rationale as Summary Metrics - enables reporting workflows without requiring a separate data pull.
 
 ---
 
-## Pages 2–9 (Summary)
+## Pages 2-9 (Summary)
 
 | Page | Core question | Primary audience |
 |---|---|---|
