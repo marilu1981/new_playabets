@@ -56,30 +56,50 @@ import pandas as pd
 # App
 # ---------------------------------------------------------------------------
 _API_DESCRIPTION = """
-REST API serving Playa Bets analytics data. All endpoints are **read-only**
-and return **JSON**. Data is pre-computed from the data warehouse and
-refreshed on a schedule — `GET /kpis/latest` includes a `last_updated`
-timestamp (SAST).
+Read-only JSON API for Playa Bets analytics: KPIs, revenue, casino, sportsbook,
+bonus, payments, acquisition and player segments. Figures are pre-computed from
+the data warehouse and refreshed on a schedule; `GET /kpis/latest` shows the
+`last_updated` timestamp (SAST).
 
-### Authentication
-Pass the API key (provided separately) on every request, in either header:
+### How to use this page
+1. Click the **Authorize** button below and paste your API key.
+2. Open any endpoint, click **Try it out**, fill in the parameters and click **Execute**.
 
-- `X-API-Key: <API_KEY>`
-- `Authorization: Bearer <API_KEY>`
+### Calling the API from code
+Send your API key on every request in either header:
 
-Requests without a valid key receive `401`. In this UI, click **Authorize**
-and paste the key.
+```
+X-API-Key: <your key>
+```
+or
+```
+Authorization: Bearer <your key>
+```
 
-### Conventions
-- Dates are `YYYY-MM-DD`; `start` and `end` are **inclusive**.
-- Money values are ZAR.
-- Common optional filters: `territory`, `country`, `customer_status`, `current_segment`.
-- Endpoints with optional `start`/`end` default to a recent window (usually the last 30 days or current month).
+A missing or wrong key returns `401`.
+
+**Example**
+
+```
+curl -H "X-API-Key: <your key>" "<base-url>/kpis/latest"
+```
+
+### Parameter conventions
+| Convention | Detail |
+|---|---|
+| Dates | `YYYY-MM-DD`; `start` and `end` are inclusive |
+| Currency | all money values are ZAR |
+| Optional filters | `territory`, `country`, `customer_status`, `current_segment` |
+| Defaults | when `start`/`end` are optional and omitted, a recent window is used (usually last 30 days or current month) |
 
 ### Glossary
-**GGR** gross gaming revenue (stake − winnings, cash) · **NGR** GGR − bonus costs − taxes ·
-**FTD** first-time depositor · **Hold %** GGR ÷ turnover ·
-**RFM** player segmentation (VIP, Active, New, Cooling, Lapsed, Dormant)
+| Term | Meaning |
+|---|---|
+| GGR | Gross gaming revenue = stakes − winnings (cash play) |
+| NGR | Net gaming revenue = GGR − bonus costs − taxes |
+| FTD | First-time depositor |
+| Hold % | GGR ÷ turnover |
+| RFM | Player segmentation: VIP, Active, New, Cooling, Lapsed, Dormant |
 """
 
 app = FastAPI(
@@ -87,6 +107,33 @@ app = FastAPI(
     version="0.3",
     description=_API_DESCRIPTION,
 )
+
+
+# ---------------------------------------------------------------------------
+# OpenAPI security scheme - auth is enforced by APIKeyMiddleware below, but
+# declaring the scheme here gives Swagger UI its Authorize button and makes
+# "Try it out" send the key.
+# ---------------------------------------------------------------------------
+def _openapi_with_security():
+    if app.openapi_schema:
+        return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {})["securitySchemes"] = {
+        "ApiKeyAuth": {"type": "apiKey", "in": "header", "name": "X-API-Key"},
+        "BearerAuth": {"type": "http", "scheme": "bearer"},
+    }
+    schema["security"] = [{"ApiKeyAuth": []}, {"BearerAuth": []}]
+    app.openapi_schema = schema
+    return schema
+
+
+app.openapi = _openapi_with_security
 
 
 @app.middleware("http")
