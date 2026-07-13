@@ -29,7 +29,7 @@ from backend.core.filters import (
 router = APIRouter()
 
 
-@router.get("/sportsbook/kpis")
+@router.get("/sportsbook/kpis", description="Sportsbook KPIs for the period: stakes, winnings, GGR and betslip count.")
 def sportsbook_kpis(
     start: date = Query(...),
     end: date = Query(...),
@@ -61,7 +61,7 @@ def sportsbook_kpis(
     }
 
 
-@router.get("/betting/betslips-by-status")
+@router.get("/betting/betslips-by-status", description="Betslip counts and stakes split by settlement status (won, lost, open, cancelled, etc.).")
 def betslips_by_status(
     start: date = Query(...),
     end: date = Query(...),
@@ -107,7 +107,7 @@ def betslips_by_status(
     return rows
 
 
-@router.get("/betting/betslips-by-type")
+@router.get("/betting/betslips-by-type", description="Betslip counts and stakes split by bet type (single, multiple, etc.).")
 def betslips_by_type(
     start: date = Query(...),
     end: date = Query(...),

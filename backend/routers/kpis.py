@@ -104,7 +104,7 @@ def _summary_cache_key(
     )
 
 
-@router.get("/kpis")
+@router.get("/kpis", description="Aggregated KPIs for a date range: registrations, active players, betslip counts, stakes, GGR (cash and bonus), hold %, win rate and RFM segment counts.")
 def kpis(
     start: date = Query(..., description="YYYY-MM-DD"),
     end: date = Query(..., description="YYYY-MM-DD"),
@@ -271,7 +271,7 @@ def kpis(
     return result
 
 
-@router.get("/kpis/latest")
+@router.get("/kpis/latest", description="The most recent day's full KPI row, including a last_updated timestamp (SAST) showing data freshness.")
 def kpis_latest():
     df = load_daily_df()
     if df.empty:
@@ -285,7 +285,7 @@ def kpis_latest():
     return result
 
 
-@router.get("/kpis/series")
+@router.get("/kpis/series", description="Daily series of a single named metric for the last N days.")
 def kpis_series(
     metric: str = Query(...),
     days: int = Query(30, ge=1, le=400),
@@ -304,7 +304,7 @@ def kpis_series(
     }
 
 
-@router.get("/kpis/rolling")
+@router.get("/kpis/rolling", description="Rolling-window KPI series over the requested range.")
 def kpis_rolling(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -321,7 +321,7 @@ def kpis_rolling(
     return {"path": str(RFM_ROLLING_PATH), "rows": d.to_dict(orient="records")}
 
 
-@router.get("/kpis/daily")
+@router.get("/kpis/daily", description="One KPI row per day in the range. Use 'metrics' (comma-separated column names) to limit the columns returned.")
 def kpis_daily(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -350,7 +350,7 @@ def kpis_daily(
     return {"path": str(DATA_PATH), "rows": d.to_dict(orient="records")}
 
 
-@router.get("/kpis/summary")
+@router.get("/kpis/summary", description="Dashboard-style KPI summary for a period with period-on-period comparison and year-to-date figures.")
 def kpis_summary(
     start: date = Query(...),
     end: date = Query(...),
@@ -466,7 +466,7 @@ def kpis_summary(
     return response
 
 
-@router.get("/timeseries/revenue")
+@router.get("/timeseries/revenue", description="Daily {date, value} points for a revenue metric (default 'ggr').")
 def revenue_timeseries(
     start: date = Query(...),
     end: date = Query(...),
@@ -485,7 +485,7 @@ def revenue_timeseries(
     }
 
 
-@router.get("/timeseries/registrations")
+@router.get("/timeseries/registrations", description="Daily registration counts for the range, filterable by territory/country/status/segment.")
 def registrations_timeseries(
     start: date = Query(...),
     end: date = Query(...),
@@ -516,7 +516,7 @@ def registrations_timeseries(
     return {"registrations": regs, "ftds": ftds, "filters_applied": False}
 
 
-@router.get("/timeseries/conversion-cohorts")
+@router.get("/timeseries/conversion-cohorts", description="Registration-to-first-deposit conversion rates by registration cohort.")
 def conversion_cohorts_timeseries(
     start: date = Query(...),
     end: date = Query(...),
@@ -543,7 +543,7 @@ def conversion_cohorts_timeseries(
     }
 
 
-@router.get("/ftd/daily")
+@router.get("/ftd/daily", description="Daily first-time depositor (FTD) counts and values.")
 def ftd_daily(
     start: date = Query(...),
     end: date = Query(...),
@@ -598,7 +598,7 @@ def crm_retention(
     return {"has_data": True, "cohorts": cohorts, "summary": summary}
 
 
-@router.get("/ftd-reg-month/daily")
+@router.get("/ftd-reg-month/daily", description="Daily FTDs attributed to the month the player registered (cohort attribution view).")
 def ftd_reg_month_daily(
     start: date = Query(...),
     end: date = Query(...),

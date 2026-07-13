@@ -55,7 +55,38 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Playa Bets Analytics API", version="0.3")
+_API_DESCRIPTION = """
+REST API serving Playa Bets analytics data. All endpoints are **read-only**
+and return **JSON**. Data is pre-computed from the data warehouse and
+refreshed on a schedule — `GET /kpis/latest` includes a `last_updated`
+timestamp (SAST).
+
+### Authentication
+Pass the API key (provided separately) on every request, in either header:
+
+- `X-API-Key: <API_KEY>`
+- `Authorization: Bearer <API_KEY>`
+
+Requests without a valid key receive `401`. In this UI, click **Authorize**
+and paste the key.
+
+### Conventions
+- Dates are `YYYY-MM-DD`; `start` and `end` are **inclusive**.
+- Money values are ZAR.
+- Common optional filters: `territory`, `country`, `customer_status`, `current_segment`.
+- Endpoints with optional `start`/`end` default to a recent window (usually the last 30 days or current month).
+
+### Glossary
+**GGR** gross gaming revenue (stake − winnings, cash) · **NGR** GGR − bonus costs − taxes ·
+**FTD** first-time depositor · **Hold %** GGR ÷ turnover ·
+**RFM** player segmentation (VIP, Active, New, Cooling, Lapsed, Dormant)
+"""
+
+app = FastAPI(
+    title="Playa Bets Analytics API",
+    version="0.3",
+    description=_API_DESCRIPTION,
+)
 
 
 @app.middleware("http")
@@ -172,22 +203,23 @@ async def warmup_cache() -> None:
 # ---------------------------------------------------------------------------
 # Routers
 # ---------------------------------------------------------------------------
-app.include_router(kpis.router)
-app.include_router(users.router)
-app.include_router(sportsbook.router)
-app.include_router(transactions.router)
-app.include_router(bonus.router)
-app.include_router(casino.router)
-app.include_router(product.router)
-app.include_router(admin.router)
-app.include_router(acquisition.router)
-app.include_router(insights.router)
+app.include_router(kpis.router, tags=["KPIs & Time Series"])
+app.include_router(users.router, tags=["VIP & Players"])
+app.include_router(sportsbook.router, tags=["Sportsbook"])
+app.include_router(transactions.router, tags=["Transactions"])
+app.include_router(bonus.router, tags=["Bonus"])
+app.include_router(casino.router, tags=["Casino"])
+app.include_router(product.router, tags=["Product"])
+# Internal-only routers: still served, but hidden from /docs and /openapi.json
+app.include_router(admin.router, include_in_schema=False)
+app.include_router(acquisition.router, tags=["Acquisition"])
+app.include_router(insights.router, include_in_schema=False)
 
 
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
-@app.get("/health")
+@app.get("/health", tags=["Service"], description="Service status and dataset-availability flags. No API key required.")
 def health():
     return {
         "ok": True,
@@ -209,7 +241,7 @@ def health():
 # ---------------------------------------------------------------------------
 # Cache
 # ---------------------------------------------------------------------------
-@app.post("/cache/clear")
+@app.post("/cache/clear", include_in_schema=False)
 def cache_clear():
     from backend.routers.kpis import _SUMMARY_CACHE, _KPIS_CACHE
     _PARQUET_CACHE.clear()
@@ -226,6 +258,6 @@ def cache_clear():
 # ---------------------------------------------------------------------------
 # Root
 # ---------------------------------------------------------------------------
-@app.get("/")
+@app.get("/", tags=["Service"], description="Welcome message pointing to /docs. No data.")
 def root():
     return {"message": "Playa Bets API v0.2 - see /docs for endpoints"}

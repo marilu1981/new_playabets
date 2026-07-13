@@ -122,7 +122,7 @@ def _from_provider_daily(start: date, end: date) -> Optional[dict]:
     return {"has_data": True, "rows": rows, "providers": providers, "totals": totals}
 
 
-@router.get("/transactions/kpis")
+@router.get("/transactions/kpis", description="Payment KPIs for the period: deposits, withdrawals, net deposits, transaction counts and unique depositors.")
 def transactions_kpis(
     start: date = Query(...),
     end: date = Query(...),
@@ -160,7 +160,7 @@ def transactions_kpis(
     }
 
 
-@router.get("/transactions/trend")
+@router.get("/transactions/trend", description="Daily deposit and withdrawal series.")
 def transactions_trend(
     start: date = Query(...),
     end: date = Query(...),

@@ -1,0 +1,460 @@
+{
+  "api": "Playa Bets Analytics API",
+  "version": "0.3",
+  "last_updated": "2026-07-13",
+  "base_url": "https://playabets-api.mangosand-06391868.southafricanorth.azurecontainerapps.io",
+  "authentication": {
+    "description": "Pass the API key (provided separately) on every request.",
+    "headers": ["X-API-Key: <API_KEY>", "Authorization: Bearer <API_KEY>"],
+    "unauthenticated_paths": ["/health", "/docs", "/openapi.json"]
+  },
+  "conventions": {
+    "dates": "YYYY-MM-DD, start/end inclusive",
+    "currency": "ZAR",
+    "common_filters": ["territory", "country", "customer_status", "current_segment"],
+    "note": "Endpoints with optional start/end default to a recent window (usually last 30 days or current month)."
+  },
+  "endpoints": {
+    "GET /kpis": {
+      "group": "Core KPIs",
+      "description": "Aggregated KPIs for a date range: registrations, active players, betslip counts, stakes, GGR (cash and bonus), hold %, win rate and RFM segment counts.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /kpis/latest": {
+      "group": "Core KPIs",
+      "description": "The most recent day's full KPI row, including a last_updated timestamp (SAST) showing data freshness.",
+      "params": {}
+    },
+    "GET /kpis/summary": {
+      "group": "Core KPIs",
+      "description": "Dashboard-style KPI summary for a period with period-on-period comparison and year-to-date figures.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "previous_start": "optional, comparison period start",
+        "previous_end": "optional, comparison period end",
+        "ytd_start": "optional, year-to-date anchor date"
+      }
+    },
+    "GET /kpis/daily": {
+      "group": "Core KPIs",
+      "description": "One KPI row per day in the range. Use 'metrics' (comma-separated column names) to limit the columns returned.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "metrics": "optional, comma-separated metric names",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /kpis/series": {
+      "group": "Core KPIs",
+      "description": "Daily series of a single named metric for the last N days.",
+      "params": {
+        "metric": "required, metric column name",
+        "days": "optional, default 30"
+      }
+    },
+    "GET /kpis/rolling": {
+      "group": "Core KPIs",
+      "description": "Rolling-window KPI series over the requested range.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "limit": "optional, max rows, default 180"
+      }
+    },
+    "GET /timeseries/revenue": {
+      "group": "Time series",
+      "description": "Daily {date, value} points for a revenue metric (default 'ggr').",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "metric": "optional, default 'ggr'"
+      }
+    },
+    "GET /timeseries/registrations": {
+      "group": "Time series",
+      "description": "Daily registration counts for the range, filterable by territory/country/status/segment.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /timeseries/conversion-cohorts": {
+      "group": "Time series",
+      "description": "Registration-to-first-deposit conversion rates by registration cohort.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /ftd/daily": {
+      "group": "Acquisition & retention",
+      "description": "Daily first-time depositor (FTD) counts and values.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /ftd-reg-month/daily": {
+      "group": "Acquisition & retention",
+      "description": "Daily FTDs attributed to the month the player registered (cohort attribution view).",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /crm/retention": {
+      "group": "Acquisition & retention",
+      "description": "7/30/90-day player retention rates by cohort month, computed from betting and casino activity.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /acquisition/kpis": {
+      "group": "Acquisition & retention",
+      "description": "Period-total acquisition KPIs rolled up across all marketing channels.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /acquisition/channels": {
+      "group": "Acquisition & retention",
+      "description": "Per-channel acquisition breakdown derived from RavenTrack affiliate classification.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /acquisition/affiliates": {
+      "group": "Acquisition & retention",
+      "description": "Per-affiliate leaderboard table, sortable and limited.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "limit": "optional, default 100",
+        "sort_by": "optional, default 'revenue'"
+      }
+    },
+    "GET /sportsbook/kpis": {
+      "group": "Sportsbook",
+      "description": "Sportsbook KPIs for the period: stakes, winnings, GGR, hold % and active bettors.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /betting/betslips-by-status": {
+      "group": "Sportsbook",
+      "description": "Betslip counts and stakes split by settlement status (won, lost, open, cancelled, etc.).",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /betting/betslips-by-type": {
+      "group": "Sportsbook",
+      "description": "Betslip counts and stakes split by bet type (single, multiple, etc.).",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD",
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /casino/kpis": {
+      "group": "Casino",
+      "description": "Casino KPIs for the period: stakes, winnings, GGR and active casino players.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /casino/daily": {
+      "group": "Casino",
+      "description": "Daily casino performance, one row per day.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /casino/providers": {
+      "group": "Casino",
+      "description": "Per-game-provider breakdown (e.g. Pragmatic, Evolution, Hacksaw): stake, winnings, bets, GGR.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /casino/types": {
+      "group": "Casino",
+      "description": "Casino performance split by type (Casino vs Live Casino, etc.).",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /transactions/kpis": {
+      "group": "Transactions",
+      "description": "Payment KPIs for the period: deposits, withdrawals and net cash.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /transactions/trend": {
+      "group": "Transactions",
+      "description": "Daily deposit and withdrawal series.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /transactions/providers": {
+      "group": "Transactions",
+      "description": "Detailed payment-provider and transaction-reason breakdown plus period totals.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /bonus/kpis": {
+      "group": "Bonus",
+      "description": "Bonus totals for the period: issued, converted and expired amounts.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /bonus/daily": {
+      "group": "Bonus",
+      "description": "Daily bonus series, one row per day.",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /bonus/campaigns": {
+      "group": "Bonus",
+      "description": "Bonus campaign list with performance figures, optionally filtered by campaign status.",
+      "params": {
+        "status": "optional, campaign status filter"
+      }
+    },
+    "GET /bonus/freebets": {
+      "group": "Bonus",
+      "description": "Free-bet issuance and usage for the period.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /product/daily": {
+      "group": "Product",
+      "description": "Daily GGR, turnover and hold % for each product vertical (sportsbook vs casino).",
+      "params": {
+        "start": "required, YYYY-MM-DD",
+        "end": "required, YYYY-MM-DD"
+      }
+    },
+    "GET /vip/summary": {
+      "group": "VIP",
+      "description": "Headline VIP counts and revenue for the period.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional, VIP lifecycle stage filter"
+      }
+    },
+    "GET /vip/list": {
+      "group": "VIP",
+      "description": "VIP roster rows (player, account manager, lifecycle stage, onboard/offboard dates).",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter",
+        "current_only": "optional, default false",
+        "limit": "optional, default 250"
+      }
+    },
+    "GET /vip/revenue": {
+      "group": "VIP",
+      "description": "Period-active VIP revenue totals (revenue = rolling 30-day figures).",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/by-manager": {
+      "group": "VIP",
+      "description": "VIP rollup per account manager.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/top-players": {
+      "group": "VIP",
+      "description": "Top VIP players ranked by rolling 30-day turnover.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter",
+        "limit": "optional, default 20"
+      }
+    },
+    "GET /vip/product-share": {
+      "group": "VIP",
+      "description": "Aggregate sports vs casino revenue split across current VIPs.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/demographics": {
+      "group": "VIP",
+      "description": "VIP demographics: age-band and country distribution of current VIPs (gender not available in the DWH).",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/trends": {
+      "group": "VIP",
+      "description": "31-day daily NGR/GGR/turnover/margin trend for VIP players.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/monthly": {
+      "group": "VIP",
+      "description": "Six-month VIP performance, one row per calendar month.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/hourly": {
+      "group": "VIP",
+      "description": "Hourly betting-activity pattern for VIP players, aggregated across the selected period.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter"
+      }
+    },
+    "GET /vip/overview": {
+      "group": "VIP",
+      "description": "All VIP sections (summary, revenue, managers, top players, trends, etc.) computed in a single response.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "account_manager": "optional filter",
+        "stage": "optional filter",
+        "include_demographics": "optional, default false"
+      }
+    },
+    "GET /rfm/segments": {
+      "group": "Players & segments",
+      "description": "Player counts and value per RFM segment (VIP, Active, New, Cooling, Lapsed, Dormant).",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD",
+        "mode": "optional"
+      }
+    },
+    "GET /rfm/users": {
+      "group": "Players & segments",
+      "description": "Individual player rows for an RFM segment; 'columns' limits the fields returned.",
+      "params": {
+        "segment": "optional, RFM segment name",
+        "limit": "optional, default 200",
+        "columns": "optional, comma-separated column names"
+      }
+    },
+    "GET /rfm/risk": {
+      "group": "Players & segments",
+      "description": "Summary of churn-risk tiers (Critical/High/Moderate/Low) across all players.",
+      "params": {}
+    },
+    "GET /rfm/risk/players": {
+      "group": "Players & segments",
+      "description": "Individual players ordered by churn-risk score (descending), filterable by tier and RFM segment.",
+      "params": {
+        "tier": "optional: Critical, High, Moderate or Low",
+        "segment": "optional, RFM segment filter",
+        "limit": "optional, default 200"
+      }
+    },
+    "GET /users/status-breakdown": {
+      "group": "Players & segments",
+      "description": "Player counts by account status.",
+      "params": {
+        "territory": "optional filter",
+        "country": "optional filter",
+        "customer_status": "optional filter",
+        "current_segment": "optional filter"
+      }
+    },
+    "GET /users/self-exclusions": {
+      "group": "Players & segments",
+      "description": "Current snapshot of self-excluded players.",
+      "params": {}
+    },
+    "GET /users/self-exclusions/trend": {
+      "group": "Players & segments",
+      "description": "Monthly self-exclusion trend: how many started, are active, and completed per month.",
+      "params": {
+        "start": "optional, YYYY-MM-DD",
+        "end": "optional, YYYY-MM-DD"
+      }
+    },
+    "GET /health": {
+      "group": "Service",
+      "description": "Service status and dataset-availability flags. No API key required.",
+      "params": {}
+    }
+  }
+}

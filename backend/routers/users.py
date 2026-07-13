@@ -190,7 +190,7 @@ def _serialize_vip_rows(df: pd.DataFrame) -> list[dict]:
     return records
 
 
-@router.get("/vip/list")
+@router.get("/vip/list", description="VIP roster rows: player, account manager, lifecycle stage, onboard/offboard dates.")
 def vip_list(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -239,7 +239,7 @@ def vip_list(
     }
 
 
-@router.get("/vip/summary")
+@router.get("/vip/summary", description="Headline VIP counts and revenue for the period.")
 def vip_summary(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -299,7 +299,7 @@ def vip_summary(
     }
 
 
-@router.post("/vip/upload")
+@router.post("/vip/upload", include_in_schema=False)
 async def vip_upload(file: UploadFile = File(...)):
     """
     Merge an uploaded VIP CSV into the roster.
@@ -997,7 +997,7 @@ def vip_overview(
     return out
 
 
-@router.get("/users/status-breakdown")
+@router.get("/users/status-breakdown", description="Player counts by account status.")
 def users_status_breakdown(
     territory: Optional[str] = Query(None),
     country: Optional[str] = Query(None),
@@ -1027,7 +1027,7 @@ def users_status_breakdown(
     }
 
 
-@router.get("/users/self-exclusions")
+@router.get("/users/self-exclusions", description="Current snapshot of self-excluded players.")
 def users_self_exclusions():
     if not SELFEXCLUSIONS_PATH.exists():
         return {"total": 0, "inProgress": 0, "pending": 0, "completed": 0, "byPeriod": [], "has_data": False}
@@ -1131,7 +1131,7 @@ def users_self_exclusions_trend(
     return {"points": points}
 
 
-@router.get("/rfm/segments")
+@router.get("/rfm/segments", description="Player counts and value per RFM segment (VIP, Active, New, Cooling, Lapsed, Dormant).")
 def rfm_segments(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -1184,7 +1184,7 @@ def rfm_segments(
     }
 
 
-@router.get("/rfm/users")
+@router.get("/rfm/users", description="Individual player rows for an RFM segment; 'columns' limits the fields returned.")
 def rfm_users(
     segment: Optional[str] = Query(None),
     limit: int = Query(200, ge=1, le=5000),

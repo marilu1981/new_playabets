@@ -22,7 +22,7 @@ from backend.core.helpers import _filter_range
 router = APIRouter()
 
 
-@router.get("/bonus/kpis")
+@router.get("/bonus/kpis", description="Bonus totals for the period: credited amounts, per-user averages and bonus counts.")
 def bonus_kpis(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
@@ -63,7 +63,7 @@ def bonus_kpis(
     }
 
 
-@router.get("/bonus/daily")
+@router.get("/bonus/daily", description="Daily bonus series: credited, freebets issued/spent and first-deposit bonus figures per day.")
 def bonus_daily(
     start: date = Query(...),
     end: date = Query(...),
@@ -89,7 +89,7 @@ def bonus_daily(
     }
 
 
-@router.get("/bonus/campaigns")
+@router.get("/bonus/campaigns", description="Bonus campaign list with status, type and validity dates, optionally filtered by campaign status.")
 def bonus_campaigns(status: Optional[str] = Query(None)):
     campaigns = load_parquet_cached(CAMPAIGNS_PATH, "campaigns")
     if campaigns.empty:
@@ -113,7 +113,7 @@ def bonus_campaigns(status: Optional[str] = Query(None)):
     return {"campaigns": rows}
 
 
-@router.get("/bonus/freebets")
+@router.get("/bonus/freebets", description="Free-bet issuance and usage for the period (issued, used, expired, pending, total amount).")
 def bonus_freebets(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),

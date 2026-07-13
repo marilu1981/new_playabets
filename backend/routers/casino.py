@@ -25,7 +25,7 @@ from backend.core.helpers import (
 router = APIRouter()
 
 
-@router.get("/casino/kpis")
+@router.get("/casino/kpis", description="Casino KPIs for the period: stakes (real and bonus), winnings, GGR, bets, actives, hold % and depositors.")
 def casino_kpis(
     start: date = Query(...),
     end: date = Query(...),
@@ -63,7 +63,7 @@ def casino_kpis(
     }
 
 
-@router.get("/casino/daily")
+@router.get("/casino/daily", description="Daily casino performance, one row per day.")
 def casino_daily(
     start: date = Query(...),
     end: date = Query(...),
@@ -114,7 +114,7 @@ def casino_providers(
     return {"providers": out.sort_values("ggr", ascending=False).to_dict(orient="records")}
 
 
-@router.get("/casino/types")
+@router.get("/casino/types", description="Casino performance split by type (Casino vs Live Casino, etc.).")
 def casino_types(
     start: Optional[date] = Query(None),
     end: Optional[date] = Query(None),
